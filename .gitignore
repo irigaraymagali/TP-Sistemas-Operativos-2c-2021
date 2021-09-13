@@ -52,6 +52,6 @@ Mkfile.old
 dkms.conf
 
 
-# Log and exec files
+# Logsfiles and obj folder 
 *.log
-*.out
+obj
