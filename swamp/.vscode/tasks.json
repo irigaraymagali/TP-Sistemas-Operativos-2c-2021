@@ -1,0 +1,29 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Make",
+            "type": "shell",
+            "command": "make",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Swamp Normal",
+            "type": "shell",
+            "command": "./exec.sh",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Swamp Valgrind",
+            "type": "shell",
+            "command": "./vexec.sh",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
+}

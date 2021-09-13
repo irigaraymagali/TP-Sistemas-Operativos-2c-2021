@@ -1,0 +1,29 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Make Kernel",
+            "type": "shell",
+            "command": "make",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Kernel Normal",
+            "type": "shell",
+            "command": "./exec.sh",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Kernel Valgrind",
+            "type": "shell",
+            "command": "./vexec.sh",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
+}
