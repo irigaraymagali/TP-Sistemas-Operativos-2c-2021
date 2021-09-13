@@ -42,7 +42,7 @@ int main(int argc, char ** argv){
         log_destroy(logger);
     } 
 
-// Config:  (falta)
+// Config:  (falta) 
 	ip_memoria= config_get_string_value(config, "IP_MEMORIA");
 	puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
     algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
@@ -92,8 +92,56 @@ int main(int argc, char ** argv){
 
 }
 
+//////////////// FUNCIONES GENERALES ///////////////////
 
-void new_a_ready(carpincho* carpincho){ //hilo
+int crear_estructura(mate_instance *mate_inner_structure){
+    /*
+    - completar con id
+    - completar la estructura con por ej los valores del config de la rafaga y estimacion
+    - reservar espacio en memoria 
+    - avisar que llegó un nuevo carpincho a new => post a new_con_elementos
+    - una vez que está en EXEC retornar 0
+    */
+}
+
+int borrar_estructura(mate_instance *mate_inner_structure){
+    /* conectar con memoria para borrar todo*/
+}
+
+int iniciar_semaforo(mate_instance *mate_inner_structure, mate_sem_name sem, unsigned int value){
+    mate_instance->sem_instance = malloc(sizeof(sem_t));
+
+        /* 
+           guardar el semaforo en la estructura del carpincho
+        */
+        
+    return sem_init(mate_instance->sem_instance, 0, value); // qué pasa si quiero inicializar más de un hilo?
+
+}
+
+int wait_semaforo(mate_instance *mate_inner_structure, mate_sem_name sem, unsigned int value){
+   /* 
+        cuando le hagan post le retorne 0 por la conexión así ahí puede seguir
+        meter en lista de blocked
+    */
+    sem_wait(sem); //
+    return pasar_a_ready_o_bloqueado_ready();
+}
+
+int post_semaforo(mate_instance *mate_inner_structure, mate_sem_name sem, unsigned int value){
+   /* 
+        
+    */
+    sem_post(sem); //
+}
+
+
+
+
+///////////////// PLANIFICACIÓN ////////////////////////
+
+
+void new_a_ready(){ //hilo
 
     while(1){
         sem_wait(&cola_new_con_elementos); //si hay procesos en new
@@ -109,13 +157,40 @@ void new_a_ready(carpincho* carpincho){ //hilo
 		pthread_mutex_unlock(&sem_cola_new);
 		pthread_mutex_unlock(&sem_cola_ready);
 
-		sem_post(&cola_ready_con_elementos); //avisa que hay procesos en ready
+		sem_post(&cola_ready_con_elementos); //avisa que hay procesos en ready 
     }
     
 }
 
-void ready_a_exec(carpincho* carpincho){  
-    //saco de cola ready y pongo en cola exec según algoritmo
+//calcular ráfaga siguiente. Esto se debería hacer para todos los carpinchos cuando ingresan a la cola de ready
+//float calculo_rafaga_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * alfa
+
+
+// quién llamaría a la función
+void ready_a_exec(){  
+    sem_wait(&cola_ready_con_elementos); //espera que le avisen que hay uno en ready    
+    // depende del algoritmo que tenga en el config (algoritmo_planificacion)
+    if(algoritmo_planificacion === "SJF"){
+        ready_a_exec_SJF();
+    }
+    else{
+        ready_a_exec_HRRN();
+    }
+}
+
+
+void ready_a_exec_SJF(){
+    // cómo sé cuáles carpinchos están 
+
+}
+
+void ready_a_exec_HRRN(){
+    
+}
+
+void exec(){
+    // logica que mande a ejecutar teniendo en cuenta multiprocesamiento con hilos
+    // carpicho_id_listo_para_exec()
 }
 
 
