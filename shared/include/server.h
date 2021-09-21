@@ -13,7 +13,7 @@
 #define MAX_CON 5
 #define STRING_COMMAND 999
 
-int validator = 1;
+#define VALIDATOR 1
 
 typedef struct {
 
