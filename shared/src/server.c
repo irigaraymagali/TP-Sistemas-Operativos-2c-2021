@@ -19,7 +19,7 @@ void _start_server(char *port, void (*callback)(), t_log *logger) {
 
     addrlen = sizeof(address);
 
-    while (validator) {
+    while (VALIDATOR) {
         if ((new_socket = accept(lsocket, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
             log_error(logger, "[Shared Library]: Ocurrio un error al aceptar una conexion \n (╯°o°）╯︵ ┻━┻");
             exit(EXIT_FAILURE);
