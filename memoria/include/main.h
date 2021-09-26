@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include "server.h"
 #include "tests.h"
+#include "memory_utils.h"
 
 /* LOG CONST */
 #define LOG_PATH "./cfg/memoria.log"
