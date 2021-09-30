@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <commons/collections/list.h>
 
 #define mate_memalloc 1
 #define    memfree 2
@@ -32,10 +33,24 @@ typedef struct
     uint32_t bitPresencia;
     uint32_t bitModificado;
     uint32_t lRU;
-} TablaDePaginaXProceso;
+    t_list segmentos;
+} Pagina;
+
+typedef struct 
+{
+    uint32_t numero;
+    HeapMetaData metaData;
+} Segmento;
+
+typedef struct 
+{
+    uint32_t id;
+    t_list paginas;
+} TablaDePaginasxProceso;
 
 t_log* logger;
 
+void* memoria;
 
 
 void comandos(int valor);
