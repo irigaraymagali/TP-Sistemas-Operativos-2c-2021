@@ -18,3 +18,12 @@ void comandos(int valor){
     }
    
 }
+
+
+void initPaginacion(){
+    
+    log_info(logger,"iniciando paginacion");
+
+    configFile = config_create(""../cfg/memoria.conf");
+
+}

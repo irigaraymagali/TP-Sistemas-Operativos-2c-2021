@@ -33,14 +33,8 @@ typedef struct
     uint32_t bitPresencia;
     uint32_t bitModificado;
     uint32_t lRU;
-    t_list segmentos;
 } Pagina;
 
-typedef struct 
-{
-    uint32_t numero;
-    HeapMetaData metaData;
-} Segmento;
 
 typedef struct 
 {
@@ -48,11 +42,19 @@ typedef struct
     t_list paginas;
 } TablaDePaginasxProceso;
 
+typedef struct 
+{
+    uint32_t id;
+    t_list paginas;
+} ubicacionDeHeap;
+
 t_log* logger;
+t_config configFile;
 
 void* memoria;
 
 
 void comandos(int valor);
+void initPaginacion();
 
 #endif
