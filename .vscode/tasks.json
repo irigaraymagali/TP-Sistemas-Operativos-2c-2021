@@ -12,7 +12,7 @@
         {
             "label": "Swamp Normal",
             "type": "shell",
-            "command": "sh exec.sh",
+            "command": "sh ./swap/exec.sh",
             "problemMatcher": [
                 "$gcc"
             ]
@@ -20,7 +20,7 @@
         {
             "label": "Swamp Valgrind",
             "type": "shell",
-            "command": "sh vexec.sh",
+            "command": "sh ./swap/exec.sh",
             "problemMatcher": [
                 "$gcc"
             ]
@@ -28,7 +28,7 @@
         {
             "label": "Swamp Helgrind",
             "type": "shell",
-            "command": "sh hexec.sh",
+            "command": "sh ./swap/exec.sh",
             "problemMatcher": [
                 "$gcc"
             ]
