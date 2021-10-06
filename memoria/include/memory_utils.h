@@ -39,7 +39,7 @@ typedef struct
 typedef struct 
 {
     uint32_t id;
-    t_list paginas;
+    t_list *paginas;
 } TablaDePaginasxProceso;
 
 typedef struct 
@@ -49,12 +49,15 @@ typedef struct
 } ubicacionDeHeap;
 
 t_log* logger;
-t_config configFile;
+t_config* configFile;
+t_list *todasLasTablasDePaginas;
 
 void* memoria;
 
 
 void comandos(int valor);
 void initPaginacion();
+int memalloc(int espacioAReservar);
+int entraEnElEspacioLibre(espacioAReservar);
 
 #endif
