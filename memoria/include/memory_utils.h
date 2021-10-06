@@ -53,11 +53,12 @@ t_config* configFile;
 t_list *todasLasTablasDePaginas;
 
 void* memoria;
+int tamanioDePagina;
 
 
 void comandos(int valor);
 void initPaginacion();
-int memalloc(int espacioAReservar);
-int entraEnElEspacioLibre(espacioAReservar);
+int memalloc(int espacioAReservar, int processId);
+int entraEnElEspacioLibre(espacioAReservar, int processId);
 
 #endif
