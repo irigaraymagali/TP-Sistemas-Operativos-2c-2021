@@ -72,8 +72,10 @@ int memalloc(int espacioAReservar, int processId){
 
         // esto funciona si y solo si la pagina esta en memoria mas adelante hay que agregar los cambios nesesarios para utilizar el swap
 
+        int offset;
+
         if(espacioFinalDisponible >= espacioAReservar){
-            int offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - (mayorNroDePagina * tamanioDePagina)) ;
+            offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - (mayorNroDePagina * tamanioDePagina)) ;
 
             memcpy(memoria + offset + sizeof(uint32_t) , (tempLastHeap + espacioAReservar), sizeof(uint32_t));
 
@@ -94,9 +96,44 @@ int memalloc(int espacioAReservar, int processId){
                     hacer lo de arriba en un auxiliar 
                     y pegar las n paginas  de una en la memoria
             */
+           agregarXPaginasPara(processId, (espacioAReservar-espacioFinalDisponible));
+
+            int espacioDePaginasAux = (((espacioAReservar - espacioFinalDisponible) /tamanioDePagina) + 1)* tamanioDePagina;
+
+           void* espacioAuxiliar = malloc( espacioDePaginasAux + tamanioDePagina );
+
+           offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - (mayorNroDePagina * tamanioDePagina)) ;
+
+           memcpy(memoria + offset + sizeof(uint32_t) , (tempLastHeap + espacioAReservar), sizeof(uint32_t));
+
+
+            //obtener ultima pagina
+            Pagina ultimaPag = getLastPageDe(processId);
+
+            memcpy(espacioAuxiliar,memoria + (ultimoFrame*tamanioDePagina),tamanioDePagina);
+
+            memcpy(espacioAuxiliar + 9 + espacioAReservar,nuevoHeap.prevAlloc, sizeof(uint32_t));
+
+            memcpy(memoria + 9 + espacioAReservar + sizeof(uint32_t) , nuevoHeap.nextAlloc, sizeof(uint32_t));
+
+            memcpy(memoria + 9 + espacioAReservar + 2*sizeof(uint32_t) , nuevoHeap.isfree, sizeof(uint8_t));
+
+            int paginaInicial = mayorNroDePagina;
+
+            while(mayorNroDePagina <= ultimaPag.pagina){
+                int framenecesitado = mayorNroDePagina;
+                
+                framenecesitado = getFrameDeUn(processId, mayorNroDePagina);
+
+                memcpy(memoria + (framenecesitado*tamanioDePagina), espacioAuxiliar + (tamanioDePagina*(mayorNroDePagina-paginaInicial)), tamanioDePagina);
+
+                mayorNroDePagina++;
+            }
+
+            free(espacioAuxiliar);
         }
 
-        return 0;    
+        return (tempLastHeap + espacioAReservar);    
     }
     
     return entra;
@@ -162,7 +199,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
 
                     if(unHeap.isfree== 1 && (unHeap.nextAlloc - allocActual)>= espacioAReservar){
                         
-                        // falta separarlo pero hay que preguntar si que pasa cuando el espacio a separar es menor a 10??
+                        // falta separarlo y sumar 9 que es el valor de la estructura que iria al final
                         return allocActual;
                     }
                 }
