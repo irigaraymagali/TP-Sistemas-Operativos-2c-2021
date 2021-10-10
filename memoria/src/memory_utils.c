@@ -31,10 +31,71 @@ void initPaginacion(){
 int memalloc(int espacioAReservar, int processId){
 
     int entra = entraEnElEspacioLibre(espacioAReservar, processId);
+    int mayorNroDePagina =-1;
+    int ultimoFrame =0;
+    int tempLastHeap=0;
+    int espacioFinalDisponible=0;
+
     if(entra == -1){
        /* 1-generar un nuevo alloc al final del espacio de direcciones
             2- si no cabe en las páginas ya reservadas se deberá solicitar más
          */
+        t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+
+        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+         while (temp->id != processId) {
+            
+            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+ 
+        } 
+
+        tempLastHeap= temp->lastHeap;
+
+        //NOTA MENTAL BUSCAR LA FUNCION DEL TP PASADO PARA BUSCAR LA ULTIMA PAGINA DE UN PROCESO Y SACAR ESTA PIJA
+
+        t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
+
+            while(list_iterator_has_next(iterator2)){
+                Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator2);
+
+                if(mayorNroDePagina < paginaTemporal->pagina){
+                    mayorNroDePagina = paginaTemporal->pagina;
+                    ultimoFrame = paginaTemporal->frame;
+                }
+            }
+        espacioFinalDisponible = (mayorNroDePagina* tamanioDePagina) - tempLastHeap - 9 ; // el 9 es porque hay que agregar el puto heap atras
+
+        HeapMetaData nuevoHeap ;
+        nuevoHeap.prevAlloc = tempLastHeap;
+        nuevoHeap.nextAlloc = NULL;
+        nuevoHeap.isfree = 0;
+
+        // esto funciona si y solo si la pagina esta en memoria mas adelante hay que agregar los cambios nesesarios para utilizar el swap
+
+        if(espacioFinalDisponible >= espacioAReservar){
+            int offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - (mayorNroDePagina * tamanioDePagina)) ;
+
+            memcpy(memoria + offset + sizeof(uint32_t) , (tempLastHeap + espacioAReservar), sizeof(uint32_t));
+
+            offset = offset + 9 + espacioAReservar;
+
+            memcpy(memoria + offset , nuevoHeap.prevAlloc, sizeof(uint32_t));
+
+            offset = offset + sizeof(uint32_t);
+
+            memcpy(memoria + offset , nuevoHeap.nextAlloc, sizeof(uint32_t));
+
+            offset = offset + sizeof(uint32_t);
+
+            memcpy(memoria + offset , nuevoHeap.isfree, sizeof(uint8_t));
+        }else{
+            /* 
+                    como me da paja de hacerlo ahora esto basicamente es pedir una pagina nueva copiar esas ultimas paginas en un auxiliar
+                    hacer lo de arriba en un auxiliar 
+                    y pegar las n paginas  de una en la memoria
+            */
+        }
+
         return 0;    
     }
     
@@ -45,6 +106,7 @@ int memalloc(int espacioAReservar, int processId){
 // encuentra si hay un alloc para ubicar el espacio a reservar dentro de las paginas
 int entraEnElEspacioLibre(int espacioAReservar, int processId){
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+    
 
     TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
         while (temp->id != processId) {

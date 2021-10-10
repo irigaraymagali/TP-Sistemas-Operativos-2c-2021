@@ -40,6 +40,7 @@ typedef struct
 {
     uint32_t id;
     t_list *paginas;
+    int lastHeap;
 } TablaDePaginasxProceso;
 
 typedef struct 
@@ -59,6 +60,6 @@ int tamanioDePagina;
 void comandos(int valor);
 void initPaginacion();
 int memalloc(int espacioAReservar, int processId);
-int entraEnElEspacioLibre(espacioAReservar, int processId);
+int entraEnElEspacioLibre(int espacioAReservar, int processId);
 
 #endif
