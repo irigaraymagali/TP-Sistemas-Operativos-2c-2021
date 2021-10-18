@@ -51,7 +51,6 @@ int memalloc(int espacioAReservar, int processId){
 
         tempLastHeap= temp->lastHeap;
 
-        //NOTA MENTAL BUSCAR LA FUNCION DEL TP PASADO PARA BUSCAR LA ULTIMA PAGINA DE UN PROCESO Y SACAR ESTA PIJA
 
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
 
@@ -108,7 +107,7 @@ int memalloc(int espacioAReservar, int processId){
 
 
             //obtener ultima pagina
-            Pagina ultimaPag = getLastPageDe(processId);
+            Pagina *ultimaPag = getLastPageDe(processId);
 
             memcpy(espacioAuxiliar,memoria + (ultimoFrame*tamanioDePagina),tamanioDePagina);
 
@@ -120,7 +119,7 @@ int memalloc(int espacioAReservar, int processId){
 
             int paginaInicial = mayorNroDePagina;
 
-            while(mayorNroDePagina <= ultimaPag.pagina){
+            while(mayorNroDePagina <= ultimaPag->pagina){
                 int framenecesitado = mayorNroDePagina;
                 
                 framenecesitado = getFrameDeUn(processId, mayorNroDePagina);
@@ -207,4 +206,71 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
             }
         }
     return -1;
+}
+
+Pagina *getLastPageDe(int processId){
+    int mayorNroDePagina = -1;
+    Pagina *ultimaPagina;
+    
+    t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+
+        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+         while (temp->id != processId) {
+            
+            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+ 
+        }
+
+    t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
+
+        while(list_iterator_has_next(iterator2)){
+            Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator2);
+
+            if(mayorNroDePagina < paginaTemporal->pagina){
+                mayorNroDePagina = paginaTemporal->pagina;
+                ultimaPagina = paginaTemporal;
+                }
+            }
+
+    return ultimaPagina;
+}
+
+void agregarXPaginasPara(int processId, int espacioRestante){
+    int cantidadDePaginasAAgregar = (espacioRestante/tamanioDePagina)+1;
+    Pagina *ultimaPagina;
+    Pagina *nuevaPagina;
+        if(tipoDeAsignacionDinamica == 1 ){
+            while(cantidadDePaginasAAgregar==0){
+                ultimaPagina = getLastPageDe(processId);
+
+                nuevaPagina->pagina = ultimaPagina->pagina+1;
+                nuevaPagina->frame = getNewEmptyFrame();
+                nuevaPagina->isfree = 1;
+                nuevaPagina->bitModificado =0;
+                nuevaPagina->bitPresencia =0;
+                lRUACTUAL++;
+                nuevaPagina->lRU = lRUACTUAL;
+
+                t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+
+                TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+                while (temp->id != processId) {
+            
+                    TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+
+                }
+
+                list_add(temp->paginas, nuevaPagina);
+
+                cantidadDePaginasAAgregar--;
+            }
+        }else{
+
+        }
+    }
+
+int getNewEmptyFrame(){
+    int emptyFrame =-1;
+
+    return emptyFrame;
 }

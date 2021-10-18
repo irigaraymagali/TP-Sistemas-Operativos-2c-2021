@@ -55,14 +55,16 @@ t_list *todasLasTablasDePaginas;
 
 void* memoria;
 int tamanioDePagina;
-
+int tipoDeAsignacionDinamica;
+int lRUACTUAL;
 
 void comandos(int valor);
 void initPaginacion();
 int memalloc(int espacioAReservar, int processId);
 int entraEnElEspacioLibre(int espacioAReservar, int processId);
 void agregarXPaginasPara(int processId, int espacioRestante);
-Pagina getLastPageDe(int processId);
+Pagina *getLastPageDe(int processId);
 int getFrameDeUn(int processId, int unaPagina);
+int getNewEmptyFrame();
 
 #endif
