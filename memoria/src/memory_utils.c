@@ -226,7 +226,7 @@ Pagina *getLastPageDe(int processId){
         while(list_iterator_has_next(iterator2)){
             Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator2);
 
-            if(mayorNroDePagina < paginaTemporal->pagina){
+            if((mayorNroDePagina < paginaTemporal->pagina)  && paginaTemporal->isfree==1){
                 mayorNroDePagina = paginaTemporal->pagina;
                 ultimaPagina = paginaTemporal;
                 }
@@ -239,7 +239,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
     int cantidadDePaginasAAgregar = (espacioRestante/tamanioDePagina)+1;
     Pagina *ultimaPagina;
     Pagina *nuevaPagina;
-        if(tipoDeAsignacionDinamica == 1 ){
+            
             while(cantidadDePaginasAAgregar==0){
                 ultimaPagina = getLastPageDe(processId);
 
@@ -264,13 +264,13 @@ void agregarXPaginasPara(int processId, int espacioRestante){
 
                 cantidadDePaginasAAgregar--;
             }
-        }else{
-
-        }
+        
     }
 
 int getNewEmptyFrame(){
     int emptyFrame =-1;
+
+    
 
     return emptyFrame;
 }
