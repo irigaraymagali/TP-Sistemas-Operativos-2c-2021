@@ -8,6 +8,8 @@ int main(int argc, char ** argv){
 
     config = config_create(CONFIG_PATH);
     
+    swamp_fd = _connect(config_get_string_value(config, SWAMP_IP), config_get_string_value(config, SWAMP_PORT), logger);
+    
     _start_server(config_get_string_value(config, PORT_CONFIG), handler, logger);
 }
 

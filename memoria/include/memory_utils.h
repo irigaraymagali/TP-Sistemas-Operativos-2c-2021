@@ -11,12 +11,12 @@
 #include <stdlib.h>
 #include <commons/collections/list.h>
 
-#define mate_memalloc 1
-#define    memfree 2
-#define    memread 3
-#define    memwrite 4
+#define    MEM_ALLOC 1
+#define    MEM_FREE  2
+#define    MEM_READ  3
+#define    MEM_WRITE 4
 
-
+#define HEAP_METADATA_SIZE 9
 
 typedef struct 
 {

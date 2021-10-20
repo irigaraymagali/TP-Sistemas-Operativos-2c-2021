@@ -2,13 +2,13 @@
 
 void comandos(int valor){
     switch(valor){
-        case mate_memalloc:
+        case MEM_ALLOC:
         break;
-        case memfree:
+        case MEM_FREE:
         break;
-        case memread:
+        case MEM_READ:
         break;
-        case memwrite:
+        case MEM_WRITE:
         break;
         
         default:
@@ -19,22 +19,19 @@ void comandos(int valor){
    
 }
 
-
 void initPaginacion(){
     
     log_info(logger,"iniciando paginacion");
 
     configFile = config_create("../cfg/memoria.conf");
-
 }
 
 int memalloc(int espacioAReservar, int processId){
-
     int entra = entraEnElEspacioLibre(espacioAReservar, processId);
-    int mayorNroDePagina =-1;
-    int ultimoFrame =0;
-    int tempLastHeap=0;
-    int espacioFinalDisponible=0;
+    int mayorNroDePagina = -1;
+    int ultimoFrame = 0;
+    int tempLastHeap = 0;
+    int espacioFinalDisponible = 0;
 
     if(entra == -1){
        /* 1-generar un nuevo alloc al final del espacio de direcciones
@@ -43,28 +40,29 @@ int memalloc(int espacioAReservar, int processId){
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
 
         TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
-         while (temp->id != processId) {
+        while (temp->id != processId) {
             
             TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
- 
         } 
+        list_iterator_destroy(iterator);
 
-        tempLastHeap= temp->lastHeap;
-
+        tempLastHeap = temp->lastHeap;
 
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
 
-            while(list_iterator_has_next(iterator2)){
-                Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator2);
+        while(list_iterator_has_next(iterator2)){
+            Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator2);
 
-                if(mayorNroDePagina < paginaTemporal->pagina){
-                    mayorNroDePagina = paginaTemporal->pagina;
-                    ultimoFrame = paginaTemporal->frame;
-                }
+            if(mayorNroDePagina < paginaTemporal->pagina){
+                mayorNroDePagina = paginaTemporal->pagina;
+                ultimoFrame = paginaTemporal->frame;
             }
-        espacioFinalDisponible = (mayorNroDePagina* tamanioDePagina) - tempLastHeap - 9 ; // el 9 es porque hay que agregar el puto heap atras
+        }
+        list_iterator_destroy(iterator2);
+        
+        espacioFinalDisponible = (mayorNroDePagina* tamanioDePagina) - tempLastHeap - 9; // el 9 es porque hay que agregar el puto heap atras
 
-        HeapMetaData nuevoHeap ;
+        HeapMetaData nuevoHeap;
         nuevoHeap.prevAlloc = tempLastHeap;
         nuevoHeap.nextAlloc = NULL;
         nuevoHeap.isfree = 0;
@@ -72,7 +70,6 @@ int memalloc(int espacioAReservar, int processId){
         // esto funciona si y solo si la pagina esta en memoria mas adelante hay que agregar los cambios nesesarios para utilizar el swap
 
         int offset;
-
         if(espacioFinalDisponible >= espacioAReservar){
             offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - (mayorNroDePagina * tamanioDePagina)) ;
 
@@ -80,16 +77,16 @@ int memalloc(int espacioAReservar, int processId){
 
             offset = offset + 9 + espacioAReservar;
 
-            memcpy(memoria + offset , nuevoHeap.prevAlloc, sizeof(uint32_t));
+            memcpy(memoria + offset, nuevoHeap.prevAlloc, sizeof(uint32_t));
 
             offset = offset + sizeof(uint32_t);
 
-            memcpy(memoria + offset , nuevoHeap.nextAlloc, sizeof(uint32_t));
+            memcpy(memoria + offset, nuevoHeap.nextAlloc, sizeof(uint32_t));
 
             offset = offset + sizeof(uint32_t);
 
-            memcpy(memoria + offset , nuevoHeap.isfree, sizeof(uint8_t));
-        }else{
+            memcpy(memoria + offset, nuevoHeap.isfree, sizeof(uint8_t));
+        } else {
             /* 
                     como me da paja de hacerlo ahora esto basicamente es pedir una pagina nueva copiar esas ultimas paginas en un auxiliar
                     hacer lo de arriba en un auxiliar 
@@ -128,7 +125,6 @@ int memalloc(int espacioAReservar, int processId){
 
                 mayorNroDePagina++;
             }
-
             free(espacioAuxiliar);
         }
 
@@ -143,21 +139,21 @@ int memalloc(int espacioAReservar, int processId){
 int entraEnElEspacioLibre(int espacioAReservar, int processId){
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
-
     TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
         while (temp->id != processId) {
             
             TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
 
-        } 
+        }
+        list_iterator_destroy(iterator); 
 
         if(temp->id == processId){
             
             t_list_iterator* iterator2 = list_iterator_create(temp->paginas);  
 
-            int nextAllocAux=0;
-            int allocActual=0; 
-            int paginaSiguiente =0;
+            int nextAllocAux = 0;
+            int allocActual = 0; 
+            int paginaSiguiente = 0;
             int paginaActual;
             
             while(list_iterator_has_next(iterator2)){
@@ -202,8 +198,9 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
                         return allocActual;
                     }
                 }
-                  free(paginaAux);  
+                free(paginaAux);  
             }
+            list_iterator_destroy(iterator2);
         }
     return -1;
 }
@@ -214,23 +211,25 @@ Pagina *getLastPageDe(int processId){
     
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
 
+    TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+    while (temp->id != processId) {
+        
         TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
-         while (temp->id != processId) {
-            
-            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
- 
-        }
+
+    }
+    list_iterator_destroy(iterator);
 
     t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
 
-        while(list_iterator_has_next(iterator2)){
-            Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator2);
+    while(list_iterator_has_next(iterator2)){
+        Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator2);
 
-            if((mayorNroDePagina < paginaTemporal->pagina)  && paginaTemporal->isfree==1){
-                mayorNroDePagina = paginaTemporal->pagina;
-                ultimaPagina = paginaTemporal;
-                }
-            }
+        if((mayorNroDePagina < paginaTemporal->pagina)  && paginaTemporal->isfree==1){
+            mayorNroDePagina = paginaTemporal->pagina;
+            ultimaPagina = paginaTemporal;
+        }
+    }
+    list_iterator_destroy(iterator2);
 
     return ultimaPagina;
 }
@@ -239,38 +238,36 @@ void agregarXPaginasPara(int processId, int espacioRestante){
     int cantidadDePaginasAAgregar = (espacioRestante/tamanioDePagina)+1;
     Pagina *ultimaPagina;
     Pagina *nuevaPagina;
-            
-            while(cantidadDePaginasAAgregar==0){
-                ultimaPagina = getLastPageDe(processId);
+       
+    while(cantidadDePaginasAAgregar == 0){
+        ultimaPagina = getLastPageDe(processId);
 
-                nuevaPagina->pagina = ultimaPagina->pagina+1;
-                nuevaPagina->frame = getNewEmptyFrame();
-                nuevaPagina->isfree = 1;
-                nuevaPagina->bitModificado =0;
-                nuevaPagina->bitPresencia =0;
-                lRUACTUAL++;
-                nuevaPagina->lRU = lRUACTUAL;
+        nuevaPagina->pagina = ultimaPagina->pagina+1;
+        nuevaPagina->frame = getNewEmptyFrame();
+        nuevaPagina->isfree = 1;
+        nuevaPagina->bitModificado =0;
+        nuevaPagina->bitPresencia =0;
+        lRUACTUAL++;
+        nuevaPagina->lRU = lRUACTUAL;
 
-                t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+        t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
 
-                TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
-                while (temp->id != processId) {
-            
-                    TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+        while (temp->id != processId) {
+            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+        }
+        list_iterator_destroy(iterator);
 
-                }
+        list_add(temp->paginas, nuevaPagina);
 
-                list_add(temp->paginas, nuevaPagina);
-
-                cantidadDePaginasAAgregar--;
-            }
-        
-    }
+        cantidadDePaginasAAgregar--;
+    }      
+}
 
 int getNewEmptyFrame(){
-    int emptyFrame =0;
+    int emptyFrame = 0;
     int paginaFinal = tamanioDeMemoria/tamanioDeMemoria;
-    int estaLibre=0;
+    int estaLibre = 0;
 
     while(emptyFrame<paginaFinal){
 
@@ -287,28 +284,25 @@ int getNewEmptyFrame(){
 }
 
 int estaOcupadoUn(int emptyFrame){
-    int estaOcupado=0;
+    int estaOcupado = 0;
+    t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
 
-     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
-
+    TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+    while (list_iterator_has_next(temp)) {
+    
         TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
-         while (list_iterator_has_next(temp)) {
-            
-            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
 
-            t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
-            
-            while(list_iterator_has_next(iterator2)){
-            
+        t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
+    
+        while(list_iterator_has_next(iterator2)){
+    
             Pagina *tempPagina = (Pagina*) list_iterator_has_next(iterator2);
-            
+    
             if(tempPagina->frame == emptyFrame){
                 return tempPagina->isfree;
             }
-
-            }
-
         }
+    }
 
- return estaOcupado;
+    return estaOcupado;
 }
