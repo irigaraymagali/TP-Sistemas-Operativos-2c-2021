@@ -2,6 +2,9 @@
 #define SWAP_H
 
 #include "main.h"
+#include <commons/collections/list.h>
+#include <commons/collections/node.h>
+#include <commons/collections/dictionary.h>
 #include <sys/mman.h>    // Biblioteca mmap()
 #include <sys/stat.h>    // Biblioteca open(), mkdir(), fstat()
 #include <sys/types.h>   // Biblioteca ftruncate(), opendir()

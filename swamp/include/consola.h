@@ -3,9 +3,6 @@
 
 #include "main.h"
 #include "swap.h"
-#include <commons/string.h>
-#include <commons/bitarray.h>
-#include <commons/config.h>
 #include <sys/mman.h>  // Biblioteca mmap()
 #include <sys/stat.h>  // Biblioteca open(), mkdir()
 #include <sys/types.h> // Biblioteca ftruncate(), opendir()

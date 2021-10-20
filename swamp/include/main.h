@@ -10,6 +10,7 @@
 #include <commons/log.h>
 #include <commons/collections/list.h>
 #include <commons/collections/node.h>
+#include <commons/collections/dictionary.h>
 #include <commons/string.h>
 #include <stdlib.h>
 #include <stdio.h>
