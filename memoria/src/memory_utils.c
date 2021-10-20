@@ -268,9 +268,47 @@ void agregarXPaginasPara(int processId, int espacioRestante){
     }
 
 int getNewEmptyFrame(){
-    int emptyFrame =-1;
+    int emptyFrame =0;
+    int paginaFinal = tamanioDeMemoria/tamanioDeMemoria;
+    int estaLibre=0;
 
-    
+    while(emptyFrame<paginaFinal){
+
+        estaLibre = estaOcupadoUn(emptyFrame);
+
+        if(estaLibre){
+            return emptyFrame;
+        }
+
+        emptyFrame++;
+    }
 
     return emptyFrame;
+}
+
+int estaOcupadoUn(int emptyFrame){
+    int estaOcupado=0;
+
+     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+
+        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+         while (list_iterator_has_next(temp)) {
+            
+            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+
+            t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
+            
+            while(list_iterator_has_next(iterator2)){
+            
+            Pagina *tempPagina = (Pagina*) list_iterator_has_next(iterator2);
+            
+            if(tempPagina->frame == emptyFrame){
+                return tempPagina->isfree;
+            }
+
+            }
+
+        }
+
+ return estaOcupado;
 }

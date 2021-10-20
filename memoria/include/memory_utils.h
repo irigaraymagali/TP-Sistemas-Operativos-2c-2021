@@ -57,6 +57,7 @@ void* memoria;
 int tamanioDePagina;
 int tipoDeAsignacionDinamica;
 int lRUACTUAL;
+int tamanioDeMemoria;
 
 void comandos(int valor);
 void initPaginacion();
@@ -66,5 +67,6 @@ void agregarXPaginasPara(int processId, int espacioRestante);
 Pagina *getLastPageDe(int processId);
 int getFrameDeUn(int processId, int unaPagina);
 int getNewEmptyFrame();
+int estaOcupadoUn(int emptyFrame);
 
 #endif
