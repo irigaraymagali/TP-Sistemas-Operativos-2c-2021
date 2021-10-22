@@ -17,7 +17,7 @@
 typedef struct mate_inner_structure
 {
     void *memory;
-    sem_t *sem_instance; // tendria que ser un array? --- sería poner **sem_instace ?
+   // es necesario? sem_t *sem_instance; // tendria que ser un array? --- sería poner **sem_instace ?
 
     float *rafaga_anterior; // para despues poder calcular la estimación siguiente
     float *estimacion_anterior; // idem
@@ -40,16 +40,43 @@ typedef struct mate_inner_structure
 
 } mate_inner_structure;
 
+typdef struct{
+    // está bien usar este tipo de dato?
+    uint32_t size; //tamaño del payload
+    void *stream; // payload
+} t_buffer
+
 // que onda esto y la memoria que usa? quien se encarga de darsela y de borrarla?
 t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
 
 // idem anterior ?
 int *respuesta_backend; // donde vamos a ir guardando la ultima respuesta del backend
 
+mate_inner_structure armar_paquete(mate_inner_structure estructura_interna){
+
+    // está bien hacer el malloc acá?
+    t_buffer *buffer = malloc(sizeof(t_buffer));
+    buffer->size = 
+    // necesito ayuda para el buffer_size?
+    
+    void *stream = malloc(buffer->size);
+    int offset = 0;
+
+    memcpy(stram + offset, &memory, sizeof(/*que_size_1*/)):
+    offset += sizeof(/*que_size_1*/);
+    memcpy(stram + offset, &rafaga_anterior, sizeof(/*que_size_2*/)):
+    offset += sizeof(/*que_size_2*/);
+    memcpy(stram + offset, &memory, sizeof(/*que_size_1*/)):
+    offset += sizeof(/*que_size_1*/);
+    
+
+
+}
 
 int mate_init(mate_instance *lib_ref, char *config)
 {
     mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)   // creo la estructura interna 
+
 
     // falta leer archivo config que recibe la función para tener los datos de conexión, como se hace?
     
