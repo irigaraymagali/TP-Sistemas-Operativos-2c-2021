@@ -56,7 +56,7 @@ int memalloc(int espacioAReservar, int processId){
         HeapMetaData* nuevoHeap = malloc(sizeof(HeapMetaData));
         nuevoHeap->prevAlloc = tempLastHeap;
         nuevoHeap->nextAlloc = NULL_ALLOC; //nuevoHeap.nextAlloc = NULL; Tiene que ser un puntero si queremos que sea NULL. Sino -1
-        nuevoHeap->isfree = FREE; // Nose si esto tiene que significar que es vacio o que está ocupado.
+        nuevoHeap->isfree = 1; // Nose si esto tiene que significar que es vacio o que está ocupado.
 
         // esto funciona si y solo si la pagina esta en memoria mas adelante hay que agregar los cambios nesesarios para utilizar el swap
 
@@ -81,6 +81,8 @@ int memalloc(int espacioAReservar, int processId){
                     hacer lo de arriba en un auxiliar 
                     y pegar las n paginas  de una en la memoria
             */
+
+           //FALTA CAMBIARLE EL ISFREE DE LA PAG
            agregarXPaginasPara(processId, (espacioAReservar-espacioFinalDisponible));
 
             int espacioDePaginasAux = (((espacioAReservar - espacioFinalDisponible) / tamanioDePagina) + 1)* tamanioDePagina;
@@ -97,7 +99,7 @@ int memalloc(int espacioAReservar, int processId){
             int offsetAux = 0;
 
             memcpy(espacioAuxiliar, memoria + (ultimoFrame*tamanioDePagina), tamanioDePagina);
-            offsetAux += HEAP_METADATA_SIZE + espacioAReservar;
+            offsetAux += (tempLastHeap - (mayorNroDePagina * tamanioDePagina)) + espacioAReservar; 
             
             memcpy(espacioAuxiliar + offsetAux, &nuevoHeap->prevAlloc, sizeof(uint32_t));
             offsetAux += sizeof(uint32_t);
@@ -216,7 +218,7 @@ Pagina *getLastPageDe(int processId){
     while(list_iterator_has_next(iterator)){
         Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator);
 
-        if((mayorNroDePagina < paginaTemporal->pagina)  && paginaTemporal->isfree == BUSY){
+        if((mayorNroDePagina < paginaTemporal->pagina)  && paginaTemporal->isfree == 0){
             mayorNroDePagina = paginaTemporal->pagina;
             ultimaPagina = paginaTemporal;
         }
@@ -239,7 +241,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             nuevaPagina->pagina = ultimaPagina->pagina + 1;
         }
         nuevaPagina->frame = getNewEmptyFrame();
-        nuevaPagina->isfree = BUSY;
+        nuevaPagina->isfree = 1;
         nuevaPagina->bitModificado = 0;
         nuevaPagina->bitPresencia = 0;
         lRUACTUAL++;
@@ -290,5 +292,110 @@ int estaOcupadoUn(int emptyFrame){
 
 
 int getFrameDeUn(int processId, int mayorNroDePagina){
+
+    TablaDePaginasxProceso* temp = get_pages_by(processId);
+
+    t_list_iterator* iterator = list_iterator_create(temp->paginas);
+
+    Pagina *tempPagina = list_iterator_next(iterator);
+    while (list_iterator_has_next(iterator)  || tempPagina->pagina == mayorNroDePagina) {
+        Pagina *tempPagina = list_iterator_next(iterator);
+    }
+
+    if(tempPagina->pagina == mayorNroDePagina){
+        list_iterator_destroy(iterator);
+        return tempPagina->frame;
+    }
+
+    list_iterator_destroy(iterator);
+
     return -1;
+}
+
+void inicializarUnProceso(int idDelProceso){
+
+    HeapMetaData* nuevoHeap = malloc(sizeof(HeapMetaData));
+    nuevoHeap->prevAlloc = 0;
+    nuevoHeap->nextAlloc = NULL_ALLOC; //nuevoHeap.nextAlloc = NULL; Tiene que ser un puntero si queremos que sea NULL. Sino -1
+    nuevoHeap->isfree = 1;
+
+    TablaDePaginasxProceso* nuevaTablaDePaginas = malloc(sizeof(TablaDePaginasxProceso));
+    nuevaTablaDePaginas->id = idDelProceso;
+    nuevaTablaDePaginas->lastHeap = 0;
+    
+    if(tipoDeAsignacionDinamica){
+        int nuevoFrame = getNewEmptyFrame();
+        int offset = nuevoFrame * tamanioDePagina;
+
+        memcpy(memoria + offset,nuevoHeap->prevAlloc,sizeof(u_int32_t));
+
+        offset+= sizeof(u_int32_t);
+        memcpy(memoria + offset,nuevoHeap->nextAlloc,sizeof(u_int32_t));
+
+        offset+= sizeof(u_int32_t);
+        memcpy(memoria + offset,nuevoHeap->isfree,sizeof(u_int8_t));
+
+        Pagina* nuevaPagina = malloc(sizeof(nuevaPagina));
+        nuevaPagina->pagina=1;
+        nuevaPagina->lRU = lRUACTUAL;
+        nuevaPagina->isfree= 0;
+        nuevaPagina->frame = nuevoFrame;
+        nuevaPagina->bitPresencia =0;
+        nuevaPagina->bitModificado = 1;
+
+        list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
+
+    }else{
+        int paginasCargadas = 1;
+
+        while (paginasCargadas != cantidadDePaginasPorProceso)
+        {
+  
+            if (paginasCargadas == 1)
+            {
+                int nuevoFrame = getNewEmptyFrame();
+                int offset = nuevoFrame * tamanioDePagina;
+
+                memcpy(memoria + offset,nuevoHeap->prevAlloc,sizeof(u_int32_t));
+
+                offset+= sizeof(u_int32_t);
+                memcpy(memoria + offset,nuevoHeap->nextAlloc,sizeof(u_int32_t));
+
+                offset+= sizeof(u_int32_t);
+                memcpy(memoria + offset,nuevoHeap->isfree,sizeof(u_int8_t));
+
+                Pagina* nuevaPagina = malloc(sizeof(nuevaPagina));
+                nuevaPagina->pagina=1;
+                nuevaPagina->lRU = lRUACTUAL;
+                nuevaPagina->isfree= 0;
+                nuevaPagina->frame = nuevoFrame;
+                nuevaPagina->bitPresencia =0;
+                nuevaPagina->bitModificado = 1;
+
+                
+                list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
+            }else
+            {
+                int nuevoFrame = getNewEmptyFrame();
+                int offset = nuevoFrame * tamanioDePagina;
+
+                Pagina* nuevaPagina = malloc(sizeof(nuevaPagina));
+                nuevaPagina->pagina=paginasCargadas;
+                nuevaPagina->lRU = lRUACTUAL;
+                nuevaPagina->isfree= 1;
+                nuevaPagina->frame = nuevoFrame;
+                nuevaPagina->bitPresencia =0;
+                nuevaPagina->bitModificado = 1;
+
+                
+                list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
+            }
+            
+            
+            paginasCargadas++;
+        }
+        
+    }
+
+    free(nuevoHeap);
 }

@@ -65,6 +65,7 @@ int tamanioDePagina;
 int tipoDeAsignacionDinamica;
 int lRUACTUAL;
 int tamanioDeMemoria;
+int cantidadDePaginasPorProceso;
 
 
 void comandos(int valor);
@@ -78,5 +79,6 @@ int getNewEmptyFrame();
 int estaOcupadoUn(int emptyFrame);
 TablaDePaginasxProceso* get_pages_by(int processID);
 int getFrameDeUn(int processId, int mayorNroDePagina);
+void inicializarUnProceso(int idDelProceso)
 
 #endif
