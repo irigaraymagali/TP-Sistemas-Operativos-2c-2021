@@ -17,8 +17,6 @@
 typedef struct mate_inner_structure
 {
     void *memory;
-   // es necesario? sem_t *sem_instance; // tendria que ser un array? --- sería poner **sem_instace ?
-
     float *rafaga_anterior; // para despues poder calcular la estimación siguiente
     float *estimacion_anterior; // idem
     float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
@@ -66,11 +64,39 @@ mate_inner_structure armar_paquete(mate_inner_structure estructura_interna){
     offset += sizeof(/*que_size_1*/);
     memcpy(stram + offset, &rafaga_anterior, sizeof(/*que_size_2*/)):
     offset += sizeof(/*que_size_2*/);
-    memcpy(stram + offset, &memory, sizeof(/*que_size_1*/)):
-    offset += sizeof(/*que_size_1*/);
-    
+    memcpy(stram + offset, &estimacion_anterior, sizeof(/*que_size_3*/)):
+    offset += sizeof(/*que_size_3*/);
+    memcpy(stram + offset, &estimacion_siguiente, sizeof(/*que_size_4*/)):
+    offset += sizeof(/*que_size_4*/);
+    memcpy(stram + offset, &llegada_a_ready, sizeof(/*que_size_5*/)):
+    offset += sizeof(/*que_size_5*/);
+    memcpy(stram + offset, &prioridad, sizeof(/*que_size_6*/)):
+    offset += sizeof(/*que_size_6*/);
+    memcpy(stram + offset, &estado, sizeof(/*que_size_7*/)):
+    offset += sizeof(/*que_size_7*/);
+    memcpy(stram + offset, &semaforo, sizeof(/*que_size_8*/)):
+    offset += sizeof(/*que_size_8*/);
+    memcpy(stram + offset, &valor_semaforo, sizeof(/*que_size_9*/)):
+    offset += sizeof(/*que_size_9*/);
+    memcpy(stram + offset, &dispositivo_io, sizeof(/*que_size_10*/)):
+    offset += sizeof(/*que_size_10*/);
+    memcpy(stram + offset, &mnesaje_io, sizeof(/*que_size_11*/)):
+    offset += sizeof(/*que_size_11*/);
+    memcpy(stram + offset, &size_memoria, sizeof(/*que_size_12*/)):
+    offset += sizeof(/*que_size_12*/);
+    memcpy(stram + offset, &addr_memfree, sizeof(/*que_size_13*/)):
+    offset += sizeof(/*que_size_13*/);
+    memcpy(stram + offset, &origin_memread, sizeof(/*que_size_14*/)):
+    offset += sizeof(/*que_size_14*/);
+    memcpy(stram + offset, &dest_memread, sizeof(/*que_size_15*/)):
+    offset += sizeof(/*que_size_15*/);
+    memcpy(stram + offset, &origin_memwrite, sizeof(/*que_size_16*/)):
+    offset += sizeof(/*que_size_16*/);
+    memcpy(stram + offset, &dest_memwrite, sizeof(/*que_size_16*/)):
+    offset += sizeof(/*que_size_16*/);
 
-
+    return buffer;
+    // está bien retornarlo acá?
 }
 
 int mate_init(mate_instance *lib_ref, char *config)
@@ -84,8 +110,9 @@ int mate_init(mate_instance *lib_ref, char *config)
     char *port: // valor del archivo de config recibido
 
     socket = _connect(ip, port, logger); // crea la conexión con los ip y puerto del config
-    
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_INIT, /* estructura_interna seriailzada*/, sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
+
+    // está bien mandar el msj así?
+    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_INIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
     
     if(respuesta_backend === KERNEL_BAKEND || respuesta_backend === MEMORIA_BACKEND ){ // para que el carpincho reciba siempre lo mismo. la respuesta del backend va a devolver 1 o 2 según si va con memoria o con kernel
         return 0;  
@@ -104,7 +131,7 @@ int mate_close(mate_instance *lib_ref)
 {
     mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
 
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_CLOSE,/* estructura_interna seriailzada*/, sizeof(estructura_interna), logger);
+    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_CLOSE,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
     
     // si el mensaje no logra mandarse, qué devuelve _send_message? 
         //para ver si lo sumo al if de abajo y devuelvo otro error
@@ -119,8 +146,6 @@ int mate_close(mate_instance *lib_ref)
 
 //-----------------Semaphore Functions---------------------/ 
 
-// se podría hacer una función que abstraiga toda la logica de las funciones de semaforos y que reciba como argumento tambien el nombre de la función
-
 int mate_sem_init(mate_instance *lib_ref, mate_sem_name sem, unsigned int value) {
     
     if(respuesta_backend === KERNEL_BACKEND) // si la respuesta del backend fue 1, quiere decir que esta comunicandose con el kernel
@@ -130,7 +155,7 @@ int mate_sem_init(mate_instance *lib_ref, mate_sem_name sem, unsigned int value)
         estructura_interna->semaforo = sem; // pongo el semaforo en la estructura que se va a mandar al backend:
         estructura_interna->valor_semaforo = value; // pongo el valor del semaforo en la estructura que se va a mandar al backend:
 
-        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_INIT ,/* estructura_interna seriailzada*/, sizeof(estructura_interna), logger);
+        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_INIT ,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
         
         // si el mensaje no logra mandarse, qué devuelve _send_message?    
 
@@ -156,7 +181,7 @@ int mate_sem_wait(mate_instance *lib_ref, mate_sem_name sem) {
 
         estructura_interna->semaforo = sem; // pongo en la estructura el semaforo que se va a mandar al backend:
 
-        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_WAIT, /* estructura_interna seriailzada*/, sizeof(estructura_interna), logger);
+        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_WAIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
         
         if (respuesta_backend === KERNEL_BACKEND){ 
             return 0;
@@ -182,9 +207,9 @@ int mate_sem_post(mate_instance *lib_ref, mate_sem_name sem) {
 
         estructura_interna->semaforo = sem;  // pongo en la estructura el semaforo que se va a mandar al backend
 
-        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_POST, /* estructura_interna seriailzada*/, sizeof(estructura_interna), logger);
+        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_POST, armar_paquete(estructura_interna) , sizeof(estructura_interna), logger);
 
-         if (respuesta_backend === KERNEL_BACKEND){
+        if (respuesta_backend === KERNEL_BACKEND){
             return 0;
         }
         else{
@@ -206,7 +231,7 @@ int mate_sem_destroy(mate_instance *lib_ref, mate_sem_name sem) {
 
         estructura_interna->semaforo = sem;  // pongo en la estructura el semaforo que se va a mandar al backend
 
-        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_DESTROY ,/* estructura_interna seriailzada*/, sizeof(estructura_interna) logger);
+        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_DESTROY ,armar_paquete(estructura_interna), sizeof(estructura_interna) logger);
 
         // si el mensaje no logra mandarse, qué devuelve _send_message? para ver si sirve el if de abajo    
         
@@ -234,7 +259,7 @@ int mate_call_io(mate_instance *lib_ref, mate_io_resource io, void *msg)
         estructura_interna->dispositivo_io = mate_io_resource;  // pongo en la estructura el dispositivo que se va a mandar al backend:
         estructura_interna->mnesaje_io = msg; //  // pongo en la estructura el mensaje que se va a mandar al backend:
 
-        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_CALL_IO ,/* estructura_interna seriailzada*/, sizeof(estructura_interna), logger);
+        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_CALL_IO ,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
 
         // si el mensaje no logra mandarse, qué devuelve _send_message? para ver si sirve el if de abajo    
         
@@ -262,7 +287,7 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 
     estructura_interna->size_memoria = size;  // pongo en la estructura el size que se va a mandar al backend:
 
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,/* estructura_interna seriailzada*/, sizeof(estructura_interna), logger);
+    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
     
     // si el mensaje no logra mandarse, qué devuelve _send_message? 
         //para ver si lo sumo al if de abajo y devuelvo otro error
@@ -288,7 +313,7 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
 
     estructura_interna->addr_memfree = addr;  // pongo en la estructura el address que se va a mandar al backend:
 
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,/* estructura_interna seriailzada*/, sizeof(estructura_interna), logger);
+    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
     
     // si el mensaje no logra mandarse, qué devuelve _send_message? 
         //para ver si lo sumo al if de abajo y devuelvo otro error
@@ -316,7 +341,7 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
     estructura_interna->size_memoria = size;  // pongo en la estructura el size que se va a mandar al backend
     estructura_interna->dest_memread = dest;  // pongo en la estructura el dest que se va a mandar al backend    
 
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,/* estructura_interna seriailzada*/, sizeof(estructura_interna), logger);
+    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
     
     // si el mensaje no logra mandarse, qué devuelve _send_message? 
         //para ver si lo sumo al if de abajo y devuelvo otro error
@@ -344,7 +369,7 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
     estructura_interna->dest_memwrite = dest;  // pongo en la estructura el dest que se va a mandar al backend    
     estructura_interna->size_memoria = size;  // pongo en la estructura el size que se va a mandar al backend
 
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,/* estructura_interna seriailzada*/, sizeof(estructura_interna), logger);
+    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
     
     // si el mensaje no logra mandarse, qué devuelve _send_message? 
         //para ver si lo sumo al if de abajo y devuelvo otro error

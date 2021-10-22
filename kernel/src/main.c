@@ -9,10 +9,7 @@
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
 
-
-// CONECTARSE CON MATE LIB, llega un proceso => agregarlo a cola new
-
-// Estados:
+/* Estados:*/
     t_queue* new;
     t_queue* ready;
     t_list*  exec;
@@ -21,7 +18,7 @@
     t_queue* suspended_blocked;
     t_queue* suspended_ready;
 
-// Mutex para modificar las colas:
+/* Mutex para modificar las colas:*/
     pthread_mutex_t sem_cola_new;
     pthread_mutex_t sem_cola_ready;
     pthread_mutex_t sem_cola_exec;
@@ -32,6 +29,9 @@
 
     t_config* config;
 
+// que onda esto y la memoria que usa? quien se encarga de darsela y de borrarla?
+t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
+
 int main(int argc, char ** argv){
 
     if(argc > 1 && strcmp(argv[1],"-test")==0)
@@ -40,7 +40,87 @@ int main(int argc, char ** argv){
         t_log* logger = log_create("./cfg/kernel.log", "KERNEL", true, LOG_LEVEL_INFO);
         log_info(logger, "Soy el Kernel! %s", mi_funcion_compartida());
         log_destroy(logger);
-    } 
+
+    //que onda con malloc aca?
+    t_paquete *paquete = malloc(sizeof(t_paquete));
+    paquete->buffer = malloc(sizeof(t_buffer));
+    // cómo debería hacer para recibir el mensaje?    
+    _receive_message(/*int socket*/, logger); // recibir mensaje 
+    // esta bien esto?
+    recv(unSocket, &(paquete->codigo_operacion), sizeof(uint8_t),0);
+    paquete->buffer->stream = malloc(paquete->buffer->size);
+    recv(unSocket, paquete->buffer->stream, paquete->buffer->size,0);
+
+    /*deserializar mensaje*/
+    mate_inner_structure* mensaje = malloc(sizeof(t_mensaje));
+    void *stream = buffer->stream;
+    
+
+    memcpy(&(mensaje->memory), stream, sizeof(/*que_size_1*/));
+    stream += sizeof(/*que_size_1*/);
+    memcpy(&(mensaje->rafaga_anterior), stream, sizeof(/*que_size_2*/));
+    stream += sizeof(/*que_size_2*/);
+    memcpy(&(mensaje->estimacion_anterior), stream, sizeof(/*que_size_3*/));
+    stream += sizeof(/*que_size_3*/);
+    memcpy(&(mensaje->estimacion_siguiente), stream, sizeof(/*que_size_4*/));
+    stream += sizeof(/*que_size_4*/);
+    memcpy(&(mensaje->llegada_a_ready), stream, sizeof(/*que_size_5*/));
+    stream += sizeof(/*que_size_5*/);
+    memcpy(&(mensaje->prioridad), stream, sizeof(/*que_size_6*/));
+    stream += sizeof(/*que_size_6*/);
+    memcpy(&(mensaje->estado), stream, sizeof(/*que_size_7*/));
+    stream += sizeof(/*que_size_7*/);
+    memcpy(&(mensaje->semaforo), stream, sizeof(/*que_size_8*/));
+    stream += sizeof(/*que_size_8*/);
+    memcpy(&(mensaje->valor_semaforo), stream, sizeof(/*que_size_9*/));
+    stream += sizeof(/*que_size_9*/);
+    memcpy(&(mensaje->dispositivo_io), stream, sizeof(/*que_size_10*/));
+    stream += sizeof(/*que_size_10*/);
+    memcpy(&(mensaje->mnesaje_io), stream, sizeof(/*que_size_11*/));
+    stream += sizeof(/*que_size_11*/);
+    memcpy(&(mensaje->size_memoria), stream, sizeof(/*que_size_12*/));
+    stream += sizeof(/*que_size_12*/);
+    memcpy(&(mensaje->addr_memfree), stream, sizeof(/*que_size_13*/));
+    stream += sizeof(/*que_size_13*/);
+    memcpy(&(mensaje->origin_memread), stream, sizeof(/*que_size_14*/));
+    stream += sizeof(/*que_size_14*/);
+    memcpy(&(mensaje->dest_memread), stream, sizeof(/*que_size_15*/));
+    stream += sizeof(/*que_size_15*/);
+    memcpy(&(mensaje->origin_memwrite), stream, sizeof(/*que_size_16*/));
+    stream += sizeof(/*que_size_16*/);
+    memcpy(&(mensaje->dest_memwrite), stream, sizeof(/*que_size_16*/));
+    stream += sizeof(/*que_size_16*/);
+
+    //primero debería recibir el tamaño y dsps pedir espacio? como?
+
+    switch(paquete->codigo_operacion){
+        case MATE_INIT:
+            mate_init(mensaje);
+        case MATE_CLOSE: 
+            mate_close(mensaje);
+        case MATE_SEM_INIT: 
+            mate_sem_init(mensaje);            
+        case MATE_SEM_WAIT: 
+            mate_sem_wait(mensaje);            
+        case MATE_SEM_POST: 
+            mate_sem_post(mensaje);            
+        case MATE_SEM_DESTROY:
+            mate_sem_destroy(mensaje);            
+        case MATE_CALL_IO:
+            mate_call_io(mensaje);            
+        case MATE_MEMALLOC: 
+            mate_memalloc(mensaje);            
+        case MATE_MEMFREE:
+            mate_memfree(mensaje);            
+        case MATE_MEMREAD:
+            mate_memread(mensaje);            
+        case MATE_MEMWRITE: 
+            mate_memwrite(mensaje);      
+        break;      
+    }
+
+} 
+
 
 // Config:  (falta) 
 	ip_memoria= config_get_string_value(config, "IP_MEMORIA");
@@ -94,7 +174,7 @@ int main(int argc, char ** argv){
 
 //////////////// FUNCIONES GENERALES ///////////////////
 
-int crear_estructura(mate_instance *mate_inner_structure){
+int mate_init(mate_instance *mate_inner_structure){
     /*
     - completar con id
     - completar la estructura con por ej los valores del config de la rafaga y estimacion
@@ -104,11 +184,11 @@ int crear_estructura(mate_instance *mate_inner_structure){
     */
 }
 
-int borrar_estructura(mate_instance *mate_inner_structure){
+int mate_close(mate_instance *mate_inner_structure){
     /* conectar con memoria para borrar todo*/
 }
 
-int iniciar_semaforo(mate_instance *mate_inner_structure, mate_sem_name sem, unsigned int value){
+int mate_sem_init(mate_instance *mate_inner_structure){
     mate_instance->sem_instance = malloc(sizeof(sem_t));
 
         /* 
@@ -119,7 +199,7 @@ int iniciar_semaforo(mate_instance *mate_inner_structure, mate_sem_name sem, uns
 
 }
 
-int wait_semaforo(mate_instance *mate_inner_structure, mate_sem_name sem, unsigned int value){
+int mate_sem_wait(mate_instance *mate_inner_structure){
    /* 
         cuando le hagan post le retorne 0 por la conexión así ahí puede seguir
         meter en lista de blocked
@@ -128,13 +208,36 @@ int wait_semaforo(mate_instance *mate_inner_structure, mate_sem_name sem, unsign
     return pasar_a_ready_o_bloqueado_ready();
 }
 
-int post_semaforo(mate_instance *mate_inner_structure, mate_sem_name sem, unsigned int value){
+int mate_sem_post(mate_instance *mate_inner_structure){
    /* 
         
     */
     sem_post(sem); //
 }
 
+int mate_sem_destroy(mate_instance *mate_inner_structure) {
+
+}
+
+int mate_call_io(mate_instance *mate_inner_structure){
+
+}
+
+mate_pointer mate_memalloc(mate_instance *mate_inner_structure){
+
+}
+
+int mate_memfree(mate_instance *mate_inner_structure){
+
+}
+
+int mate_memread(mate_instance *mate_inner_structure){
+
+}
+
+int mate_memwrite(mate_instance *mate_inner_structure){
+
+}
 
 
 
