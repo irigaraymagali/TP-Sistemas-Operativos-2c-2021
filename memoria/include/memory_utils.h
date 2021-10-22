@@ -16,6 +16,13 @@
 #define    MEM_READ  3
 #define    MEM_WRITE 4
 
+#define FREE 0
+#define BUSY 1
+
+#define NULL_ALLOC 0
+
+#define FIRST_PAGE 0
+
 #define HEAP_METADATA_SIZE 9
 
 typedef struct 
@@ -59,6 +66,7 @@ int tipoDeAsignacionDinamica;
 int lRUACTUAL;
 int tamanioDeMemoria;
 
+
 void comandos(int valor);
 void initPaginacion();
 int memalloc(int espacioAReservar, int processId);
@@ -68,5 +76,7 @@ Pagina *getLastPageDe(int processId);
 int getFrameDeUn(int processId, int unaPagina);
 int getNewEmptyFrame();
 int estaOcupadoUn(int emptyFrame);
+TablaDePaginasxProceso* get_pages_by(int processID);
+int getFrameDeUn(int processId, int mayorNroDePagina);
 
 #endif
