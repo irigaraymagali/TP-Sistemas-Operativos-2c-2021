@@ -24,11 +24,17 @@ int swap_page_size;
 int tipo_asignacion;
 
 typedef struct {
-    char* proceso;
+    int proceso;
     int pagina;
 } fila_tabla_paginas;
 
+typedef struct {
+    char* swap_file_name;
+    t_list* tabla_paginas_swap_file;
+} nodo_swap_list;
+
 void inicializar_directorios();
 void inicializar_swap_files();
+nodo_swap_list* swap_file_menos_ocupado();
 
 #endif

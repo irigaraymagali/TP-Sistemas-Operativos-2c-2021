@@ -25,7 +25,6 @@
 
 t_config* config_file;
 t_log* log_file;
-
 char buffer[BUFFER_SIZE];
 int server_socket;
 

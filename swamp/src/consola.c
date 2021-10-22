@@ -24,7 +24,7 @@ void consola(char* buffer, int socket_conexion) {
         }
     }
 
-    else if (string_starts_with(buffer, "GUARDAR_PAGINA")) { // Ejemplo: GUARDAR_PAGINA PROCESO NUMERO_PAGINA CONTENIDO
+    else if (string_starts_with(buffer, "GUARDAR_PAGINA")) { // Ejemplo: GUARDAR_PAGINA PROCESO PAGINA CONTENIDO
         if (cantidad_de_parametros == 4) {
             // Funcion que guarda la pagina en un archivo de swap y actualiza las estructuras administrativas para guardar su referencia
         }
@@ -37,10 +37,22 @@ void consola(char* buffer, int socket_conexion) {
     else if (string_starts_with(buffer, "OBTENER_PAGINA")) { // Ejemplo: OBTENER_PAGINA PROCESO NUMERO_PAGINA
         if (cantidad_de_parametros == 3) {
             // char* pagina = Funcion que devuelve el contenido de la pagina especificada en los parametros del mensaje
+
             // if (send(socket_conexion, pagina, strlen(pagina) + 1, 0) < 0) {
             //         log_error(log_file, "Error al enviar la pagina %s del proceso %s.", parametros[2], parametros[1]);
             // }
             // free(pagina);
+        }
+
+        else {
+            log_error(log_file, "Cantidad de parametros incorrecta.");
+        }
+    }
+
+    else if (string_starts_with(buffer, "FINALIZAR_PROCESO")) { // Ejemplo: FINALIZAR_PROCESO PROCESO
+        if (cantidad_de_parametros == 2) {
+            // Funcion que elimina de swap todas las paginas del proceso especificado en los parametros (reemplaza su contenido por '\0')
+            // y ademas elimina su informacion de las estructuras administrativas
         }
 
         else {
@@ -56,13 +68,14 @@ void consola(char* buffer, int socket_conexion) {
         log_error(log_file, "El comando ingresado no existe.");
     }
 
+    // Libera memoria
     for (int i = 0; parametros[i] != NULL; i++) {
         free(parametros[i]);
     }
     free(parametros);
 }
 
-int contar_parametros(char **parametros) {
+int contar_parametros(char** parametros) {
     int i = 0;
     while (parametros[i] != NULL) {
         i++;
