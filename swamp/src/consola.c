@@ -1,5 +1,25 @@
 #include "consola.h"
 
+void recibir_mensajes() {
+    server_socket = _create_socket_listenner(config_get_string_value(config_file, "PUERTO"), log_file);
+    int client_socket = _listen(server_socket, 1, log_file);
+    int len_mensaje;
+
+    log_info(log_file, "Conexion exitosa. Esperando mensajes...");
+
+    while ((len_mensaje = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0)
+    {
+        buffer[len_mensaje - 1] = '\0';
+        log_info(log_file, "Mensaje recibido: %s", buffer);
+        consola(buffer, client_socket);
+    }
+
+    if (len_mensaje <= 0)
+    {
+        log_warning(log_file, "Conexion finalizada con el socket %d", client_socket);
+    }
+}
+
 void consola(char* buffer, int socket_conexion) {
     char** parametros = string_split(buffer, " ");
     int cantidad_de_parametros = contar_parametros(parametros);
@@ -8,10 +28,12 @@ void consola(char* buffer, int socket_conexion) {
         if (cantidad_de_parametros == 2) {
             if (string_equals_ignore_case(parametros[1], "ASIGNACION_FIJA")) {
                 tipo_asignacion = ASIGNACION_FIJA;
+                log_info(log_file, "La asignacion fija fue establecida.");
             }
 
             else if (string_equals_ignore_case(parametros[1], "ASIGNACION_DINAMICA")) {
                 tipo_asignacion = ASIGNACION_DINAMICA;
+                log_info(log_file, "La asignacion dinamica fue establecida.");
             }
 
             else {
@@ -26,7 +48,7 @@ void consola(char* buffer, int socket_conexion) {
 
     else if (string_starts_with(buffer, "GUARDAR_PAGINA")) { // Ejemplo: GUARDAR_PAGINA PROCESO PAGINA CONTENIDO
         if (cantidad_de_parametros == 4) {
-            // Funcion que guarda la pagina en un archivo de swap y actualiza las estructuras administrativas para guardar su referencia
+            guardar_pagina(atoi(parametros[1]), atoi(parametros[2]), parametros [3]);
         }
 
         else {

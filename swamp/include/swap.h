@@ -21,6 +21,7 @@ t_dictionary* swap_dict; // Diccionario donde la key representa a un proceso y e
 t_list* swap_list;       // Lista que contiene todas las listas que representan a las tablas de paginas de los diferentes archivos de swap
 int swap_file_size;
 int swap_page_size;
+int marcos_por_carpincho;
 int tipo_asignacion;
 
 typedef struct {
@@ -30,11 +31,14 @@ typedef struct {
 
 typedef struct {
     char* swap_file_name;
-    t_list* tabla_paginas_swap_file;
+    t_list* tabla_paginas;
 } nodo_swap_list;
 
 void inicializar_directorios();
 void inicializar_swap_files();
+void guardar_pagina(int proceso, int pagina, char* contenido);
 nodo_swap_list* swap_file_menos_ocupado();
+int get_frame_number(fila_tabla_paginas* nodo, void* swap_file_map);
+bool frame_is_empty(int frame, void* swap_file_map);
 
 #endif

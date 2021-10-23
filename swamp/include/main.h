@@ -28,7 +28,6 @@ t_log* log_file;
 char buffer[BUFFER_SIZE];
 int server_socket;
 
-void recibir_mensajes();
 void cerrar_swamp();
 
 #endif

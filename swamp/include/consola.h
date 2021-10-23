@@ -11,6 +11,7 @@
 #include <dirent.h>    // Biblioteca opendir()
 #include <errno.h>
 
+void recibir_mensajes();
 void consola(char* buffer, int socket_conexion);
 int contar_parametros(char** parametros);
 
