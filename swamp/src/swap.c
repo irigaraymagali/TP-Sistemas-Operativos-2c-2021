@@ -21,7 +21,6 @@ void inicializar_swap_files() {
 
     for (int i = 0; swap_file_names[i] != NULL; i++) {
         char* swap_file_path = string_from_format("%s%s", SWAP_FILES_PATH, swap_file_names[i]);
-
         int swap_file_fd = open(swap_file_path, O_RDWR, (mode_t)0777); // Intenta abrir el archivo con permisos de lectura y escritura.
         if (swap_file_fd == -1) {
             swap_file_fd = open(swap_file_path, O_CREAT | O_RDWR, (mode_t)0777); // Si no existe el archivo lo crea con permisos de lectura y escritura.
@@ -44,9 +43,11 @@ void inicializar_swap_files() {
             log_info(log_file, "%s%s%s", "Archivo ", swap_file_names[i], " creado correctamente.");
         }
 
-        else {
-            // Si el archivo de swap existe se pierde la referencia de que procesos tienen sus paginas dentro de el porque la estructura que maneja esto son
-            // un diccionario y una lista que estan en memoria, es decir, desaparece su contenido cuando se reinicia el programa.
+        else { // Si existe el archivo lo setea como si recien se creara.
+            ftruncate(swap_file_fd, swap_file_size);
+            void* swap_file_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_fd, 0);
+            memset(swap_file_map, '\0', swap_file_size);
+            munmap(swap_file_map, swap_file_size);
 
             // Crea tabla de paginas invertida para el archivo de swap.
             t_list* tabla_paginas = list_create();
@@ -57,7 +58,7 @@ void inicializar_swap_files() {
             nodo->tabla_paginas = tabla_paginas;
             list_add(swap_list, (void *) nodo);
 
-            log_info(log_file, "%s%s%s", "Archivo ", swap_file_names[i], " abierto correctamente.");
+            log_info(log_file, "%s%s%s", "Archivo ", swap_file_names[i], " creado correctamente.");
         }
         close(swap_file_fd);
         free(swap_file_names[i]);
@@ -89,7 +90,10 @@ void guardar_pagina(int proceso, int pagina, char* contenido) {
 
             // Reservo los frames contiguos como pide el enunciado
             for (int i = 0; i < marcos_por_carpincho - 1; i++) {
-                list_add(swap_file_asignado->tabla_paginas, (void*) NULL);
+                fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
+                nuevo->proceso = proceso;
+                nuevo->pagina = 999999;
+                list_add(swap_file_asignado->tabla_paginas, (void*) nuevo);
             }
 
             // Guardo la pagina pedida en el archivo de swap
@@ -154,7 +158,6 @@ nodo_swap_list* swap_file_menos_ocupado() {
 int get_frame_number(fila_tabla_paginas* nodo, void* swap_file_map) {
     char* string_proceso = string_itoa(nodo->proceso);
     t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso);
-    free(string_proceso);
     t_list_iterator* list_iterator = list_iterator_create(tabla_paginas);
     int i = 0;
     while (list_iterator_has_next(list_iterator)) {
@@ -173,9 +176,8 @@ int get_frame_number(fila_tabla_paginas* nodo, void* swap_file_map) {
             }
         }
     }
+    free(string_proceso);
     list_iterator_destroy(list_iterator);
-    // Free/destroy de fila_tabla_paginas* nodo_actual;
-    // list_destroy(tabla_paginas); equivale al free de lo que devuelve el dictionary_get??
 
     return i;
 }
