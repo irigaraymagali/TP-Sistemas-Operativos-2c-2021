@@ -68,11 +68,16 @@ void inicializar_swap_files() {
 }
 
 void guardar_pagina(int proceso, int pagina, char* contenido) {
-    char* string_proceso = string_itoa(proceso);
-    t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso); // Devuelve un puntero al t_list que representa a la tabla de paginas del archivo de swap que esta utilizando
-    if (tabla_paginas == NULL) { // Si el proceso aun no esta utilizando swap
-        if(tipo_asignacion == ASIGNACION_FIJA) {
-            nodo_swap_list* swap_file_asignado = swap_file_menos_ocupado();
+    nodo_swap_list* swap_file_asignado = swap_file_menos_ocupado();
+    if (swap_file_asignado == NULL) {
+        log_error(log_file, "No hay espacio disponible en swap.");
+    }
+
+    else {
+        char* string_proceso = string_itoa(proceso);
+        t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso); // Devuelve un puntero al t_list que representa a la tabla de paginas del archivo de swap que esta utilizando
+
+        if (tabla_paginas == NULL) { // Si es la primera pagina del proceso que se va a guardar en swap
             char* swap_file_path = string_from_format("%s%s", SWAP_FILES_PATH, swap_file_asignado->swap_file_name);
             int swap_file_fd = open(swap_file_path, O_RDWR, (mode_t)0777);
             if (swap_file_fd == -1) {
@@ -87,45 +92,51 @@ void guardar_pagina(int proceso, int pagina, char* contenido) {
             list_add(swap_file_asignado->tabla_paginas, (void*) nuevo);
             dictionary_put(swap_dict, string_proceso, (void*) swap_file_asignado->tabla_paginas);
             int frame_asignado = get_frame_number(nuevo, swap_file_map);
+            
+            if (tipo_asignacion == ASIGNACION_FIJA) {
+                // Reservo los frames contiguos como pide el enunciado
+                for (int i = 0; i < marcos_por_carpincho - 1; i++) {
+                    fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
+                    nuevo->proceso = proceso;
+                    nuevo->pagina = 999999;
+                    list_add(swap_file_asignado->tabla_paginas, (void*) nuevo);
+                }
 
-            // Reservo los frames contiguos como pide el enunciado
-            for (int i = 0; i < marcos_por_carpincho - 1; i++) {
-                fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
-                nuevo->proceso = proceso;
-                nuevo->pagina = 999999;
-                list_add(swap_file_asignado->tabla_paginas, (void*) nuevo);
+                // Guardo la pagina recibida en el archivo de swap
+                memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
+                munmap(swap_file_map, swap_file_size);
+                close(swap_file_fd);
+                free(swap_file_path);
             }
 
-            // Guardo la pagina pedida en el archivo de swap
-            memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
-            munmap(swap_file_map, swap_file_size);
-            close(swap_file_fd);
-            free(swap_file_path);
+            else if (tipo_asignacion == ASIGNACION_DINAMICA) {
+                // Guardo la pagina recibida en el archivo de swap
+                memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
+                munmap(swap_file_map, swap_file_size);
+                close(swap_file_fd);
+                free(swap_file_path);
+            }
+
+            else {
+                log_error(log_file, "El tipo de asignacion de frames no fue definido.");
+            }
         }
 
-        else if (tipo_asignacion == ASIGNACION_DINAMICA) {
+        else { // Si el proceso tiene otras paginas en swap
+            if(tipo_asignacion == ASIGNACION_FIJA) {
+                
+            }
 
+            else if(tipo_asignacion == ASIGNACION_DINAMICA) {
+
+            }
+
+            else {
+                log_error(log_file, "El tipo de asignacion de frames no fue definido.");
+            }
         }
-
-        else {
-            log_error(log_file, "El tipo de asignacion de frames no fue definido.");
-        }
-    }
-
-    else { // Si el proceso ya tiene paginas en swap
-        if(tipo_asignacion == ASIGNACION_FIJA) {
-
-        }
-
-        else if(tipo_asignacion == ASIGNACION_DINAMICA) {
-
-        }
-
-        else {
-            log_error(log_file, "El tipo de asignacion de frames no fue definido.");
-        }
-    }
     free(string_proceso);
+    }
 }
 
 nodo_swap_list* swap_file_menos_ocupado() {
