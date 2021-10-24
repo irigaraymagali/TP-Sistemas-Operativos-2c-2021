@@ -15,13 +15,13 @@
 #define PROGRAM  "[MEMORIA]"
 
 /* CONFIG CONST */
-#define CONFIG_PATH "./cfg/memoria.conf"
+
 #define PORT_CONFIG "PUERTO"
 #define SWAMP_IP    "IP_SWAMP"
 #define SWAMP_PORT  "PUERTO_SWAMP"
 
 
-t_config* config;
+
 
 
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger);

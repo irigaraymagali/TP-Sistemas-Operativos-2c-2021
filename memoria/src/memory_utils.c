@@ -22,7 +22,28 @@ void comandos(int valor){
 void initPaginacion(){
     log_info(logger,"iniciando paginacion");
 
-    configFile = config_create("../cfg/memoria.conf");
+    config = config_create(CONFIG_PATH);
+
+    tamanioDePagina = config_get_int_value(config, "TAMANIO_PAGINA");
+
+    if (string_equals_ignore_case(config_get_string_value(config,"TIPO_ASIGNACION"), "FIJA"))
+    {
+        tipoDeAsignacionDinamica= 0;
+    }
+    else
+    {
+        tipoDeAsignacionDinamica= 1;
+    }
+    
+    lRUACTUAL=0;
+
+    tamanioDeMemoria= config_get_int_value(config, "TAMANIO");
+
+    memoria = malloc(tamanioDeMemoria);
+
+    cantidadDePaginasPorProceso = config_get_int_value(config, "MARCOS_POR_CARPINCHO");
+
+    todasLasTablasDePaginas = list_create();
 }
 
 int memalloc(int espacioAReservar, int processId){
@@ -243,7 +264,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             nuevaPagina->pagina = ultimaPagina->pagina + 1;
         }
 
-        nuevaPagina->frame = getNewEmptyFrame();
+        nuevaPagina->frame = getNewEmptyFrame(processId);
         nuevaPagina->isfree = FREE;
         nuevaPagina->bitModificado = 0;
         nuevaPagina->bitPresencia = 0;
@@ -258,14 +279,14 @@ void agregarXPaginasPara(int processId, int espacioRestante){
     }      
 }
 
-int getNewEmptyFrame(){
+int getNewEmptyFrame(int idProcess){
     int emptyFrame = 0;
-    int paginaFinal = tamanioDeMemoria/tamanioDeMemoria;
-    int estaLibre = 0;
+    int paginaFinal = tamanioDeMemoria/tamanioDePagina;
+    int isfree = 0;
 
-    while(emptyFrame < paginaFinal){
-        estaLibre = estaOcupadoUn(emptyFrame);
-        if(estaLibre){
+    while(emptyFrame <= paginaFinal){
+        isfree= estaOcupadoUn(emptyFrame, idProcess);
+        if(isfree!= BUSY){
             return emptyFrame;
         }
 
@@ -275,24 +296,69 @@ int getNewEmptyFrame(){
     return emptyFrame;
 }
 
-int estaOcupadoUn(int emptyFrame){
-    int estaOcupado = 0;
-    t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
-    while (list_iterator_has_next(iterator)) {
-        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+int estaOcupadoUn(int emptyFrame, int idProcess){
+    int isfree = FREE;
+    if(todasLasTablasDePaginas != NULL){
+        t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+        while (list_iterator_has_next(iterator)) {
+            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
 
-        t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
-        while(list_iterator_has_next(iterator2)){
-            Pagina *tempPagina = (Pagina*) list_iterator_has_next(iterator2);
+            t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
+            while(list_iterator_has_next(iterator2)){
+                Pagina *tempPagina = (Pagina*) list_iterator_next(iterator2);
     
-            if(tempPagina->frame == emptyFrame){
-                return tempPagina->isfree;
+                if(tempPagina->frame == emptyFrame ){
+                    list_iterator_destroy(iterator);
+                    list_iterator_destroy(iterator2);
+                    return tempPagina->isfree;
+                }
             }
         }
+    list_iterator_destroy(iterator);
     }
-    return estaOcupado;
+    return isfree;
 }
 
+int getframeNoAsignadoEnMemoria(){
+    int emptyFrame = 0;
+    int framesTotales = (tamanioDeMemoria/tamanioDePagina) ; //(tamanio de swamp /tamanio de pagina);
+
+    while(emptyFrame<= framesTotales){
+        if(frameAsignado(emptyFrame)== 0){
+            return emptyFrame;
+        }
+        emptyFrame++;
+    }
+    
+    return emptyFrame;
+}
+
+int frameAsignado(int unFrame){
+    
+
+    if(todasLasTablasDePaginas != NULL){
+        t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+        while (list_iterator_has_next(iterator)) {
+            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+
+            t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
+            while(list_iterator_has_next(iterator2)){
+                Pagina *tempPagina = (Pagina*) list_iterator_next(iterator2);
+    
+                if(tempPagina->frame == unFrame){
+                    list_iterator_destroy(iterator);
+                    list_iterator_destroy(iterator2);
+                    
+                    return 1;
+                }
+            }
+            list_iterator_destroy(iterator2);
+        }
+    list_iterator_destroy(iterator);
+    
+    }
+    return 0;
+}
 
 int getFrameDeUn(int processId, int mayorNroDePagina){
 
@@ -325,9 +391,11 @@ void inicializarUnProceso(int idDelProceso){
     TablaDePaginasxProceso* nuevaTablaDePaginas = malloc(sizeof(TablaDePaginasxProceso));
     nuevaTablaDePaginas->id = idDelProceso;
     nuevaTablaDePaginas->lastHeap = 0;
+    nuevaTablaDePaginas->paginas = list_create();
+    list_add(todasLasTablasDePaginas, nuevaTablaDePaginas);
     
     if(tipoDeAsignacionDinamica){
-        int nuevoFrame = getNewEmptyFrame();
+        int nuevoFrame = getframeNoAsignadoEnMemoria();
         int offset = nuevoFrame * tamanioDePagina;
 
         memcpy(memoria + offset, &nuevoHeap->prevAlloc,sizeof(u_int32_t));
@@ -338,10 +406,10 @@ void inicializarUnProceso(int idDelProceso){
         offset+= sizeof(u_int32_t);
         memcpy(memoria + offset, &nuevoHeap->isfree,sizeof(u_int8_t));
 
-        Pagina* nuevaPagina = malloc(sizeof(nuevaPagina));
+        Pagina* nuevaPagina = malloc(sizeof(Pagina));
         nuevaPagina->pagina=1;
         nuevaPagina->lRU = lRUACTUAL;
-        nuevaPagina->isfree= 0;
+        nuevaPagina->isfree= BUSY;
         nuevaPagina->frame = nuevoFrame;
         nuevaPagina->bitPresencia =0;
         nuevaPagina->bitModificado = 1;
@@ -349,14 +417,14 @@ void inicializarUnProceso(int idDelProceso){
         list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
 
     }else{
-        int paginasCargadas = 1;
+        int paginasCargadas = 0;
 
         while (paginasCargadas != cantidadDePaginasPorProceso)
         {
   
-            if (paginasCargadas == 1)
+            if (paginasCargadas == 0)
             {
-                int nuevoFrame = getNewEmptyFrame();
+                int nuevoFrame =getframeNoAsignadoEnMemoria();
                 int offset = nuevoFrame * tamanioDePagina;
 
                 memcpy(memoria + offset, &nuevoHeap->prevAlloc,sizeof(u_int32_t));
@@ -367,7 +435,7 @@ void inicializarUnProceso(int idDelProceso){
                 offset+= sizeof(u_int32_t);
                 memcpy(memoria + offset, &nuevoHeap->isfree,sizeof(u_int8_t));
 
-                Pagina* nuevaPagina = malloc(sizeof(nuevaPagina));
+                Pagina* nuevaPagina = malloc(sizeof(Pagina));
                 nuevaPagina->pagina=1;
                 nuevaPagina->lRU = lRUACTUAL;
                 nuevaPagina->isfree= BUSY;
@@ -379,13 +447,13 @@ void inicializarUnProceso(int idDelProceso){
                 list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
             }else
             {
-                int nuevoFrame = getNewEmptyFrame();
+                int nuevoFrame = getframeNoAsignadoEnMemoria();
                 //int offset = nuevoFrame * tamanioDePagina;
 
-                Pagina* nuevaPagina = malloc(sizeof(nuevaPagina));
-                nuevaPagina->pagina=paginasCargadas;
+                Pagina* nuevaPagina = malloc(sizeof(Pagina));
+                nuevaPagina->pagina=paginasCargadas+1;
                 nuevaPagina->lRU = lRUACTUAL;
-                nuevaPagina->isfree= 1;
+                nuevaPagina->isfree= FREE;
                 nuevaPagina->frame = nuevoFrame;
                 nuevaPagina->bitPresencia =0;
                 nuevaPagina->bitModificado = 1;
@@ -400,7 +468,7 @@ void inicializarUnProceso(int idDelProceso){
         
     }
 
-    free(nuevoHeap);
+
 }
 
 

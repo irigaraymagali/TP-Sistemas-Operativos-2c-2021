@@ -6,7 +6,12 @@ int main(int argc, char ** argv){
 
     logger = log_create(LOG_PATH, PROGRAM, true, LOG_LEVEL_INFO);
 
-    config = config_create(CONFIG_PATH);
+    //config = config_create(CONFIG_PATH);
+
+    initPaginacion();
+
+    inicializarUnProceso(1);
+    inicializarUnProceso(2);
     
     init_swamp_connection();
     _start_server(config_get_string_value(config, PORT_CONFIG), handler, logger);

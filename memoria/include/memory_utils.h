@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <commons/log.h>
 #include <commons/config.h>
+#include <commons/string.h>
 #include <stdbool.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -11,7 +12,7 @@
 #include <commons/collections/list.h>
 #include "server.h"
 
-
+#define CONFIG_PATH "./cfg/memoria.conf"
 #define    MEM_INIT  100
 #define    MEM_ALLOC 1
 #define    MEM_FREE  2
@@ -69,7 +70,7 @@ typedef struct
 } ubicacionDeHeap;
 
 t_log* logger;
-t_config* configFile;
+t_config* config;
 t_list *todasLasTablasDePaginas;
 
 void* memoria;
@@ -87,12 +88,14 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId);
 void agregarXPaginasPara(int processId, int espacioRestante);
 Pagina *getLastPageDe(int processId);
 int getFrameDeUn(int processId, int unaPagina);
-int getNewEmptyFrame();
-int estaOcupadoUn(int emptyFrame);
+int getNewEmptyFrame(int idProcess);
+int estaOcupadoUn(int emptyFrame, int idProcess);
 TablaDePaginasxProceso* get_pages_by(int processID);
 int getFrameDeUn(int processId, int mayorNroDePagina);
 void inicializarUnProceso(int idDelProceso);
 void send_message_swamp(int command, void* payload, int pay_len);
 void deserealize_payload(void* payload);
+int getframeNoAsignadoEnMemoria();
+int frameAsignado(int unFrame);
 
 #endif
