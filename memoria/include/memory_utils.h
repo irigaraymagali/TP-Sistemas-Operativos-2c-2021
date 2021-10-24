@@ -5,11 +5,12 @@
 #include <commons/log.h>
 #include <commons/config.h>
 #include <stdbool.h>
-#include "tests.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <commons/collections/list.h>
+#include "server.h"
+
 
 #define    MEM_INIT  100
 #define    MEM_ALLOC 1
@@ -25,6 +26,16 @@
 #define FIRST_PAGE 0
 
 #define HEAP_METADATA_SIZE 9
+
+// SWAMP CONST
+#define MEM_ID    "MEM"
+#define RECV_PAGE 99
+int swamp_fd;
+
+
+t_log* logger;
+pthread_mutex_t swamp_mutex;
+
 
 typedef struct 
 {
@@ -80,6 +91,8 @@ int getNewEmptyFrame();
 int estaOcupadoUn(int emptyFrame);
 TablaDePaginasxProceso* get_pages_by(int processID);
 int getFrameDeUn(int processId, int mayorNroDePagina);
-void inicializarUnProceso(int idDelProceso)
+void inicializarUnProceso(int idDelProceso);
+void send_message_swamp(int command, void* payload, int pay_len);
+void deserealize_payload(void* payload);
 
 #endif

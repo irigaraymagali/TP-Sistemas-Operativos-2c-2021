@@ -21,14 +21,11 @@
 #define SWAMP_PORT  "PUERTO_SWAMP"
 
 
-t_log* logger;
 t_config* config;
 
-pthread_mutex_t swamp_mutex;
-
-int swamp_fd;
 
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger);
+void init_swamp_connection();
 void free_memory();
 
 #endif

@@ -302,7 +302,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 
     Pagina *tempPagina = list_iterator_next(iterator);
     while (list_iterator_has_next(iterator)  || tempPagina->pagina == mayorNroDePagina) {
-        Pagina *tempPagina = list_iterator_next(iterator);
+        tempPagina = list_iterator_next(iterator);
     }
 
     if(tempPagina->pagina == mayorNroDePagina){
@@ -330,13 +330,13 @@ void inicializarUnProceso(int idDelProceso){
         int nuevoFrame = getNewEmptyFrame();
         int offset = nuevoFrame * tamanioDePagina;
 
-        memcpy(memoria + offset,nuevoHeap->prevAlloc,sizeof(u_int32_t));
+        memcpy(memoria + offset, &nuevoHeap->prevAlloc,sizeof(u_int32_t));
 
         offset+= sizeof(u_int32_t);
-        memcpy(memoria + offset,nuevoHeap->nextAlloc,sizeof(u_int32_t));
+        memcpy(memoria + offset, &nuevoHeap->nextAlloc,sizeof(u_int32_t));
 
         offset+= sizeof(u_int32_t);
-        memcpy(memoria + offset,nuevoHeap->isfree,sizeof(u_int8_t));
+        memcpy(memoria + offset, &nuevoHeap->isfree,sizeof(u_int8_t));
 
         Pagina* nuevaPagina = malloc(sizeof(nuevaPagina));
         nuevaPagina->pagina=1;
@@ -359,13 +359,13 @@ void inicializarUnProceso(int idDelProceso){
                 int nuevoFrame = getNewEmptyFrame();
                 int offset = nuevoFrame * tamanioDePagina;
 
-                memcpy(memoria + offset,nuevoHeap->prevAlloc,sizeof(u_int32_t));
+                memcpy(memoria + offset, &nuevoHeap->prevAlloc,sizeof(u_int32_t));
 
                 offset+= sizeof(u_int32_t);
-                memcpy(memoria + offset,nuevoHeap->nextAlloc,sizeof(u_int32_t));
+                memcpy(memoria + offset, &nuevoHeap->nextAlloc,sizeof(u_int32_t));
 
                 offset+= sizeof(u_int32_t);
-                memcpy(memoria + offset,nuevoHeap->isfree,sizeof(u_int8_t));
+                memcpy(memoria + offset, &nuevoHeap->isfree,sizeof(u_int8_t));
 
                 Pagina* nuevaPagina = malloc(sizeof(nuevaPagina));
                 nuevaPagina->pagina=1;
@@ -380,7 +380,7 @@ void inicializarUnProceso(int idDelProceso){
             }else
             {
                 int nuevoFrame = getNewEmptyFrame();
-                int offset = nuevoFrame * tamanioDePagina;
+                //int offset = nuevoFrame * tamanioDePagina;
 
                 Pagina* nuevaPagina = malloc(sizeof(nuevaPagina));
                 nuevaPagina->pagina=paginasCargadas;
@@ -401,4 +401,21 @@ void inicializarUnProceso(int idDelProceso){
     }
 
     free(nuevoHeap);
+}
+
+
+void send_message_swamp(int command, void* payload, int pay_len){
+    if (_send_message(swamp_fd, MEM_ID, command, payload, pay_len, logger) < 0){
+        log_error(logger, "Error al enviar mensaje a Swamp");
+        return;
+    }
+
+    if(command == RECV_PAGE){
+        t_mensaje* msg = _receive_message(swamp_fd, logger);
+        deserealize_payload(msg->payload);
+    }
+}
+
+void deserealize_payload(void* payload){
+    log_info(logger, "Deserealizo el payload");
 }
