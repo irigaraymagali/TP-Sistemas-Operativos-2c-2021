@@ -2,6 +2,8 @@
 
 void comandos(int valor){
     switch(valor){
+        case MEM_INIT:
+        break;
         case MEM_ALLOC:
         break;
         case MEM_FREE:
@@ -56,7 +58,7 @@ int memalloc(int espacioAReservar, int processId){
         HeapMetaData* nuevoHeap = malloc(sizeof(HeapMetaData));
         nuevoHeap->prevAlloc = tempLastHeap;
         nuevoHeap->nextAlloc = NULL_ALLOC; //nuevoHeap.nextAlloc = NULL; Tiene que ser un puntero si queremos que sea NULL. Sino -1
-        nuevoHeap->isfree = 1; // Nose si esto tiene que significar que es vacio o que está ocupado.
+        nuevoHeap->isfree = BUSY; // Nose si esto tiene que significar que es vacio o que está ocupado.
 
         // esto funciona si y solo si la pagina esta en memoria mas adelante hay que agregar los cambios nesesarios para utilizar el swap
 
@@ -193,7 +195,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
                     memcpy(&unHeap->isfree, paginaAux + offset, sizeof(uint8_t));
                 }
 
-                if(unHeap->isfree == BUSY && (unHeap->nextAlloc - allocActual) >= espacioAReservar){
+                if(unHeap->isfree == FREE && (unHeap->nextAlloc - allocActual) >= espacioAReservar){
                     // falta separarlo y sumar 9 que es el valor de la estructura que iria al final
                     return allocActual;
                 }
@@ -240,8 +242,9 @@ void agregarXPaginasPara(int processId, int espacioRestante){
         } else {
             nuevaPagina->pagina = ultimaPagina->pagina + 1;
         }
+
         nuevaPagina->frame = getNewEmptyFrame();
-        nuevaPagina->isfree = 1;
+        nuevaPagina->isfree = FREE;
         nuevaPagina->bitModificado = 0;
         nuevaPagina->bitPresencia = 0;
         lRUACTUAL++;
