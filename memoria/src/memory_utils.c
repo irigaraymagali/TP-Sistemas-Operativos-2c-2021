@@ -370,7 +370,7 @@ void inicializarUnProceso(int idDelProceso){
                 Pagina* nuevaPagina = malloc(sizeof(nuevaPagina));
                 nuevaPagina->pagina=1;
                 nuevaPagina->lRU = lRUACTUAL;
-                nuevaPagina->isfree= 0;
+                nuevaPagina->isfree= BUSY;
                 nuevaPagina->frame = nuevoFrame;
                 nuevaPagina->bitPresencia =0;
                 nuevaPagina->bitModificado = 1;
