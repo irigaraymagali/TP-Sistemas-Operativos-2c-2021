@@ -235,7 +235,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
 }
 
 Pagina *getLastPageDe(int processId){
-    int mayorNroDePagina = -1;
+    uint32_t mayorNroDePagina = 0;
     Pagina *ultimaPagina; //Nose si necesitamos un malloc porque en caso de encontrar una pagina temporal creo estariamos guardando este malloc basura. PROBAR.
     
     TablaDePaginasxProceso* temp = get_pages_by(processId);
@@ -247,7 +247,7 @@ Pagina *getLastPageDe(int processId){
     while(list_iterator_has_next(iterator)){
         Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator);
 
-        if((mayorNroDePagina < paginaTemporal->pagina)  && paginaTemporal->isfree == 0){
+        if((mayorNroDePagina < paginaTemporal->pagina)  && paginaTemporal->isfree == BUSY){
             mayorNroDePagina = paginaTemporal->pagina;
             ultimaPagina = paginaTemporal;
         }
@@ -262,26 +262,46 @@ void agregarXPaginasPara(int processId, int espacioRestante){
     Pagina *ultimaPagina;
     Pagina *nuevaPagina = malloc(sizeof(Pagina));
        
-    while(cantidadDePaginasAAgregar == 0){
-        ultimaPagina = getLastPageDe(processId); // que pasaría si no tenes paginas?
-        if(ultimaPagina == NULL){
-            nuevaPagina->pagina = FIRST_PAGE;
-        } else {
-            nuevaPagina->pagina = ultimaPagina->pagina + 1;
+    if(tipoDeAsignacionDinamica == 1){
+        while(cantidadDePaginasAAgregar != 0){
+            ultimaPagina = getLastPageDe(processId); // que pasaría si no tenes paginas?
+            if(ultimaPagina == NULL){
+                nuevaPagina->pagina = FIRST_PAGE;
+            } else {
+                nuevaPagina->pagina = ultimaPagina->pagina + 1;
+            }
+
+            nuevaPagina->frame = getNewEmptyFrame(processId);
+            nuevaPagina->isfree = FREE;
+            nuevaPagina->bitModificado = 0;
+            nuevaPagina->bitPresencia = 0;
+            lRUACTUAL++;
+            nuevaPagina->lRU = lRUACTUAL;
+
+            TablaDePaginasxProceso* temp = get_pages_by(processId);
+
+            list_add(temp->paginas, nuevaPagina);
+
+            cantidadDePaginasAAgregar--;
         }
+    }else{
+        while(cantidadDePaginasAAgregar != 0){
+            TablaDePaginasxProceso* temp = get_pages_by(processId);
 
-        nuevaPagina->frame = getNewEmptyFrame(processId);
-        nuevaPagina->isfree = FREE;
-        nuevaPagina->bitModificado = 0;
-        nuevaPagina->bitPresencia = 0;
-        lRUACTUAL++;
-        nuevaPagina->lRU = lRUACTUAL;
+            ultimaPagina = getLastPageDe(processId);
 
-        TablaDePaginasxProceso* temp = get_pages_by(processId);
+            t_list_iterator* iterator = list_iterator_create(temp->paginas);
+            Pagina* paginaSiguienteALaUltima = (Pagina*) list_iterator_next(iterator);
 
-        list_add(temp->paginas, nuevaPagina);
+            while (list_iterator_has_next(iterator) && (ultimaPagina->pagina +1 != paginaSiguienteALaUltima->pagina))
+            {
+               paginaSiguienteALaUltima = (Pagina*) list_iterator_next(iterator);
+            }
 
-        cantidadDePaginasAAgregar--;
+            paginaSiguienteALaUltima->isfree = BUSY;
+            
+            cantidadDePaginasAAgregar--;
+        }
     }      
 }
 
@@ -400,7 +420,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
     t_list_iterator* iterator = list_iterator_create(temp->paginas);
 
     Pagina *tempPagina = list_iterator_next(iterator);
-    while (list_iterator_has_next(iterator)  || tempPagina->pagina == mayorNroDePagina) {
+    while (list_iterator_has_next(iterator)  && tempPagina->pagina != mayorNroDePagina) {
         tempPagina = list_iterator_next(iterator);
     }
 
