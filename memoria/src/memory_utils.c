@@ -48,7 +48,7 @@ void initPaginacion(){
 
 int memalloc(int espacioAReservar, int processId){
     int entra = entraEnElEspacioLibre(espacioAReservar, processId);
-    int mayorNroDePagina = -1;
+    uint32_t mayorNroDePagina = 0; // 0 porque indica que no tiene asignado ninguna pagina, las pags siempre arancan en 1
     int ultimoFrame = 0;
     int tempLastHeap = 0;
     int espacioFinalDisponible = 0;
@@ -67,7 +67,7 @@ int memalloc(int espacioAReservar, int processId){
         while(list_iterator_has_next(iterator2)){
             Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator2);
 
-            if(mayorNroDePagina < paginaTemporal->pagina){
+            if(mayorNroDePagina < paginaTemporal->pagina && paginaTemporal->isfree == BUSY){
                 mayorNroDePagina = paginaTemporal->pagina;
                 ultimoFrame = paginaTemporal->frame;
             }
@@ -84,8 +84,10 @@ int memalloc(int espacioAReservar, int processId){
         // esto funciona si y solo si la pagina esta en memoria mas adelante hay que agregar los cambios nesesarios para utilizar el swap
 
         int offset;
+        espacioAReservar += HEAP_METADATA_SIZE;
+
         if(espacioFinalDisponible >= espacioAReservar){
-            offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - (mayorNroDePagina * tamanioDePagina)) ;
+            offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - ((mayorNroDePagina-1) * tamanioDePagina)) ;
 
             int espacioTotal = tempLastHeap + espacioAReservar;
             memcpy(memoria + offset + sizeof(uint32_t), &espacioTotal, sizeof(uint32_t));
@@ -98,6 +100,10 @@ int memalloc(int espacioAReservar, int processId){
             offset = offset + sizeof(uint32_t);
 
             memcpy(memoria + offset, &nuevoHeap->isfree, sizeof(uint8_t));
+
+            temp->lastHeap = tempLastHeap + espacioAReservar;
+
+            return (tempLastHeap + espacioAReservar);
         } else {
             /* 
                     como me da paja de hacerlo ahora esto basicamente es pedir una pagina nueva copiar esas ultimas paginas en un auxiliar
@@ -111,7 +117,7 @@ int memalloc(int espacioAReservar, int processId){
             int espacioDePaginasAux = (((espacioAReservar - espacioFinalDisponible) / tamanioDePagina) + 1)* tamanioDePagina;
 
             void* espacioAuxiliar = malloc(espacioDePaginasAux + tamanioDePagina);
-            offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - (mayorNroDePagina * tamanioDePagina));
+            offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - ((mayorNroDePagina-1) * tamanioDePagina));
 
             int espacioTotal = tempLastHeap + espacioAReservar;
             memcpy(memoria + offset + sizeof(uint32_t), &espacioTotal, sizeof(uint32_t));
@@ -122,7 +128,7 @@ int memalloc(int espacioAReservar, int processId){
             int offsetAux = 0;
 
             memcpy(espacioAuxiliar, memoria + (ultimoFrame*tamanioDePagina), tamanioDePagina);
-            offsetAux += (tempLastHeap - (mayorNroDePagina * tamanioDePagina)) + espacioAReservar; 
+            offsetAux += (tempLastHeap - ((mayorNroDePagina-1) * tamanioDePagina)) + espacioAReservar; 
             
             memcpy(espacioAuxiliar + offsetAux, &nuevoHeap->prevAlloc, sizeof(uint32_t));
             offsetAux += sizeof(uint32_t);
@@ -145,7 +151,7 @@ int memalloc(int espacioAReservar, int processId){
             }
             free(espacioAuxiliar);
         }
-
+        temp->lastHeap = tempLastHeap + espacioAReservar;
         return (tempLastHeap + espacioAReservar);    
     }
     
@@ -284,13 +290,40 @@ int getNewEmptyFrame(int idProcess){
     int paginaFinal = tamanioDeMemoria/tamanioDePagina;
     int isfree = 0;
 
-    while(emptyFrame <= paginaFinal){
-        isfree= estaOcupadoUn(emptyFrame, idProcess);
-        if(isfree!= BUSY){
-            return emptyFrame;
+    if (tipoDeAsignacionDinamica)
+    {
+        while(emptyFrame <= paginaFinal){
+            isfree= estaOcupadoUn(emptyFrame, idProcess);
+            if(isfree!= BUSY){
+                return emptyFrame;
+            }
+
+            emptyFrame++;
+        }
+    }
+    else
+    {
+        t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+
+        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+
+        while (temp->id != idProcess) {
+
+            temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);  
+
         }
 
-        emptyFrame++;
+        t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
+
+        while(list_iterator_has_next(iterator2)){
+                Pagina *tempPagina = (Pagina*) list_iterator_next(iterator2);
+    
+                if(tempPagina->isfree == FREE ){
+                    list_iterator_destroy(iterator);
+                    list_iterator_destroy(iterator2);
+                    return tempPagina->frame;
+                }
+        }
     }
 
     return emptyFrame;

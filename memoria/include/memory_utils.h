@@ -24,7 +24,7 @@
 
 #define NULL_ALLOC 0
 
-#define FIRST_PAGE 0
+#define FIRST_PAGE 1
 
 #define HEAP_METADATA_SIZE 9
 
