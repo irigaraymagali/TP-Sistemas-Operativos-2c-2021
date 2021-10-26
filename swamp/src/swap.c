@@ -150,13 +150,36 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido) {
             memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
             munmap(swap_file_map, swap_file_size);
             close(swap_file_fd);
-            free(swap_file_name);
             free(swap_file_path);
             free(nuevo);
         }
 
         else { // Si tengo que guardar una pagina nueva
-            
+            char* swap_file_name = get_swap_file_name(tabla_paginas);
+            char* swap_file_path = string_from_format("%s%s", SWAP_FILES_PATH, swap_file_name);
+            int swap_file_fd = open(swap_file_path, O_RDWR, (mode_t)0777);
+            if (swap_file_fd == -1) {
+                log_error(log_file, "Error al abrir el archivo %s", swap_file_name);
+            }
+            void* swap_file_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_fd, 0);
+            fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
+            nuevo->proceso = proceso;
+            nuevo->pagina = 9999;
+            int frame_asignado = get_frame_number(nuevo);
+            if (frame_asignado == list_size(tabla_paginas)) {
+                log_error(log_file, "El proceso no posee frames libres en el archivo %s.", swap_file_name);
+            }
+            else {
+                memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
+                fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
+                nuevo->proceso = proceso;
+                nuevo->pagina = pagina;
+                list_replace_and_destroy_element(tabla_paginas, frame_asignado, (void*) nuevo, fila_tabla_paginas_destroy);
+            }
+            munmap(swap_file_map, swap_file_size);
+            close(swap_file_fd);
+            free(swap_file_path);
+            free(nuevo);
         }
     }
     free(string_proceso);
@@ -296,4 +319,11 @@ char* get_swap_file_name(t_list* tabla_paginas) {
     list_iterator_destroy(list_iterator);
 
     return nodo_actual->swap_file_name;
+}
+
+void fila_tabla_paginas_destroy(void* fila){
+    fila_tabla_paginas* aux = (fila_tabla_paginas*) fila;
+    if (aux != NULL){
+        free(aux);
+    }
 }

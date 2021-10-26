@@ -45,5 +45,6 @@ int get_frame_number(fila_tabla_paginas* nodo);
 bool frame_is_empty(int frame, void* swap_file_map);
 bool pagina_esta_en_swap(t_list* tabla_paginas, int proceso, int pagina);
 char* get_swap_file_name(t_list* tabla_paginas);
+void fila_tabla_paginas_destroy(void* fila);
 
 #endif
