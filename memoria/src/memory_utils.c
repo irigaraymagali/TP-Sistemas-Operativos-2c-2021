@@ -103,7 +103,7 @@ int memalloc(int espacioAReservar, int processId){
 
             temp->lastHeap = tempLastHeap + espacioAReservar;
 
-            return (tempLastHeap + espacioAReservar);
+            return (tempLastHeap + HEAP_METADATA_SIZE);
         } else {
             /* 
                     como me da paja de hacerlo ahora esto basicamente es pedir una pagina nueva copiar esas ultimas paginas en un auxiliar
@@ -152,7 +152,7 @@ int memalloc(int espacioAReservar, int processId){
             free(espacioAuxiliar);
         }
         temp->lastHeap = tempLastHeap + espacioAReservar;
-        return (tempLastHeap + espacioAReservar);    
+        return (tempLastHeap + HEAP_METADATA_SIZE );    
     }
     
     return entra;
