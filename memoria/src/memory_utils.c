@@ -179,8 +179,8 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
 
         int nextAllocAux = 0;
         int allocActual = 0; 
-        int paginaSiguiente = 0;
-        int paginaActual;
+        int dirPaginaSiguiente = 0;
+        int dirPaginaActual;
         
         while(list_iterator_has_next(iterator)){
             
@@ -194,11 +194,11 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
 
             memcpy(paginaAux, memoria + (tempPag->frame * tamanioDePagina),tamanioDePagina);
 
-            paginaSiguiente = (tempPag->pagina * tamanioDePagina) + tamanioDePagina;
+            dirPaginaSiguiente = ((tempPag->pagina-1) * tamanioDePagina) + tamanioDePagina;
 
-            paginaActual = tempPag->pagina * tamanioDePagina;
+            dirPaginaActual = (tempPag->pagina-1) * tamanioDePagina;
             
-            while (nextAllocAux <= paginaSiguiente && nextAllocAux != NULL_ALLOC)
+            while (nextAllocAux <= dirPaginaSiguiente)
             {
                 int offset = 0;
                 if(nextAllocAux == 0){
@@ -209,8 +209,9 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
                     offset += sizeof(uint32_t);
 
                     memcpy(&unHeap->isfree, paginaAux + offset, sizeof(uint8_t));
+
                 } else {
-                   offset = (nextAllocAux - paginaActual);
+                   offset = (nextAllocAux - dirPaginaActual);
                     memcpy(&unHeap->prevAlloc, paginaAux + offset, sizeof(uint32_t));
                     allocActual = unHeap->nextAlloc;
                     offset += sizeof(uint32_t); 
@@ -221,8 +222,14 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
 
                     memcpy(&unHeap->isfree, paginaAux + offset, sizeof(uint8_t));
                 }
+                
+                if (unHeap->nextAlloc == NULL)
+                {
+                    return -1;
+                }
+                
 
-                if(unHeap->isfree == FREE && (unHeap->nextAlloc - allocActual) >= espacioAReservar){
+                if(unHeap->isfree == FREE && (unHeap->nextAlloc - allocActual - HEAP_METADATA_SIZE) >= espacioAReservar){
                     // falta separarlo y sumar 9 que es el valor de la estructura que iria al final
                     return allocActual;
                 }
