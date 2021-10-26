@@ -37,8 +37,13 @@ typedef struct {
 void inicializar_directorios();
 void inicializar_swap_files();
 void guardar_pagina(int proceso, int pagina, char* contenido);
+void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido);
+void guardar_pagina_asignacion_dinamica(int proceso, int pagina, char* contenido);
 nodo_swap_list* swap_file_menos_ocupado();
-int get_frame_number(fila_tabla_paginas* nodo, void* swap_file_map);
+int get_first_free_frame_number(fila_tabla_paginas* nodo, void* swap_file_map);
+int get_frame_number(fila_tabla_paginas* nodo);
 bool frame_is_empty(int frame, void* swap_file_map);
+bool pagina_esta_en_swap(t_list* tabla_paginas, int proceso, int pagina);
+char* get_swap_file_name(t_list* tabla_paginas);
 
 #endif
