@@ -46,7 +46,7 @@ void consola(char* buffer, int socket_conexion) {
         }
     }
 
-    else if (string_starts_with(buffer, "GUARDAR_PAGINA")) { // Ejemplo: GUARDAR_PAGINA PROCESO PAGINA CONTENIDO
+    else if (string_starts_with(buffer, "GUARDAR_PAGINA")) { // Ejemplo: GUARDAR_PAGINA PROCESO NUMERO_PAGINA CONTENIDO
         if (cantidad_de_parametros == 4) {
             guardar_pagina(atoi(parametros[1]), atoi(parametros[2]), parametros [3]);
         }
@@ -58,12 +58,14 @@ void consola(char* buffer, int socket_conexion) {
 
     else if (string_starts_with(buffer, "OBTENER_PAGINA")) { // Ejemplo: OBTENER_PAGINA PROCESO NUMERO_PAGINA
         if (cantidad_de_parametros == 3) {
-            // char* pagina = Funcion que devuelve el contenido de la pagina especificada en los parametros del mensaje
-
-            // if (send(socket_conexion, pagina, strlen(pagina) + 1, 0) < 0) {
-            //         log_error(log_file, "Error al enviar la pagina %s del proceso %s.", parametros[2], parametros[1]);
-            // }
-            // free(pagina);
+            char* pagina = obtener_pagina(atoi(parametros[1]), atoi(parametros[2]));
+            if (pagina != NULL) {
+                if (send(socket_conexion, pagina, strlen(pagina) + 1, 0) < 0) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
+                    log_error(log_file, "Error al enviar la pagina %s del proceso %s.", parametros[2], parametros[1]);
+                }
+                log_warning(log_file, "%s", pagina);
+                free(pagina);
+            }
         }
 
         else {

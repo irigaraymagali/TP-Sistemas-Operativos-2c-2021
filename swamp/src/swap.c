@@ -190,6 +190,40 @@ void guardar_pagina_asignacion_dinamica(int proceso, int pagina, char* contenido
 
 }
 
+char* obtener_pagina(int proceso, int pagina) {
+    char* contenido = malloc(swap_page_size + 1);
+    char* string_proceso = string_itoa(proceso);
+    t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso); // Devuelve un puntero al t_list que representa a la tabla de paginas del archivo de swap que esta utilizando
+    if (tabla_paginas == NULL) {
+        log_error(log_file, "El proceso %d no se encuentra utilizando swap.", proceso);
+        free(contenido);
+    }
+
+    else {
+        char* swap_file_name = get_swap_file_name(tabla_paginas);
+        char* swap_file_path = string_from_format("%s%s", SWAP_FILES_PATH, swap_file_name);
+        int swap_file_fd = open(swap_file_path, O_RDWR, (mode_t)0777);
+        if (swap_file_fd == -1) {
+            log_error(log_file, "Error al abrir el archivo %s", swap_file_name);
+        }
+        void* swap_file_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_fd, 0);
+        fila_tabla_paginas* aux = malloc(sizeof(fila_tabla_paginas));
+        aux->proceso = proceso;
+        aux->pagina = pagina;
+        int frame_asignado = get_frame_number(aux);
+        memcpy(contenido, swap_file_map + swap_page_size * frame_asignado, swap_page_size);
+        contenido[swap_page_size] = '\0';
+        free(aux);
+    }
+    free(string_proceso);
+
+    return contenido;
+}
+
+void finalizar_proceso(int proceso) {
+    
+}
+
 nodo_swap_list* swap_file_menos_ocupado() {
     int most_free_frames = 0;
     int swap_file_frames_count = swap_file_size / swap_page_size;
