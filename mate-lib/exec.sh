@@ -15,8 +15,8 @@ if [ ! -d "$LOG_DIRECTORY" ]; then
     mkdir $LOG_DIRECTORY
 fi
 
-FILE=mate-lib.out
-make $FILE
+FILE=example.out
+make test
 if test -f "./$FILE"; then
-    ./$FILE
+   LD_LIBRARY_PATH="obj/" ./$FILE
 fi

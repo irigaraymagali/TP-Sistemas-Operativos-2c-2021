@@ -1,5 +1,5 @@
-#include "main.h"
-#include <matelib.h>
+#include "matelib.h"
+// #include <matelib.h> --> OJO acá estas importando la lib compilada, para importar el .h de la lib es con ".h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
