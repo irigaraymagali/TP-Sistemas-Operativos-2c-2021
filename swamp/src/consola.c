@@ -61,7 +61,13 @@ void consola(char* buffer, int socket_conexion) {
             char* pagina = obtener_pagina(atoi(parametros[1]), atoi(parametros[2]));
             if (pagina != NULL) {
                 if (send(socket_conexion, pagina, strlen(pagina) + 1, 0) < 0) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
-                    log_error(log_file, "Error al enviar la pagina %s del proceso %s.", parametros[2], parametros[1]);
+                    //////////////////////////////////////////////////////////////////////////////////////////////////////
+                    ////////////////////// DESCOMENTAR CUANDO PRUEBE TODO ESTO CON LAS CONEXIONES ///////////////////////
+                    ////////////////////////////////////////////////////////////////////////////////////////////////////
+                    // log_error(log_file, "Error al enviar la pagina %s del proceso %s.", parametros[2], parametros[1]);
+                    //////////////////////////////////////////////////////////////////////////////////////////////////////
+                    ////////////////////// DESCOMENTAR CUANDO PRUEBE TODO ESTO CON LAS CONEXIONES ///////////////////////
+                    ////////////////////////////////////////////////////////////////////////////////////////////////////
                 }
                 log_warning(log_file, "%s", pagina);
                 free(pagina);

@@ -166,7 +166,7 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido) {
             nuevo->proceso = proceso;
             nuevo->pagina = 9999;
             int frame_asignado = get_frame_number(nuevo);
-            if (frame_asignado == list_size(tabla_paginas)) {
+            if (frame_asignado == list_size(tabla_paginas) - 1) {
                 log_error(log_file, "El proceso no posee frames libres en el archivo %s.", swap_file_name);
             }
             else {
@@ -187,7 +187,91 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido) {
 
 
 void guardar_pagina_asignacion_dinamica(int proceso, int pagina, char* contenido) {
+    char* string_proceso = string_itoa(proceso);
+    t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso); // Devuelve un puntero al t_list que representa a la tabla de paginas del archivo de swap que esta utilizando
+    if (tabla_paginas == NULL) { // Si es la primera pagina del proceso que se va a guardar en swap
+        nodo_swap_list* swap_file_asignado = swap_file_menos_ocupado();
+        if (swap_file_asignado == NULL) { // Si no hay frames disponibles en ningun archivo de swap
+            log_error(log_file, "No hay espacio disponible en swap.");
+        }
 
+        else { // Si hay un archivo de swap que tenga al menos un marco disponible
+            char* swap_file_path = string_from_format("%s%s", SWAP_FILES_PATH, swap_file_asignado->swap_file_name);
+            int swap_file_fd = open(swap_file_path, O_RDWR, (mode_t)0777);
+            if (swap_file_fd == -1) {
+                log_error(log_file, "Error al abrir el archivo %s", swap_file_asignado->swap_file_name);
+            }
+            void* swap_file_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_fd, 0);
+
+            // Actualizo estructuras administrativas
+            fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
+            nuevo->proceso = proceso;
+            nuevo->pagina = pagina;
+            list_add(swap_file_asignado->tabla_paginas, (void*) nuevo);
+            dictionary_put(swap_dict, string_proceso, (void*) swap_file_asignado->tabla_paginas);
+            int frame_asignado = get_first_free_frame_number(nuevo, swap_file_map);
+
+            // Guardo la pagina recibida en el archivo de swap
+            memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
+            munmap(swap_file_map, swap_file_size);
+            close(swap_file_fd);
+            free(swap_file_path);
+        }
+    }
+
+    else { // Si el proceso tiene paginas en swap
+        if (pagina_esta_en_swap(tabla_paginas, proceso, pagina)) { // Si tengo que sobreescribir una pagina que ya esta en swap
+            // Guardo la pagina recibida en el archivo de swap
+            char* swap_file_name = get_swap_file_name(tabla_paginas);
+            char* swap_file_path = string_from_format("%s%s", SWAP_FILES_PATH, swap_file_name);
+            int swap_file_fd = open(swap_file_path, O_RDWR, (mode_t)0777);
+            if (swap_file_fd == -1) {
+                log_error(log_file, "Error al abrir el archivo %s", swap_file_name);
+            }
+            void* swap_file_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_fd, 0);
+            fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
+            nuevo->proceso = proceso;
+            nuevo->pagina = pagina;
+            int frame_asignado = get_frame_number(nuevo);
+            memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
+            munmap(swap_file_map, swap_file_size);
+            close(swap_file_fd);
+            free(swap_file_path);
+            free(nuevo);
+        }
+
+        else { // Si tengo que guardar una pagina nueva
+            if (list_size(tabla_paginas) == swap_file_size / swap_page_size) { // Si todos los frames estan ocupados
+                log_error(log_file, "No hay frames disponibles en el archivo %s correspondiente al proceso %d.", get_swap_file_name(tabla_paginas), proceso);
+            }
+
+            else if (list_size(tabla_paginas) > swap_file_size / swap_page_size) {
+                log_error(log_file, "Se rompio todo.");
+            }
+
+            else { // Si quedan frames libres en el archivo de swap utilizado por el proceso que quiere guardar una pagina
+                char* swap_file_name = get_swap_file_name(tabla_paginas);
+                char* swap_file_path = string_from_format("%s%s", SWAP_FILES_PATH, swap_file_name);
+                int swap_file_fd = open(swap_file_path, O_RDWR, (mode_t)0777);
+                if (swap_file_fd == -1) {
+                    log_error(log_file, "Error al abrir el archivo %s", swap_file_name);
+                }
+                void* swap_file_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_fd, 0);
+                fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
+                nuevo->proceso = proceso;
+                nuevo->pagina = pagina;
+                list_add(tabla_paginas, (void*) nuevo);
+                int frame_asignado = get_first_free_frame_number(nuevo, swap_file_map);
+
+                // Guardo la pagina recibida en el archivo de swap
+                memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
+                munmap(swap_file_map, swap_file_size);
+                close(swap_file_fd);
+                free(swap_file_path);
+            }
+        }
+    }
+    free(string_proceso);
 }
 
 char* obtener_pagina(int proceso, int pagina) {
@@ -221,7 +305,7 @@ char* obtener_pagina(int proceso, int pagina) {
 }
 
 void finalizar_proceso(int proceso) {
-    
+
 }
 
 nodo_swap_list* swap_file_menos_ocupado() {
@@ -355,9 +439,18 @@ char* get_swap_file_name(t_list* tabla_paginas) {
     return nodo_actual->swap_file_name;
 }
 
-void fila_tabla_paginas_destroy(void* fila){
+void fila_tabla_paginas_destroy(void* fila) {
     fila_tabla_paginas* aux = (fila_tabla_paginas*) fila;
     if (aux != NULL){
+        free(aux);
+    }
+}
+
+void nodo_swap_list_destroy(void* nodo) {
+    nodo_swap_list* aux = (nodo_swap_list*) nodo;
+    list_destroy_and_destroy_elements(aux->tabla_paginas, fila_tabla_paginas_destroy);
+    if (aux != NULL){
+        free(aux->swap_file_name);
         free(aux);
     }
 }
