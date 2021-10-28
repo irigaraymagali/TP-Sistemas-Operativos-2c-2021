@@ -21,6 +21,9 @@
 // constante para saber quién envia mensaje a memoria
 #define ID_MATE_LIB 111
 
+// valores que devuelve el backend
+#define KERNEL_BACKEND = 1 // cuando el kernel responda, va a deolver 1.
+#define MEMORIA_BACKEND = 2 // cuando la memoria responda, va a responder 2
 
 char* mi_funcion_compartida();
 

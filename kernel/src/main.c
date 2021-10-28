@@ -9,6 +9,32 @@
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
 
+// tendría que conocer la estructura interna acá también
+typedef struct mate_inner_structure
+{
+    //void *memory;
+    float *rafaga_anterior; // para despues poder calcular la estimación siguiente
+    float *estimacion_anterior; // idem
+    float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
+    float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
+    int *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
+    char *estado; // no sé cuánto nos va a servir, si no se puede hacer que sea estado_anterior y que nos evite tener otro para prioridad
+ 
+  // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
+    char *semaforo; 
+    int *valor_semaforo; 
+    char *dispositivo_io; 
+    char *mnesaje_io;
+    int *size_memoria;
+    int *addr_memfree;
+    int *origin_memread;
+    int **dest_memread;
+    int **origin_memwrite;
+    int *dest_memwrite;
+    int *respuesta_a_carpincho;
+
+} mate_inner_structure;
+
 /* Estados:*/
     t_queue* new;
     t_queue* ready;
@@ -31,96 +57,6 @@
 
 // que onda esto y la memoria que usa? quien se encarga de darsela y de borrarla?
 t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
-
-int main(int argc, char ** argv){
-
-    if(argc > 1 && strcmp(argv[1],"-test")==0)
-        return run_tests();
-    else{  
-        t_log* logger = log_create("./cfg/kernel.log", "KERNEL", true, LOG_LEVEL_INFO);
-        log_info(logger, "Soy el Kernel! %s", mi_funcion_compartida());
-        log_destroy(logger);
-
-    //que onda con malloc aca?
-    t_paquete *paquete = malloc(sizeof(t_paquete));
-    paquete->buffer = malloc(sizeof(t_buffer));
-    // cómo debería hacer para recibir el mensaje?    
-    _receive_message(/*int socket*/, logger); // recibir mensaje 
-    // esta bien esto?
-    recv(unSocket, &(paquete->codigo_operacion), sizeof(uint8_t),0);
-    paquete->buffer->stream = malloc(paquete->buffer->size);
-    recv(unSocket, paquete->buffer->stream, paquete->buffer->size,0);
-
-    /*deserializar mensaje*/
-    mate_inner_structure* mensaje = malloc(sizeof(t_mensaje));
-    void *stream = buffer->stream;
-    
-
-    memcpy(&(mensaje->memory), stream, sizeof(/*que_size_1*/));
-    stream += sizeof(/*que_size_1*/);
-    memcpy(&(mensaje->rafaga_anterior), stream, sizeof(/*que_size_2*/));
-    stream += sizeof(/*que_size_2*/);
-    memcpy(&(mensaje->estimacion_anterior), stream, sizeof(/*que_size_3*/));
-    stream += sizeof(/*que_size_3*/);
-    memcpy(&(mensaje->estimacion_siguiente), stream, sizeof(/*que_size_4*/));
-    stream += sizeof(/*que_size_4*/);
-    memcpy(&(mensaje->llegada_a_ready), stream, sizeof(/*que_size_5*/));
-    stream += sizeof(/*que_size_5*/);
-    memcpy(&(mensaje->prioridad), stream, sizeof(/*que_size_6*/));
-    stream += sizeof(/*que_size_6*/);
-    memcpy(&(mensaje->estado), stream, sizeof(/*que_size_7*/));
-    stream += sizeof(/*que_size_7*/);
-    memcpy(&(mensaje->semaforo), stream, sizeof(/*que_size_8*/));
-    stream += sizeof(/*que_size_8*/);
-    memcpy(&(mensaje->valor_semaforo), stream, sizeof(/*que_size_9*/));
-    stream += sizeof(/*que_size_9*/);
-    memcpy(&(mensaje->dispositivo_io), stream, sizeof(/*que_size_10*/));
-    stream += sizeof(/*que_size_10*/);
-    memcpy(&(mensaje->mnesaje_io), stream, sizeof(/*que_size_11*/));
-    stream += sizeof(/*que_size_11*/);
-    memcpy(&(mensaje->size_memoria), stream, sizeof(/*que_size_12*/));
-    stream += sizeof(/*que_size_12*/);
-    memcpy(&(mensaje->addr_memfree), stream, sizeof(/*que_size_13*/));
-    stream += sizeof(/*que_size_13*/);
-    memcpy(&(mensaje->origin_memread), stream, sizeof(/*que_size_14*/));
-    stream += sizeof(/*que_size_14*/);
-    memcpy(&(mensaje->dest_memread), stream, sizeof(/*que_size_15*/));
-    stream += sizeof(/*que_size_15*/);
-    memcpy(&(mensaje->origin_memwrite), stream, sizeof(/*que_size_16*/));
-    stream += sizeof(/*que_size_16*/);
-    memcpy(&(mensaje->dest_memwrite), stream, sizeof(/*que_size_16*/));
-    stream += sizeof(/*que_size_16*/);
-
-    //primero debería recibir el tamaño y dsps pedir espacio? como?
-
-    switch(paquete->codigo_operacion){
-        case MATE_INIT:
-            mate_init(mensaje);
-        case MATE_CLOSE: 
-            mate_close(mensaje);
-        case MATE_SEM_INIT: 
-            mate_sem_init(mensaje);            
-        case MATE_SEM_WAIT: 
-            mate_sem_wait(mensaje);            
-        case MATE_SEM_POST: 
-            mate_sem_post(mensaje);            
-        case MATE_SEM_DESTROY:
-            mate_sem_destroy(mensaje);            
-        case MATE_CALL_IO:
-            mate_call_io(mensaje);            
-        case MATE_MEMALLOC: 
-            mate_memalloc(mensaje);            
-        case MATE_MEMFREE:
-            mate_memfree(mensaje);            
-        case MATE_MEMREAD:
-            mate_memread(mensaje);            
-        case MATE_MEMWRITE: 
-            mate_memwrite(mensaje);      
-        break;      
-    }
-
-} 
-
 
 // Config:  (falta) 
 	ip_memoria= config_get_string_value(config, "IP_MEMORIA");
@@ -171,6 +107,105 @@ int main(int argc, char ** argv){
     pthread_mutex_init(&socket_memoria, NULL);
 
 }
+
+int main(int argc, char ** argv){
+
+
+} 
+
+
+int crear_socket_listener(){
+
+    //leer archivo config para tener puerto_ escucha
+
+    int puerto_escucha;
+
+    return _create_socket_listenner(puerto_escucha, logger);
+
+}
+
+
+int recibir_mensaje(){
+
+    int str_len;
+    char* string;
+    int offset = 0;
+    mate_inner_structure* estructura_interna = malloc(sizeof(mate_inner_structure));
+
+    void* buffer = _recive_message(buffer, logger);
+    memcpy(&(estructura_interna)->rafaga_anterior, buffer, sizeof(float));
+    offset += sizeof(float); 
+    memcpy(&estructura_interna)->estimacion_anterior, buffer, sizeof(float));
+    offset += sizeof(float); 
+    memcpy(&estructura_interna)->estimacion_siguiente, buffer, sizeof(float));
+    offset += sizeof(float); 
+    memcpy(&estructura_interna)->llegada_a_ready, buffer, sizeof(float));
+    offset += sizeof(float); 
+    memcpy(&estructura_interna)->prioridad, buffer, sizeof(int));
+    offset += sizeof(int); 
+    memcpy(&str_len, buffer + offset, sizeof(int));
+    offset += sizeof(int);
+    estructura_interna->estado = malloc(str_len + 1);
+    memcpy(&estructura_interna)->estado, buffer + offset, str_len);
+    memcpy(&str_len, buffer + offset, sizeof(int));
+    offset += sizeof(int);
+    estructura_interna->semaforo = malloc(str_len + 1);
+    memcpy(&estructura_interna)->semaforo, buffer + offset, str_len);
+    memcpy(&estructura_interna)->valor_semaforo, buffer, sizeof(int));
+    offset += sizeof(int); 
+    memcpy(&str_len, buffer + offset, sizeof(int));
+    offset += sizeof(int);
+    estructura_interna->dispositivo_io = malloc(str_len + 1);
+    memcpy(&estructura_interna)->dispositivo_io, buffer + offset, str_len);
+    memcpy(&estructura_interna)->size_memoria, buffer, sizeof(int));
+    offset += sizeof(int); 
+    memcpy(&estructura_interna)->addr_memfree, buffer, sizeof(int));
+    offset += sizeof(int); 
+    memcpy(&estructura_interna)->origin_memread, buffer, sizeof(int));
+    offset += sizeof(int); 
+    memcpy(&estructura_interna)->dest_memread, buffer, sizeof(int));
+    offset += sizeof(int); 
+    memcpy(&estructura_interna)->origin_memwrite, buffer, sizeof(int));
+    offset += sizeof(int); 
+    memcpy(&estructura_interna)->dest_memwrite, buffer, sizeof(int));
+    offset += sizeof(int); 
+    memcpy(&estructura_interna)->respuesta_a_carpincho, buffer, sizeof(int));
+    offset += sizeof(int);
+
+
+    ejecutar_funcion_switch(buffer->codigo_operacion);
+
+}
+
+ejecutar_funcion_switch(void * buffer){
+    switch(codigo){
+        case MATE_INIT:
+            mate_init(mensaje);
+        case MATE_CLOSE: 
+            mate_close(mensaje);
+        case MATE_SEM_INIT: 
+            mate_sem_init(mensaje);            
+        case MATE_SEM_WAIT: 
+            mate_sem_wait(mensaje);            
+        case MATE_SEM_POST: 
+            mate_sem_post(mensaje);            
+        case MATE_SEM_DESTROY:
+            mate_sem_destroy(mensaje);            
+        case MATE_CALL_IO:
+            mate_call_io(mensaje);            
+        case MATE_MEMALLOC: 
+            mate_memalloc(mensaje);            
+        case MATE_MEMFREE:
+            mate_memfree(mensaje);            
+        case MATE_MEMREAD:
+            mate_memread(mensaje);            
+        case MATE_MEMWRITE: 
+            mate_memwrite(mensaje);      
+        break;      
+    }
+}
+
+
 
 //////////////// FUNCIONES GENERALES ///////////////////
 
@@ -239,7 +274,7 @@ int mate_memwrite(mate_instance *mate_inner_structure){
 
 }
 
-///////////////// CREACION HILOS ////////////////////////
+///////////////// CREACION HILOS //////////////////////// => habría que ponerlos dentro de alguna función
 
 pthread_t planficador_largo_plazo;
 pthread_create(&planficador_largo_plazo, NULL, (void*) new_a_ready, NULL);
@@ -292,7 +327,6 @@ void ready_a_exec(){
 ///////////////// ALGORITMOS ////////////////////////
 
 void ready_a_exec_SJF(){
-    // cómo sé cuáles carpinchos están ? --> por la lista?
 
         
 }

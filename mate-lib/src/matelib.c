@@ -6,17 +6,18 @@
 #include <string.h>
 #include <semaphore.h>
 
-// En base al ejemplo de la cátedra, acá fui poniendo lo que modifiqué
+
+// habria que cambiar el manejo de los errores para que lo maneje memoria
+
 //------------------General Functions---------------------/
 
-#define KERNEL_BACKEND = 1 // cuando el kernel responda, va a deolver 1.
-#define MEMORIA_BACKEND = 2 // cuando la memoria responda, va a responder 2
+
 #define ERROR_RESPUESTA_BACKEND = -1 // error a devolver cuando la respuesta del backend no sea ni 1 ni 2 como se espera
 #define ERROR_FUNCION_NO_VALIDA = -2 // error a devolver cuando se quiera usar una función del kernel pero se conectó con memoria
 
 typedef struct mate_inner_structure
 {
-    void *memory;
+    //void *memory;
     float *rafaga_anterior; // para despues poder calcular la estimación siguiente
     float *estimacion_anterior; // idem
     float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
@@ -25,24 +26,19 @@ typedef struct mate_inner_structure
     char *estado; // no sé cuánto nos va a servir, si no se puede hacer que sea estado_anterior y que nos evite tener otro para prioridad
  
   // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
-    sem_t *semaforo; 
+    char *semaforo; 
     int *valor_semaforo; 
-    mate_io_resource *dispositivo_io; 
-    void mnesaje_io;
-    int size_memoria;
-    mate_pointer addr_memfree;
-    mate_pointer origin_memread;
-    void *dest_memread;
-    void *origin_memwrite;
-    mate_pointer dest_memwrite;
+    char *dispositivo_io; 
+    int *size_memoria;
+    int *addr_memfree;
+    int *origin_memread;
+    int **dest_memread;
+    int **origin_memwrite;
+    int *dest_memwrite;
+    char *respuesta_a_carpincho;
 
 } mate_inner_structure;
 
-typdef struct{
-    // está bien usar este tipo de dato?
-    uint32_t size; //tamaño del payload
-    void *stream; // payload
-} t_buffer
 
 // que onda esto y la memoria que usa? quien se encarga de darsela y de borrarla?
 t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
@@ -50,53 +46,42 @@ t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INF
 // idem anterior ?
 int *respuesta_backend; // donde vamos a ir guardando la ultima respuesta del backend
 
+
 mate_inner_structure armar_paquete(mate_inner_structure estructura_interna){
 
-    // está bien hacer el malloc acá?
-    t_buffer *buffer = malloc(sizeof(t_buffer));
-    buffer->size = 
-    // necesito ayuda para el buffer_size?
-    
-    void *stream = malloc(buffer->size);
-    int offset = 0;
+    return _serialize(
+                          4 * sizeof(float) 
+                        + sizeof(int) 
+                        + 2 * sizeof(char*) 
+                        + sizeof(int) 
+                        + sizeof(char*) 
+                        + 6 * sizeof(int)
+                        + sizeof(int) 
+                       , "%f%f%f%f%d%s%s%d%s%s%d%d%d%d%d%d%s",
+                        estructura_interna->rafaga_anterior, 
+                        estructura_interna->estimacion_anterior, 
+                        estructura_interna->estimacion_siguiente, 
+                        estructura_interna->llegada_a_ready, 
+                        estructura_interna->prioridad, 
+                        string_length(estructura_interna->estado),
+                        estructura_interna->estado, 
+                        string_length(estructura_interna->semaforo),
+                        estructura_interna->semaforo, 
+                        estructura_interna->valor_semaforo, 
+                        string_length(estructura_interna->dispositivo_io),
+                        estructura_interna->dispositivo_io, 
+                        string_length(estructura_interna->mnesaje_io),
+                        estructura_interna->mnesaje_io, 
+                        estructura_interna->size_memoria, 
+                        estructura_interna->addr_memfree, 
+                        estructura_interna->origin_memread, 
+                        estructura_interna->dest_memread, 
+                        estructura_interna->origin_memwrite, 
+                        estructura_interna->dest_memwrite,
+                        string_length(estructura_interna->respuesta_a_carpincho),
+                        estructura_interna->respuesta_a_carpincho 
+                    );
 
-    memcpy(stram + offset, &memory, sizeof(/*que_size_1*/)):
-    offset += sizeof(/*que_size_1*/);
-    memcpy(stram + offset, &rafaga_anterior, sizeof(/*que_size_2*/)):
-    offset += sizeof(/*que_size_2*/);
-    memcpy(stram + offset, &estimacion_anterior, sizeof(/*que_size_3*/)):
-    offset += sizeof(/*que_size_3*/);
-    memcpy(stram + offset, &estimacion_siguiente, sizeof(/*que_size_4*/)):
-    offset += sizeof(/*que_size_4*/);
-    memcpy(stram + offset, &llegada_a_ready, sizeof(/*que_size_5*/)):
-    offset += sizeof(/*que_size_5*/);
-    memcpy(stram + offset, &prioridad, sizeof(/*que_size_6*/)):
-    offset += sizeof(/*que_size_6*/);
-    memcpy(stram + offset, &estado, sizeof(/*que_size_7*/)):
-    offset += sizeof(/*que_size_7*/);
-    memcpy(stram + offset, &semaforo, sizeof(/*que_size_8*/)):
-    offset += sizeof(/*que_size_8*/);
-    memcpy(stram + offset, &valor_semaforo, sizeof(/*que_size_9*/)):
-    offset += sizeof(/*que_size_9*/);
-    memcpy(stram + offset, &dispositivo_io, sizeof(/*que_size_10*/)):
-    offset += sizeof(/*que_size_10*/);
-    memcpy(stram + offset, &mnesaje_io, sizeof(/*que_size_11*/)):
-    offset += sizeof(/*que_size_11*/);
-    memcpy(stram + offset, &size_memoria, sizeof(/*que_size_12*/)):
-    offset += sizeof(/*que_size_12*/);
-    memcpy(stram + offset, &addr_memfree, sizeof(/*que_size_13*/)):
-    offset += sizeof(/*que_size_13*/);
-    memcpy(stram + offset, &origin_memread, sizeof(/*que_size_14*/)):
-    offset += sizeof(/*que_size_14*/);
-    memcpy(stram + offset, &dest_memread, sizeof(/*que_size_15*/)):
-    offset += sizeof(/*que_size_15*/);
-    memcpy(stram + offset, &origin_memwrite, sizeof(/*que_size_16*/)):
-    offset += sizeof(/*que_size_16*/);
-    memcpy(stram + offset, &dest_memwrite, sizeof(/*que_size_16*/)):
-    offset += sizeof(/*que_size_16*/);
-
-    return buffer;
-    // está bien retornarlo acá?
 }
 
 int mate_init(mate_instance *lib_ref, char *config)
@@ -111,22 +96,17 @@ int mate_init(mate_instance *lib_ref, char *config)
 
     socket = _connect(ip, port, logger); // crea la conexión con los ip y puerto del config
 
-    // está bien mandar el msj así?
     respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_INIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
     
-    if(respuesta_backend === KERNEL_BAKEND || respuesta_backend === MEMORIA_BACKEND ){ // para que el carpincho reciba siempre lo mismo. la respuesta del backend va a devolver 1 o 2 según si va con memoria o con kernel
-        return 0;  
+    if(respuesta_backend < 0 ){ 
+        return respuesta_backend;  
     }
     else{
-        return ERROR_RESPUESTA_BACKEND;
-    }
-    
-    // faltaría agregar algo que chequee si la conexión se pudo hacer y si no que devuelva otro error 
-        //de que no pudo. depende de lo que devuelva cuando no logra hacerla
-
+        return estructura_interna->respuesta_a_carpincho;
+    }    
 } 
 
-
+////////////////////// correcciones
 int mate_close(mate_instance *lib_ref)
 {
     mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
