@@ -15,17 +15,13 @@
 #define ERROR_RESPUESTA_BACKEND = -1 // error a devolver cuando la respuesta del backend no sea ni 1 ni 2 como se espera
 #define ERROR_FUNCION_NO_VALIDA = -2 // error a devolver cuando se quiera usar una función del kernel pero se conectó con memoria
 
+
+
+
 typedef struct mate_inner_structure
 {
-    //void *memory;
-    float *rafaga_anterior; // para despues poder calcular la estimación siguiente
-    float *estimacion_anterior; // idem
-    float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
-    float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
-    int *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
-    char *estado; // no sé cuánto nos va a servir, si no se puede hacer que sea estado_anterior y que nos evite tener otro para prioridad
- 
   // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
+    int *id;
     char *semaforo; 
     int *valor_semaforo; 
     char *dispositivo_io; 
@@ -36,7 +32,6 @@ typedef struct mate_inner_structure
     int **origin_memwrite;
     int *dest_memwrite;
     char *respuesta_a_carpincho;
-
 } mate_inner_structure;
 
 
@@ -46,32 +41,24 @@ t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INF
 // idem anterior ?
 int *respuesta_backend; // donde vamos a ir guardando la ultima respuesta del backend
 
+int id_carpincho;
 
 mate_inner_structure armar_paquete(mate_inner_structure estructura_interna){
 
     return _serialize(
-                          4 * sizeof(float) 
-                        + sizeof(int) 
-                        + 2 * sizeof(char*) 
                         + sizeof(int) 
                         + sizeof(char*) 
+                        + sizeof(int) 
+                        + sizeof(char*)                         
                         + 6 * sizeof(int)
                         + sizeof(int) 
-                       , "%f%f%f%f%d%s%s%d%s%s%d%d%d%d%d%d%s",
-                        estructura_interna->rafaga_anterior, 
-                        estructura_interna->estimacion_anterior, 
-                        estructura_interna->estimacion_siguiente, 
-                        estructura_interna->llegada_a_ready, 
-                        estructura_interna->prioridad, 
-                        string_length(estructura_interna->estado),
-                        estructura_interna->estado, 
+                       , "%d%s%d%s%d%d%d%d%d%d%s",
+                        estructura_interna->id,
                         string_length(estructura_interna->semaforo),
-                        estructura_interna->semaforo, 
+                        estructura_interna->semaforo,
                         estructura_interna->valor_semaforo, 
                         string_length(estructura_interna->dispositivo_io),
                         estructura_interna->dispositivo_io, 
-                        string_length(estructura_interna->mnesaje_io),
-                        estructura_interna->mnesaje_io, 
                         estructura_interna->size_memoria, 
                         estructura_interna->addr_memfree, 
                         estructura_interna->origin_memread, 
@@ -84,10 +71,15 @@ mate_inner_structure armar_paquete(mate_inner_structure estructura_interna){
 
 }
 
+int main(){
+    id_carpincho = 0;
+}
+
 int mate_init(mate_instance *lib_ref, char *config)
 {
-    mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)   // creo la estructura interna 
+    mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info);   // creo la estructura interna 
 
+    estructura_interna->id = id_carpincho;
 
     // falta leer archivo config que recibe la función para tener los datos de conexión, como se hace?
     
@@ -98,10 +90,13 @@ int mate_init(mate_instance *lib_ref, char *config)
 
     respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_INIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
     
+    // acá se tendría que quedar esperando con recv()
+
     if(respuesta_backend < 0 ){ 
         return respuesta_backend;  
     }
     else{
+        id_carpincho ++;
         return estructura_interna->respuesta_a_carpincho;
     }    
 } 
@@ -115,6 +110,8 @@ int mate_close(mate_instance *lib_ref)
     
     // si el mensaje no logra mandarse, qué devuelve _send_message? 
         //para ver si lo sumo al if de abajo y devuelvo otro error
+
+    // acá se tendría que quedar esperando con recv()    
 
     if(respuesta_backend === KERNEL_BAKEND || respuesta_backend === MEMORIA_BACKEND ){ // para que el carpincho reciba siempre lo mismo. la respuesta del backend va a devolver 1 o 2 según si va con memoria o con kernel
         return 0;

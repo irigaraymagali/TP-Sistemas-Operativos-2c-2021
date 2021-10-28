@@ -9,31 +9,20 @@
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
 
-// tendría que conocer la estructura interna acá también
-typedef struct mate_inner_structure
+
+t_list lista_carpinchos; // crear lista carpinchos con el tipo de dato de las commons
+
+
+typedef struct data_capincho
 {
-    //void *memory;
+    int id;
     float *rafaga_anterior; // para despues poder calcular la estimación siguiente
     float *estimacion_anterior; // idem
     float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
     float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
-    int *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
+    bool *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
     char *estado; // no sé cuánto nos va a servir, si no se puede hacer que sea estado_anterior y que nos evite tener otro para prioridad
- 
-  // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
-    char *semaforo; 
-    int *valor_semaforo; 
-    char *dispositivo_io; 
-    char *mnesaje_io;
-    int *size_memoria;
-    int *addr_memfree;
-    int *origin_memread;
-    int **dest_memread;
-    int **origin_memwrite;
-    int *dest_memwrite;
-    int *respuesta_a_carpincho;
-
-} mate_inner_structure;
+} data_carpincho;
 
 /* Estados:*/
     t_queue* new;
@@ -69,8 +58,6 @@ t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INF
     tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
     estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
     alfa = config_get_int_value(config, "ALFA");
-
-  
 
 
 // Colas estados y sus mutex:
@@ -130,6 +117,14 @@ int main(int argc, char ** argv){
 	inicializar_colas();
 	//inicializar_configuracion();
 
+    lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
+
+
+    // destruir la lista, esto por si se apaga todo, habria que ponerle que espere a la finalización de todos los hilos
+    list_clean_and_destroy_elements(lista_carpinchos,/*void(*element_destroyer)(void*))*/);
+
+    destroy(carpincho);
+
 } 
 
 
@@ -143,58 +138,6 @@ int crear_socket_listener(){
 
 }
 
-
-int recibir_mensaje(){
-
-    int str_len;
-    char* string;
-    int offset = 0;
-    mate_inner_structure* estructura_interna = malloc(sizeof(mate_inner_structure));
-
-    void* buffer = _recive_message(buffer, logger);
-    memcpy(&(estructura_interna)->rafaga_anterior, buffer, sizeof(float));
-    offset += sizeof(float); 
-    memcpy(&estructura_interna)->estimacion_anterior, buffer, sizeof(float));
-    offset += sizeof(float); 
-    memcpy(&estructura_interna)->estimacion_siguiente, buffer, sizeof(float));
-    offset += sizeof(float); 
-    memcpy(&estructura_interna)->llegada_a_ready, buffer, sizeof(float));
-    offset += sizeof(float); 
-    memcpy(&estructura_interna)->prioridad, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&str_len, buffer + offset, sizeof(int));
-    offset += sizeof(int);
-    estructura_interna->estado = malloc(str_len + 1);
-    memcpy(&estructura_interna)->estado, buffer + offset, str_len);
-    memcpy(&str_len, buffer + offset, sizeof(int));
-    offset += sizeof(int);
-    estructura_interna->semaforo = malloc(str_len + 1);
-    memcpy(&estructura_interna)->semaforo, buffer + offset, str_len);
-    memcpy(&estructura_interna)->valor_semaforo, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&str_len, buffer + offset, sizeof(int));
-    offset += sizeof(int);
-    estructura_interna->dispositivo_io = malloc(str_len + 1);
-    memcpy(&estructura_interna)->dispositivo_io, buffer + offset, str_len);
-    memcpy(&estructura_interna)->size_memoria, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->addr_memfree, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->origin_memread, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->dest_memread, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->origin_memwrite, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->dest_memwrite, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->respuesta_a_carpincho, buffer, sizeof(int));
-    offset += sizeof(int);
-
-
-    ejecutar_funcion_switch(buffer->codigo_operacion);
-
-}
 
 ejecutar_funcion_switch(void * buffer){
     switch(codigo){
@@ -229,9 +172,21 @@ ejecutar_funcion_switch(void * buffer){
 //////////////// FUNCIONES GENERALES ///////////////////
 
 int mate_init(mate_instance *mate_inner_structure){
+    
+    data_carpincho carpincho = malloc(size_of(data_carpincho);
+    carpincho->id = mate_inner_structure->id;
+    carpincho->rafaga_anterior = 0;
+    carpincho->estimacion_anterior = 0;
+    carpincho->estimacion_siguiente = /*calculo para estimación que va a ser la misma para todos*/
+    // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
+    carpincho->prioridad = false;
+    carpincho->estado = 'N';
+
+
+    list_add_in_index(lista_carpinchos, id_carpincho, carpincho);
+
+
     /*
-    - completar con id
-    - completar la estructura con por ej los valores del config de la rafaga y estimacion
     - reservar espacio en memoria 
     - avisar que llegó un nuevo carpincho a new => post a new_con_elementos
     - una vez que está en EXEC retornar 0
@@ -239,34 +194,26 @@ int mate_init(mate_instance *mate_inner_structure){
 }
 
 int mate_close(mate_instance *mate_inner_structure){
-    /* conectar con memoria para borrar todo*/
+    
+    int id_carpincho_a_eliminar = mate_inner_structure->id;
+
+    list_remove_and_destroy_element(lista_carpinchos, id_carpincho_a_eliminar, /*void(*element_destroyer)(void*)*/)
+    
+    //acá estamos eliminando lo que hay en ese index pero medio que dejamos ese index muerto
 }
 
 int mate_sem_init(mate_instance *mate_inner_structure){
-    mate_instance->sem_instance = malloc(sizeof(sem_t));
 
-        /* 
-           guardar el semaforo en la estructura del carpincho
-        */
-        
-    return sem_init(mate_instance->sem_instance, 0, value); // qué pasa si quiero inicializar más de un hilo?
-
+    
+  
 }
 
 int mate_sem_wait(mate_instance *mate_inner_structure){
-   /* 
-        cuando le hagan post le retorne 0 por la conexión así ahí puede seguir
-        meter en lista de blocked
-    */
-    sem_wait(sem); //
-    return pasar_a_ready_o_bloqueado_ready();
+
 }
 
 int mate_sem_post(mate_instance *mate_inner_structure){
-   /* 
-        
-    */
-    sem_post(sem); //
+
 }
 
 int mate_sem_destroy(mate_instance *mate_inner_structure) {
