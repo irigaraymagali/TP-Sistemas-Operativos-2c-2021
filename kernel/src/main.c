@@ -239,18 +239,27 @@ int mate_memwrite(mate_instance *mate_inner_structure){
 
 }
 
+///////////////// CREACION HILOS ////////////////////////
+
+pthread_t planficador_largo_plazo;
+pthread_create(&planficador_largo_plazo, NULL, (void*) new_a_ready, NULL);
+
+pthread_t planficador_corto_plazo;
+pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
+
+pthread_t planficador_mediano_plazo;
+pthread_create(&planficador_mediano_plazo, NULL, (void*) x, NULL); //FALTA función
 
 
 ///////////////// PLANIFICACIÓN ////////////////////////
 
-
-void new_a_ready(){ //hilo
+void new_a_ready(){
 
     while(1){
-        sem_wait(&cola_new_con_elementos); //si hay procesos en new
-        sem_wait(sem_grado_multiprogramacion); //grado multiprogramacion --> post cuando sale de exec
+        //sem_wait(&cola_new_con_elementos); //si hay procesos en new  --> quien hace el post?, cuando se inicializa?
+        sem_wait(sem_grado_multiprogramacion); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC!
 		
-       // saco de cola new y pongo en cola ready al primero:
+       // saco de cola new y pongo en cola ready al primero (FIFO):
         pthread_mutex_lock(&sem_cola_ready; 
 		pthread_mutex_lock(&sem_cola_new);
 
@@ -260,19 +269,18 @@ void new_a_ready(){ //hilo
 		pthread_mutex_unlock(&sem_cola_new);
 		pthread_mutex_unlock(&sem_cola_ready);
 
-		sem_post(&cola_ready_con_elementos); //avisa que hay procesos en ready 
+		sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
     }
     
 }
 
 //calcular ráfaga siguiente. Esto se debería hacer para todos los carpinchos cuando ingresan a la cola de ready
-//float calculo_rafaga_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * alfa
+//      float calculo_rafaga_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * alfa
 
-
-// quién llamaría a la función
 void ready_a_exec(){  
-    sem_wait(&cola_ready_con_elementos); //espera que le avisen que hay uno en ready    
-    // depende del algoritmo que tenga en el config (algoritmo_planificacion)
+    sem_wait(&cola_ready_con_elementos); //espera aviso que hay en ready    
+
+    // depende del algoritmo en el config (algoritmo_planificacion)
     if(algoritmo_planificacion === "SJF"){
         ready_a_exec_SJF();
     }
@@ -281,14 +289,18 @@ void ready_a_exec(){
     }
 }
 
+///////////////// ALGORITMOS ////////////////////////
 
 void ready_a_exec_SJF(){
-    // cómo sé cuáles carpinchos están 
+    // cómo sé cuáles carpinchos están ? --> por la lista?
 
+        
 }
 
 void ready_a_exec_HRRN(){
     
+
+       
 }
 
 void exec(){
