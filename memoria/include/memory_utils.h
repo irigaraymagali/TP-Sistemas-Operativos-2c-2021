@@ -97,5 +97,7 @@ void send_message_swamp(int command, void* payload, int pay_len);
 void deserealize_payload(void* payload);
 int getframeNoAsignadoEnMemoria();
 int frameAsignado(int unFrame);
+int memfree(int direccionLogica, int idProcess);
+Pagina *getPageDe(int processId,int nroPagina);
 
 #endif

@@ -306,6 +306,8 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             }
 
             paginaSiguienteALaUltima->isfree = BUSY;
+
+            list_iterator_destroy(iterator);
             
             cantidadDePaginasAAgregar--;
         }
@@ -439,6 +441,67 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
     list_iterator_destroy(iterator);
 
     return -1;
+}
+
+int memfree(int direccionLogicaBuscada, int idProcess){
+    
+    int paginaActual=1;
+
+    TablaDePaginasxProceso *tablaDelProceso = get_pages_by(idProcess);
+
+    int dirAllocFinal = tablaDelProceso->lastHeap;
+    int dirAllocActual=0;
+
+
+    while(dirAllocActual <= dirAllocFinal){
+        
+        if (dirAllocActual == dirAllocFinal)
+        {
+            paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
+            
+            int frameBuscado = getFrameDeUn(idProcess, paginaActual);
+
+            int posicionNextAllocDentroDelFrame = (dirAllocActual + 2*sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
+
+            int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
+
+            memcpy(memoria + offset,(void *) FREE, sizeof(uint8_t));
+        }
+        else
+        {
+            paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
+            
+            int frameBuscado = getFrameDeUn(idProcess, paginaActual);
+
+            int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
+
+            int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
+
+            memcpy(&dirAllocActual, memoria + offset, sizeof(uint32_t));
+        }
+        
+    }
+
+    //falta hacer lo de liberar paginas pero deberia preguntar si deberia compactar y si debe llevar algun procesdimiento
+    
+    return -5;
+}
+
+Pagina *getPageDe(int processId,int nroPagina){
+
+    TablaDePaginasxProceso* temp = get_pages_by(processId);
+
+    t_list_iterator* iterator = list_iterator_create(temp->paginas);
+    
+   Pagina *tempPagina = list_iterator_next(iterator);
+    
+    while (tempPagina->pagina != nroPagina)
+    {
+       tempPagina = list_iterator_next(iterator);
+    }
+    
+    list_iterator_destroy(iterator);
+    return tempPagina;
 }
 
 void inicializarUnProceso(int idDelProceso){
