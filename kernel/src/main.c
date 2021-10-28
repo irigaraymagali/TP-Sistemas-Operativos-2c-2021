@@ -283,18 +283,16 @@ void ready_a_exec(){
     // depende del algoritmo en el config (algoritmo_planificacion)
     if(algoritmo_planificacion === "SJF"){
         ready_a_exec_SJF();
-        correr_SJF;
     }
     else{
         ready_a_exec_HRRN();
-        correr_HRRN;
     }
 }
 
+///////////////// ALGORITMOS ////////////////////////
 
 void ready_a_exec_SJF(){
     // cómo sé cuáles carpinchos están ? --> por la lista?
-
 
         
 }
@@ -310,14 +308,4 @@ void exec(){
     // carpicho_id_listo_para_exec()
 }
 
-///////////////// ALGORITMOS ////////////////////////
 
-void correr_SJF(){
-        //falta
-
-        //con la lista de exec 
-}
-
-void correr_HRRN(){
-        //falta
-}
