@@ -91,7 +91,10 @@ int memalloc(int espacioAReservar, int processId){
 
             int espacioTotal = tempLastHeap + espacioAReservar;
             memcpy(memoria + offset + sizeof(uint32_t), &espacioTotal, sizeof(uint32_t));
-            offset = offset + HEAP_METADATA_SIZE + espacioAReservar;
+            offset = offset + 2*sizeof(uint32_t);
+
+            memcpy(memoria + offset, &nuevoHeap->isfree, sizeof(uint8_t));
+            offset = offset  + espacioAReservar - 2*sizeof(uint32_t);
 
             memcpy(memoria + offset, &nuevoHeap->prevAlloc, sizeof(uint32_t));
             offset = offset + sizeof(uint32_t);
@@ -99,7 +102,7 @@ int memalloc(int espacioAReservar, int processId){
             memcpy(memoria + offset, &nuevoHeap->nextAlloc, sizeof(uint32_t));
             offset = offset + sizeof(uint32_t);
 
-            memcpy(memoria + offset, &nuevoHeap->isfree, sizeof(uint8_t));
+            
 
             temp->lastHeap = tempLastHeap + espacioAReservar;
 
@@ -119,8 +122,10 @@ int memalloc(int espacioAReservar, int processId){
             void* espacioAuxiliar = malloc(espacioDePaginasAux + tamanioDePagina);
             offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - ((mayorNroDePagina-1) * tamanioDePagina));
 
-            int espacioTotal = tempLastHeap + espacioAReservar;
+            int espacioTotal = tempLastHeap + espacioAReservar + HEAP_METADATA_SIZE;
             memcpy(memoria + offset + sizeof(uint32_t), &espacioTotal, sizeof(uint32_t));
+
+            memcpy(memoria + offset + 2*sizeof(uint32_t),&nuevoHeap->isfree, sizeof(uint32_t));
 
 
             //obtener ultima pagina
@@ -453,9 +458,9 @@ int memfree(int direccionLogicaBuscada, int idProcess){
     int dirAllocActual=0;
 
 
-    while(dirAllocActual <= dirAllocFinal){
+    while((dirAllocActual <= direccionLogicaBuscada) && dirAllocFinal>=direccionLogicaBuscada){
         
-        if (dirAllocActual == dirAllocFinal)
+        if (dirAllocActual == direccionLogicaBuscada)
         {
             paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
             
@@ -465,7 +470,10 @@ int memfree(int direccionLogicaBuscada, int idProcess){
 
             int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
 
-            memcpy(memoria + offset,(void *) FREE, sizeof(uint8_t));
+            int libre= FREE;
+            memcpy(memoria + offset,&libre, sizeof(uint8_t));
+
+            return 1;
         }
         else
         {
