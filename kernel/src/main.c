@@ -70,20 +70,12 @@ t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INF
     estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
     alfa = config_get_int_value(config, "ALFA");
 
-// Inicializacion de semaforos:
-    sem_init(&sem_grado_multiprogramacion,0,grado_multiprogramacion);  
-	sem_init(&sem_grado_multiprocesamiento, 0,grado_multiprocesamiento); 
+  
 
-	sem_init(&cola_new_con_elementos,0,0);
-    sem_init(&cola_ready_con_elementos,0,0);
-    sem_init(&cola_exec_con_elementos,0,0);
-    sem_init(&cola_exit_con_elementos,0,0);
-    sem_init(&cola_blocked_con_elementos,0,0);
-    sem_init(&cola_suspended_blocked_con_elementos,0,0);
-    sem_init(&cola_suspended_ready_con_elementos,0,0); 
 
-// Colas estados:
-	new = queue_create();
+// Colas estados y sus mutex:
+void inicializar_colas(){
+    new = queue_create();
 	pthread_mutex_init(&sem_cola_new, NULL);
 
 	ready = queue_create();
@@ -105,11 +97,38 @@ t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INF
 	pthread_mutex_init(&sem_cola_suspended_ready, NULL);
 	
     pthread_mutex_init(&socket_memoria, NULL);
-
 }
+
+cola_new_con_elementos;
+cola_ready_con_elementos;
+cola_exec_con_elementos;
+cola_exit_con_elementos;
+cola_blocked_con_elementos;
+cola_suspended_blocked_con_elementos;
+cola_suspended_ready_con_elementos;
+
+// Inicializacion de semaforos:
+void inicializar_semaforos(){
+    sem_init(&sem_grado_multiprogramacion,0,grado_multiprogramacion);  
+	sem_init(&sem_grado_multiprocesamiento, 0,grado_multiprocesamiento); 
+
+	sem_init(&cola_new_con_elementos,0,0);
+    sem_init(&cola_ready_con_elementos,0,0);
+    sem_init(&cola_exec_con_elementos,0,0);
+    sem_init(&cola_exit_con_elementos,0,0); //hace falta tenerla? 
+    sem_init(&cola_blocked_con_elementos,0,0);
+    sem_init(&cola_suspended_blocked_con_elementos,0,0);
+    sem_init(&cola_suspended_ready_con_elementos,0,0); 
+}
+ 
 
 int main(int argc, char ** argv){
 
+    crear_hilos_planificadores();
+    crear_hilos_CPU;
+	inicializar_semaforos();
+	inicializar_colas();
+	//inicializar_configuracion();
 
 } 
 
@@ -274,16 +293,26 @@ int mate_memwrite(mate_instance *mate_inner_structure){
 
 }
 
-///////////////// CREACION HILOS //////////////////////// => habría que ponerlos dentro de alguna función
+///////////////// CREACION HILOS //////////////////////// 
 
-pthread_t planficador_largo_plazo;
-pthread_create(&planficador_largo_plazo, NULL, (void*) new_a_ready, NULL);
+void crear_hilos_planificadores(){
 
-pthread_t planficador_corto_plazo;
-pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
+    pthread_t planficador_largo_plazo;
+    pthread_create(&planficador_largo_plazo, NULL, (void*) new_a_ready, NULL);
 
-pthread_t planficador_mediano_plazo;
-pthread_create(&planficador_mediano_plazo, NULL, (void*) x, NULL); //FALTA función
+    pthread_t planficador_corto_plazo;
+    pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
+
+    pthread_t planficador_mediano_plazo;
+    pthread_create(&planficador_mediano_plazo, NULL, (void*) x, NULL); //FALTA función "x"
+}
+
+void crear_hilos_CPU(){
+
+    //segun grado multiprocesamiento
+    
+  
+}
 
 
 ///////////////// PLANIFICACIÓN ////////////////////////
@@ -295,7 +324,7 @@ void new_a_ready(){
         sem_wait(sem_grado_multiprogramacion); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC!
 		
        // saco de cola new y pongo en cola ready al primero (FIFO):
-        pthread_mutex_lock(&sem_cola_ready; 
+        pthread_mutex_lock(&sem_cola_ready); 
 		pthread_mutex_lock(&sem_cola_new);
 
         queue_push(ready, *queue_peek(new);
@@ -316,7 +345,7 @@ void ready_a_exec(){
     sem_wait(&cola_ready_con_elementos); //espera aviso que hay en ready    
 
     // depende del algoritmo en el config (algoritmo_planificacion)
-    if(algoritmo_planificacion === "SJF"){
+    if(algoritmo_planificacion == "SJF"){
         ready_a_exec_SJF();
     }
     else{
@@ -328,11 +357,22 @@ void ready_a_exec(){
 
 void ready_a_exec_SJF(){
 
+    //chequear grado multiprocesamiento
+    sem_wait(&sem_grado_multiprocesamiento); // --> falta el post
+
+    //fun que de la cola de exec te da el que debe ejecutar ahora ("ejecutar el algoritmo")
+    
+    //sacar de la cola de ready al elegido y ponerlo en la la lista de exec
+
+    //asignarle un hilo cpu
+
+
+    //  o sino que todo eso se haga directamente en ready_a_exec y que ready_a_exec sea directamnete el algoritmo que devuelve el proeso que debe ejecutar?
+    
         
 }
 
 void ready_a_exec_HRRN(){
-    
 
        
 }
