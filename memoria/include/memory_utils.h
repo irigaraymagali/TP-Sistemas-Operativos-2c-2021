@@ -80,8 +80,6 @@ int lRUACTUAL;
 int tamanioDeMemoria;
 int cantidadDePaginasPorProceso;
 
-
-void comandos(int valor);
 void initPaginacion();
 int memalloc(int espacioAReservar, int processId);
 int entraEnElEspacioLibre(int espacioAReservar, int processId);
