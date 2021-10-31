@@ -4,7 +4,7 @@
         {
             "label": "Make",
             "type": "shell",
-            "command": "make",
+            "command": "make test",
             "problemMatcher": [
                 "$gcc"
             ]

@@ -1,5 +1,5 @@
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef MATELIB_H
+#define MATELIB_H
 // habría que cambiarlo por MATELIB_H_INCLUDED pero no se si impactará en otro lado
 
 
