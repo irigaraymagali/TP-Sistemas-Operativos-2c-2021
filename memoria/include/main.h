@@ -25,6 +25,8 @@
 
 
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger);
+void deserialize_init_process(int* pid, void* payload);
+void deserialize_mem_alloc(int* pid, int* espacioAReservar, void* payload);
 void init_swamp_connection();
 void free_memory();
 
