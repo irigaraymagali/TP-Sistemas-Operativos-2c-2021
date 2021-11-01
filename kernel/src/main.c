@@ -18,9 +18,11 @@ int main(int argc, char ** argv){
     crear_hilos_planificadores();
 	inicializar_semaforos();
 	inicializar_colas();
-	//inicializar_configuracion();
+    leer_archivo_config();
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
+
+    _start_server(puerto_escucha, handler, logger);
 
     // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
     free_memory();
@@ -120,6 +122,7 @@ void crear_hilos_CPU(){ // creación de los hilos CPU
 }
 
 void hiloCPU(){ // lo que necesitemos que el CPU esté haciendo
+
 }
 
 
@@ -134,34 +137,48 @@ int crear_socket_listener(){
 }
 
 
-ejecutar_funcion_switch(void * buffer){
-    switch(codigo){
+void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
+    log_info(logger, "Recibí un mensaje");
+   
+   mate_inner_structure mensaje;
+
+    switch(opcode){
         case MATE_INIT:
+            mensaje = /*deserializar*/
             mate_init(mensaje);
         case MATE_CLOSE: 
+            mensaje = /*deserializar*/
             mate_close(mensaje);
         case MATE_SEM_INIT: 
+            mensaje = /*deserializar*/
             mate_sem_init(mensaje);            
         case MATE_SEM_WAIT: 
+            mensaje = /*deserializar*/
             mate_sem_wait(mensaje);            
         case MATE_SEM_POST: 
+            mensaje = /*deserializar*/
             mate_sem_post(mensaje);            
         case MATE_SEM_DESTROY:
+            mensaje = /*deserializar*/
             mate_sem_destroy(mensaje);            
         case MATE_CALL_IO:
+            mensaje = /*deserializar*/
             mate_call_io(mensaje);            
         case MATE_MEMALLOC: 
+            mensaje = /*deserializar*/
             mate_memalloc(mensaje);            
         case MATE_MEMFREE:
+            mensaje = /*deserializar*/
             mate_memfree(mensaje);            
         case MATE_MEMREAD:
+            mensaje = /*deserializar*/
             mate_memread(mensaje);            
         case MATE_MEMWRITE: 
+            mensaje = /*deserializar*/
             mate_memwrite(mensaje);      
         break;      
     }
 }
-
 
 
 
