@@ -9,7 +9,7 @@
 
 #endif
 
-t_list lista_carpinchos; // crear lista carpinchos con el tipo de dato de las commons
+t_list lista_carpinchos; // lista carpinchos con el tipo de dato de las commons
 
 
 typedef struct data_carpincho // la data que le importa tener al backend
@@ -36,9 +36,11 @@ typedef struct semaforo
 {
     char nombre;
     int valor;
+    t_list en_espera;
 } semaforo;
 
 
+t_list semaforos_carpinchos;
 
 /* Estados:*/
     t_queue* new;

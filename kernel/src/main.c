@@ -21,7 +21,7 @@ int main(int argc, char ** argv){
     leer_archivo_config();
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
-    lista_semaforos = list_create(); // crear lista para ir guardando los semaforos
+    semaforos_carpinchos = list_create(); // crear lista para ir guardando los semaforos
 
     void* buffer = _recive_message(buffer, logger); // recibir mensajes de la lib
     deserializar(buffer);
@@ -34,8 +34,8 @@ int main(int argc, char ** argv){
 } 
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
-// Colas estados y sus mutex:
-void inicializar_colas(){
+
+void inicializar_colas(){ // Colas estados y sus mutex:
     new = queue_create();
 	pthread_mutex_init(&sem_cola_new, NULL);
 
@@ -59,10 +59,9 @@ void inicializar_colas(){
 	
     pthread_mutex_init(&socket_memoria, NULL); //falta declarar socket_memoria
 }
-// Inicializacion de semaforos:
-void inicializar_semaforos(){
+void inicializar_semaforos(){ // Inicializacion de semaforos:
 
-// (tener en cuenta: el segundo parámetro deberia ser 1 si es compartido entre carpinchos)
+    // (tener en cuenta: el segundo parámetro deberia ser 1 si es compartido entre carpinchos)
 
     sem_init(&sem_grado_multiprogramacion,0,grado_multiprogramacion);  
 	sem_init(&sem_grado_multiprocesamiento, 0,grado_multiprocesamiento); 
@@ -76,7 +75,6 @@ void inicializar_semaforos(){
     sem_init(&cola_blocked_con_elementos,0,0);
     sem_init(&cola_suspended_blocked_con_elementos,0,0);
     sem_init(&cola_suspended_ready_con_elementos,0,0); 
-
 
     //hacer sem_destroy al final
 }
@@ -103,7 +101,7 @@ void free_memory(){
 
     config_destroy(config);
     list_clean_and_destroy_elements(lista_carpinchos,/*void(*element_destroyer)(void*))*/);
-    list_clean_and_destroy_elements(lista_semaforos,/*void(*element_destroyer)(void*))*/);    
+    list_clean_and_destroy_elements(semaforos_carpinchos,/*void(*element_destroyer)(void*))*/);    
     log_destroy(logger);
 
     // pthread_mutex_destroy
@@ -133,7 +131,6 @@ void crear_hilos_CPU(){ // creación de los hilos CPU
 	}
 }
 
-//Alternativa ¿?:
 void crear_semaforos_CPU(){
 	lista_semaforos_CPU = list_create();
 	for(int i= 0; i< grado_multiprocesamiento; i++){
@@ -141,12 +138,9 @@ void crear_semaforos_CPU(){
 	}
 }
 
-
 int crear_socket_listener(){
 
-    //leer archivo config para tener puerto_ escucha
-
-    int puerto_escucha;
+    //leer archivo config para tener puerto_escucha
 
     return _create_socket_listenner(puerto_escucha, logger);
 
@@ -280,6 +274,8 @@ int mate_sem_init(int id_carpincdho, mate_sem_name nombre_semaforo, int valor_se
     semaforo->nombre = nombre_semaforo;
     semaforo->valor = valor_semaforo;
 
+    list_add(semaforos_carpinchos,semaforo);
+
     // responder al carpincho que todo ok 
 
 }
@@ -296,7 +292,27 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){
         return esIgualASemaforo(semaforo, nombre_semaforo);
     }
 
-    list_find(lista_semaforos, esIgualA; // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
+    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
+
+        // si el sem esta en 0 le puedo hacer wait?
+
+        (list_find(semaforos_carpinchos, esIgualA))->valor_semaforo -= 1;
+
+        if(semaforo->valor_semaforo<=0){
+            
+            // logica para que el carpincho se quede esperando el post si es que tiene que hacerlo
+        
+        }
+        else
+        {
+           list_add(semaforo->en_espera, id_carpincho);
+           // cual es la dif entre hacerlo como queue o como list?
+        }
+    }
+    else
+    {
+        log_info(logger, "se intento hacer wait de un semaforo no inicializado");
+    }
 
 }
 
