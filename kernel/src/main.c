@@ -22,6 +22,9 @@ int main(int argc, char ** argv){
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
 
+    void* buffer = _recive_message(buffer, logger); // recibir mensajes de la lib
+    deserializar(buffer);
+
     _start_server(puerto_escucha, handler, logger);
 
     // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
@@ -147,45 +150,90 @@ int crear_socket_listener(){
 
 }
 
-void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
+
+int deserializar(buffer){
+
+    int str_len;
+    char* string;
+    int offset = 0;
+    data_carpincho* estructura_interna = malloc(sizeof(data_carpincho));
+
+    // int id
+    memcpy(&(estructura_interna)->id, buffer, sizeof(int));
+    offset += sizeof(int); 
+
+    // char semaforo
+    memcpy(&str_len, buffer + offset, sizeof(int));
+    offset += sizeof(int);
+    estructura_interna->semaforo = malloc(str_len + 1);
+    memcpy(&estructura_interna)->semaforo, buffer + offset, str_len);
+
+    // int valor_semaforo
+    memcpy(&(estructura_interna)->valor_semaforo, buffer, sizeof(int));
+    offset += sizeof(int);
+
+    // char dispositivo_io
+    memcpy(&str_len, buffer + offset, sizeof(int));
+    offset += sizeof(int);
+    estructura_interna->dispositivo_io = malloc(str_len + 1);
+    memcpy(&estructura_interna)->dispositivo_io, buffer + offset, str_len);
+ 
+    // int size_memoria
+    memcpy(&(estructura_interna)->size_memoria, buffer, sizeof(int));
+    offset += sizeof(int); 
+
+    // int addr_memfree
+    memcpy(&(estructura_interna)->addr_memfree, buffer, sizeof(int));
+    offset += sizeof(int); 
+
+    // int origin_memread
+    memcpy(&(estructura_interna)->origin_memread, buffer, sizeof(int));
+    offset += sizeof(int); 
+
+    // int dest_memread
+    memcpy(&(estructura_interna)->dest_memread, buffer, sizeof(int));
+    offset += sizeof(int); 
+
+    // int origin_memwrite
+    memcpy(&(estructura_interna)->origin_memwrite, buffer, sizeof(int));
+    offset += sizeof(int); 
+
+    // int dest_memwrite
+    memcpy(&(estructura_interna)->dest_memwrite, buffer, sizeof(int));
+    offset += sizeof(int); 
+
+    handler(buffer->opcode, estructura_interna);
+    free(estructura_interna);
+}
+
+
+void handler( int opcode, data_carpincho estructura_interna){
+    
     log_info(logger, "Recibí un mensaje");
-   
-   mate_inner_structure mensaje;
 
     switch(opcode){
         case MATE_INIT:
-            mensaje = /*deserializar*/
-            mate_init(mensaje->id);
+            mate_init(estructura_interna->id);
         case MATE_CLOSE: 
-            mensaje = /*deserializar*/
-            mate_close(mensaje->id);
+            mate_close(estructura_interna->id);
         case MATE_SEM_INIT: 
-            mensaje = /*deserializar*/
-            mate_sem_init(mensaje->id, mensaje->semaforo, mensaje->valor_semaforo);            
+            mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo);            
         case MATE_SEM_WAIT: 
-            mensaje = /*deserializar*/
-            mate_sem_wait(mensaje->id, mensaje->semaforo);            
+            mate_sem_wait(estructura_interna->id, estructura_interna->semaforo);            
         case MATE_SEM_POST: 
-            mensaje = /*deserializar*/
-            mate_sem_post(mensaje->id, mensaje->semaforo);            
+            mate_sem_post(estructura_interna->id, estructura_interna->semaforo);            
         case MATE_SEM_DESTROY:
-            mensaje = /*deserializar*/
-            mate_sem_destroy(mensaje->id, mensaje->semaforo);            
+            mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo);            
         case MATE_CALL_IO:
-            mensaje = /*deserializar*/
-            mate_call_io(mensaje->id, mensaje->dispositivo_io);            
+            mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io);            
         case MATE_MEMALLOC: 
-            mensaje = /*deserializar*/
-            mate_memalloc(mensaje->id, mensaje->size_memoria);            
+            mate_memalloc(estructura_interna->id, estructura_interna->size_memoria);            
         case MATE_MEMFREE:
-            mensaje = /*deserializar*/
-            mate_memfree(mensaje->id, mensaje->addr_memfree);            
+            mate_memfree(estructura_interna->id, estructura_interna->addr_memfree);            
         case MATE_MEMREAD:
-            mensaje = /*deserializar*/
-            mate_memread(mensaje->id, mensaje->origin_memread, mensaje->dest_memread, mensaje->size_memoria);            
+            mate_memread(estructura_interna->id, estructura_interna->origin_memread, estructura_interna->dest_memread, estructura_interna->size_memoria);            
         case MATE_MEMWRITE: 
-            mensaje = /*deserializar*/
-            mate_memwrite(mensaje->id, mensaje->origin_memwrite, mensaje->dest_memwrite, mensaje->size_memoria);      
+            mate_memwrite(estructura_interna->id, estructura_interna->origin_memwrite, estructura_interna->dest_memwrite, estructura_interna->size_memoria);      
         break;  
 
     }
@@ -208,18 +256,11 @@ int mate_init(int id_carpincho){
 
     list_add_in_index(lista_carpinchos, id_carpincho, carpincho);
 
-    /*
-    - reservar espacio en memoria 
-    - avisar que llegó un nuevo carpincho a new => post a new_con_elementos
-    - una vez que está en EXEC retornar 0
-    */
 }
 
 int mate_close(int id_carpincho){
-    
-    int id_carpincho_a_eliminar = mate_inner_structure->id;
 
-    list_remove_and_destroy_element(lista_carpinchos, id_carpincho_a_eliminar, /*void(*element_destroyer)(void*)*/)
+    list_remove_and_destroy_element(lista_carpinchos, id_carpincho, /*void(*element_destroyer)(void*)*/)
     
     // acá estamos eliminando lo que hay en ese index pero medio que dejamos ese index muerto
 }
@@ -227,7 +268,7 @@ int mate_close(int id_carpincho){
 
 //////////////// FUNCIONES SEMAFOROS ///////////////////
 
-int mate_sem_init(int id_carpincho, mate_sem_name nombre_semaforo, int valor_semaforo){  
+int mate_sem_init(int id_carpincdho, mate_sem_name nombre_semaforo, int valor_semaforo){  
 }
 
 int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){

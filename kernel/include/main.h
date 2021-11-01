@@ -21,6 +21,15 @@ typedef struct data_carpincho // la data que le importa tener al backend
     float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
     bool *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
     char *estado; 
+    char *semaforo; 
+    int *valor_semaforo; 
+    char *dispositivo_io; 
+    int *size_memoria;
+    int *addr_memfree;
+    int *origin_memread;
+    int *dest_memread;
+    int *origin_memwrite;
+    int *dest_memwrite;
 } data_carpincho;
 
 typedef struct mate_inner_structure // para deserializar lo que va a mandarle la lib

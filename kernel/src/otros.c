@@ -59,6 +59,7 @@ int recibir_mensaje(){
 
 
 
+
     ip_memoria = malloc(sizeof(char)); // esta bien ponerle el size asi?
     puerto_memoria = malloc(sizeof(int));
     puerto_escucha = malloc(sizeof(int));

@@ -6,22 +6,6 @@
 #include <semaphore.h>
 
 
-typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
-{
-    int *id;
-    char *semaforo; 
-    int *valor_semaforo; 
-    char *dispositivo_io; 
-    int *size_memoria;
-    int *addr_memfree;
-    int *origin_memread;
-    int *dest_memread;
-    int *origin_memwrite;
-    int *dest_memwrite;
-} mate_inner_structure;
-
-
-
 int main(){ 
 
     t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
@@ -35,6 +19,8 @@ int main(){
     int *conexion_con_backend = malloc(sizeof(int));
 
     int *socket;
+    armar_socket_desde_binario(config);
+    
 
     log_destroy(logger); 
     free(id_carpincho);
@@ -42,7 +28,6 @@ int main(){
     free(respuesta_para_carpincho);
     free(conexion_con_backend);
     free(socket);
-    
     
 }
 
@@ -89,10 +74,12 @@ void armar_socket_desde_binario(char *config){
     
 }
 
-int conexion_con_backend(int id_funcion){
+int conexion_con_backend(int id_funcion, mate_inner_structure estructura_interna){
 
-    conexion_con_backend = mandar_mensaje_a_backend(id_funcion)
+    conexion_con_backend = _send_message(socket, ID_MATE_LIB, id_funcion, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
+    
     if(conexion_con_backend < 0 ){ 
+        log_info(logger, "no se pudo crear la conexión");
         return conexion_con_backend;  
     }
     else{
@@ -101,12 +88,6 @@ int conexion_con_backend(int id_funcion){
     }
 }
 
-
-int mandar_mensaje_a_backend(int id_funcion){
-     
-     return _send_message(socket, ID_MATE_LIB, id_funcion, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
-    
-}
 
 ////////////////////////////////////////                        LIB                          /////////////////////////////////////////////
 
@@ -118,8 +99,6 @@ int mate_init(mate_instance *lib_ref, char *config)
 
     estructura_interna->id = id_carpincho;
 
-    armar_socket_desde_binario(config);
-
     conexion_con_backend = _send_message(socket, ID_MATE_LIB, MATE_INIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
     
     if(conexion_con_backend < 0 ){ // no uso la función que armé porque acá voy a necesitar también incrementar el id
@@ -127,7 +106,7 @@ int mate_init(mate_instance *lib_ref, char *config)
     }
     else{
         // hacer que se quede esperando con un recv a la respuesta del backend y que lo guarde para responder al carpincho
-        respuesta_para_carpincho = recv();
+        respuesta_para_carpincho = _receive_message(socket, logger);
         id_carpincho ++; //incremento id para que el proximo tenga el siguiente
         return respuesta_para_carpincho;
     }   
@@ -137,7 +116,7 @@ int mate_close(mate_instance *lib_ref)
 {
     mate_inner_structure estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    return conexion_con_backend(MATE_CLOSE);
+    return conexion_con_backend(MATE_CLOSE, estructura_interna);
     
 }
 
@@ -150,7 +129,7 @@ int mate_sem_init(mate_instance *lib_ref, mate_sem_name sem, unsigned int value)
     estructura_interna->semaforo = sem;
     estructura_interna->valor_semaforo = value; 
 
-    return conexion_con_backend(MATE_SEM_INIT);
+    return conexion_con_backend(MATE_SEM_INIT, estructura_interna);
     
 }   
 
@@ -160,7 +139,7 @@ int modificar_semaforo(int id_funcion, mate_sem_name sem){
 
     estructura_interna->semaforo = sem;
 
-    return conexion_con_backend(id_funcion);
+    return conexion_con_backend(id_funcion, estructura_interna);
 
 }
 
@@ -190,7 +169,7 @@ int mate_call_io(mate_instance *lib_ref, mate_io_resource io, void *msg)
     estructura_interna->dispositivo_io = mate_io_resource;  
     estructura_interna->mnesaje_io = msg; 
     
-    return conexion_con_backend(MATE_CALL_IO);    
+    return conexion_con_backend(MATE_CALL_IO, estructura_interna);    
 
 }
 
@@ -203,7 +182,7 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 
     estructura_interna->size_memoria = size; 
 
-    return conexion_con_backend(MATE_MEMALLOC);    
+    return conexion_con_backend(MATE_MEMALLOC, estructura_interna);    
 
 }
 
@@ -214,7 +193,7 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
 
     estructura_interna->addr_memfree = addr; 
 
-    return conexion_con_backend(MATE_MEMFREE);    
+    return conexion_con_backend(MATE_MEMFREE, estructura_interna);    
 
 }
 
@@ -225,7 +204,7 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
     estructura_interna->size_memoria = size;  
     estructura_interna->dest_memread = dest; 
 
-    return conexion_con_backend(MATE_MEMREAD);    
+    return conexion_con_backend(MATE_MEMREAD, estructura_interna);    
 
 }
 
@@ -237,7 +216,7 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
     estructura_interna->dest_memwrite = dest;  
     estructura_interna->size_memoria = size; 
 
-    return conexion_con_backend(MATE_MEMWRITE);    
+    return conexion_con_backend(MATE_MEMWRITE, estructura_interna);    
 
 }
 
