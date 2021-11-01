@@ -59,7 +59,17 @@ int recibir_mensaje(){
 
 
 
-
+    ip_memoria = malloc(sizeof(char)); // esta bien ponerle el size asi?
+    puerto_memoria = malloc(sizeof(int));
+    puerto_escucha = malloc(sizeof(int));
+    algoritmo_planificacion = malloc(sizeof(char)); // idem
+    estimacion_inicial = malloc(sizeof(int));
+    alfa = malloc(sizeof(int));
+    dispositivos_io = malloc(sizeof(char)); // es una lista de strings, como le doy el size?
+    duraciones_io = malloc(sizeof(int));
+    grado_multiprogramacion = malloc(sizeof(int));
+    grado_multiprocesamiento = malloc(sizeof(int));
+    tiempo_deadlock = malloc(sizeof(int));
 
 
 

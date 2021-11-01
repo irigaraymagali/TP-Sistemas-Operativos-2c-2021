@@ -22,10 +22,8 @@ int main(int argc, char ** argv){
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
 
-    // destruir la lista, esto por si se apaga todo, habria que ponerle que espere a la finalización de todos los hilos
-    list_clean_and_destroy_elements(lista_carpinchos,/*void(*element_destroyer)(void*))*/);
-    log_destroy(logger);
-    free_configuraciones();
+    // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
+    free_memory();
 
 } 
 
@@ -74,18 +72,6 @@ void leer_archivo_config(){
 
     config = config_create("../cfg/kernel.conf");
 
-    ip_memoria = malloc(sizeof(char)); // esta bien ponerle el size asi?
-    puerto_memoria = malloc(sizeof(int));
-    puerto_escucha = malloc(sizeof(int));
-    algoritmo_planificacion = malloc(sizeof(char)); // idem
-    estimacion_inicial = malloc(sizeof(int));
-    alfa = malloc(sizeof(int));
-    dispositivos_io = malloc(sizeof(char)); // es una lista de strings, como le doy el size?
-    duraciones_io = malloc(sizeof(int));
-    grado_multiprogramacion = malloc(sizeof(int));
-    grado_multiprocesamiento = malloc(sizeof(int));
-    tiempo_deadlock = malloc(sizeof(int));
-
 	ip_memoria = config_get_string_value(config, "IP_MEMORIA");
 	puerto_memoria = config_get_int_value(config, "PUERTO_MEMORIA");
 	puerto_escucha = config_get_int_value(config, "PUERTO_ESCUCHA");    
@@ -100,18 +86,14 @@ void leer_archivo_config(){
 
 }
 
-void free_configuraciones(){
-    free(ip_memoria);
-	free(puerto_memoria);
-	free(puerto_escucha);
-    free(algoritmo_planificacion);
-    free(estimacion_inicial);
-    free(alfa);
-    free(dispositivos_io);
-    free(duraciones_io);
-    free(grado_multiprogramacion);
-    free(grado_multiprocesamiento);
-    free(tiempo_deadlock);
+void free_memory(){
+
+    config_destroy(config);
+    list_clean_and_destroy_elements(lista_carpinchos,/*void(*element_destroyer)(void*))*/);
+    log_destroy(logger);
+
+    // pthread_mutex_destroy
+
 }
  
 ///////////////// CREACION HILOS //////////////////////// 
