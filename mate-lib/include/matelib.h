@@ -6,9 +6,10 @@
 #include <stdio.h>
 #include <commons/log.h>
 #include <stdbool.h>
-#include "shared_utils.h"
-#include "tests.h"
 #include <stdint.h>
+#include "../../shared/include/socket.h"
+#include "../../shared/include/shared_utils.h"
+#include "../../shared/include/serialization.h"
 
 
 
