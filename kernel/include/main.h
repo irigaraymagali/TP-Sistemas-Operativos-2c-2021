@@ -32,19 +32,13 @@ typedef struct data_carpincho // la data que le importa tener al backend
     int *dest_memwrite;
 } data_carpincho;
 
-typedef struct mate_inner_structure // para deserializar lo que va a mandarle la lib
+typedef struct semaforo
 {
-    int *id;
-    char *semaforo; 
-    int *valor_semaforo; 
-    char *dispositivo_io; 
-    int *size_memoria;
-    int *addr_memfree;
-    int *origin_memread;
-    int *dest_memread;
-    int *origin_memwrite;
-    int *dest_memwrite;
-} mate_inner_structure;
+    char nombre;
+    int valor;
+} semaforo;
+
+
 
 /* Estados:*/
     t_queue* new;

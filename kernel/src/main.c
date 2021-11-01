@@ -21,6 +21,7 @@ int main(int argc, char ** argv){
     leer_archivo_config();
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
+    lista_semaforos = list_create(); // crear lista para ir guardando los semaforos
 
     void* buffer = _recive_message(buffer, logger); // recibir mensajes de la lib
     deserializar(buffer);
@@ -102,6 +103,7 @@ void free_memory(){
 
     config_destroy(config);
     list_clean_and_destroy_elements(lista_carpinchos,/*void(*element_destroyer)(void*))*/);
+    list_clean_and_destroy_elements(lista_semaforos,/*void(*element_destroyer)(void*))*/);    
     log_destroy(logger);
 
     // pthread_mutex_destroy
@@ -256,6 +258,8 @@ int mate_init(int id_carpincho){
 
     list_add_in_index(lista_carpinchos, id_carpincho, carpincho);
 
+    // avisar que hay uno en ready e invocar función
+
 }
 
 int mate_close(int id_carpincho){
@@ -263,16 +267,40 @@ int mate_close(int id_carpincho){
     list_remove_and_destroy_element(lista_carpinchos, id_carpincho, /*void(*element_destroyer)(void*)*/)
     
     // acá estamos eliminando lo que hay en ese index pero medio que dejamos ese index muerto
+
+    // responder al carpincho que todo ok
 }
 
 
 //////////////// FUNCIONES SEMAFOROS ///////////////////
 
 int mate_sem_init(int id_carpincdho, mate_sem_name nombre_semaforo, int valor_semaforo){  
+
+    semaforo semaforo = malloc(size_of(semaforo));
+    semaforo->nombre = nombre_semaforo;
+    semaforo->valor = valor_semaforo;
+
+    // responder al carpincho que todo ok 
+
 }
 
-int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){
+
+bool esIgualASemaforo(mate_sem_name nombre_semaforo, void *semaforo){
+    return semaforo->nombre === nombre_semaforo;
 }
+
+
+int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){
+
+    bool esIgualA( void *semaforo){
+        return esIgualASemaforo(semaforo, nombre_semaforo);
+    }
+
+    list_find(lista_semaforos, esIgualA; // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
+
+}
+
+
 
 int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo){
 }
