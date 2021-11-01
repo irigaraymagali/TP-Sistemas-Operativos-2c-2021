@@ -15,8 +15,8 @@ typedef struct mate_inner_structure // datos para poder saber qué está pidiend
     int *size_memoria;
     int *addr_memfree;
     int *origin_memread;
-    int **dest_memread;
-    int **origin_memwrite;
+    int *dest_memread;
+    int *origin_memwrite;
     int *dest_memwrite;
 } mate_inner_structure;
 
@@ -37,11 +37,11 @@ int main(){
     int *socket;
 
     log_destroy(logger); 
-    destroy(id_carpincho);
-    destroy(respuesta_backend);
-    destroy(respuesta_para_carpincho);
-    destroy(conexion_con_backend);
-    destroy(socket);
+    free(id_carpincho);
+    free(respuesta_backend);
+    free(respuesta_para_carpincho);
+    free(conexion_con_backend);
+    free(socket);
     
     
 }

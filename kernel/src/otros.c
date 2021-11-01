@@ -1,3 +1,10 @@
+// para dejar cosas que no están sirviendo pero tenerlas por las dudas para despues.
+// ni se estan usando estas cosas
+
+
+
+
+// serialización de cosas que ya no
 int recibir_mensaje(){
 
     int str_len;
@@ -49,3 +56,11 @@ int recibir_mensaje(){
     ejecutar_funcion_switch(buffer->codigo_operacion);
 
 }
+
+
+
+
+
+
+
+
