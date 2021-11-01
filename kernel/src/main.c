@@ -210,7 +210,7 @@ int mate_close(int id_carpincho){
 
     list_remove_and_destroy_element(lista_carpinchos, id_carpincho_a_eliminar, /*void(*element_destroyer)(void*)*/)
     
-    //acá estamos eliminando lo que hay en ese index pero medio que dejamos ese index muerto
+    // acá estamos eliminando lo que hay en ese index pero medio que dejamos ese index muerto
 }
 
 
@@ -274,7 +274,7 @@ void new_a_ready(){
     
 }
 
-//calcular ráfaga siguiente. Esto se debería hacer para todos los carpinchos cuando ingresan a la cola de ready
+// calcular ráfaga siguiente. Esto se debería hacer para todos los carpinchos cuando ingresan a la cola de ready
 //      float calculo_rafaga_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * alfa
 
 void ready_a_exec(){  
@@ -296,11 +296,11 @@ void ready_a_exec_SJF(){
     //chequear grado multiprocesamiento
     sem_wait(&sem_grado_multiprocesamiento); // --> falta el post
 
-    //fun que de la cola de ready te da el que debe ejecutar ahora ("ejecutar el algoritmo")
+    // fun que de la cola de ready te da el que debe ejecutar ahora ("ejecutar el algoritmo")
 
-    //sacar de la cola de ready al elegido y ponerlo en la la lista de exec
+    // sacar de la cola de ready al elegido y ponerlo en la la lista de exec
 
-    //asignarle un hilo cpu
+    // asignarle un hilo cpu
 
     //  o sino que todo eso se haga directamente en ready_a_exec y que ready_a_exec sea directamnete el algoritmo que devuelve el proeso que debe ejecutar?
     
