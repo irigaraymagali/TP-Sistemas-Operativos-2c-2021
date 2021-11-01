@@ -136,7 +136,6 @@ int crear_socket_listener(){
 
 }
 
-
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
     log_info(logger, "Recibí un mensaje");
    
@@ -145,38 +144,39 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
     switch(opcode){
         case MATE_INIT:
             mensaje = /*deserializar*/
-            mate_init(mensaje);
+            mate_init(mensaje->id);
         case MATE_CLOSE: 
             mensaje = /*deserializar*/
-            mate_close(mensaje);
+            mate_close(mensaje->id);
         case MATE_SEM_INIT: 
             mensaje = /*deserializar*/
-            mate_sem_init(mensaje);            
+            mate_sem_init(mensaje->id, mensaje->semaforo, mensaje->valor_semaforo);            
         case MATE_SEM_WAIT: 
             mensaje = /*deserializar*/
-            mate_sem_wait(mensaje);            
+            mate_sem_wait(mensaje->id, mensaje->semaforo);            
         case MATE_SEM_POST: 
             mensaje = /*deserializar*/
-            mate_sem_post(mensaje);            
+            mate_sem_post(mensaje->id, mensaje->semaforo);            
         case MATE_SEM_DESTROY:
             mensaje = /*deserializar*/
-            mate_sem_destroy(mensaje);            
+            mate_sem_destroy(mensaje->id, mensaje->semaforo);            
         case MATE_CALL_IO:
             mensaje = /*deserializar*/
-            mate_call_io(mensaje);            
+            mate_call_io(mensaje->id, mensaje->dispositivo_io);            
         case MATE_MEMALLOC: 
             mensaje = /*deserializar*/
-            mate_memalloc(mensaje);            
+            mate_memalloc(mensaje->id, mensaje->size_memoria);            
         case MATE_MEMFREE:
             mensaje = /*deserializar*/
-            mate_memfree(mensaje);            
+            mate_memfree(mensaje->id, mensaje->addr_memfree);            
         case MATE_MEMREAD:
             mensaje = /*deserializar*/
-            mate_memread(mensaje);            
+            mate_memread(mensaje->id, mensaje->origin_memread, mensaje->dest_memread, mensaje->size_memoria);            
         case MATE_MEMWRITE: 
             mensaje = /*deserializar*/
-            mate_memwrite(mensaje);      
-        break;      
+            mate_memwrite(mensaje->id, mensaje->origin_memwrite, mensaje->dest_memwrite, mensaje->size_memoria);      
+        break;  
+
     }
 }
 
@@ -184,10 +184,10 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
 
 //////////////// FUNCIONES GENERALES ///////////////////
 
-int mate_init(mate_instance *mate_inner_structure){
+int mate_init(int id_carpincho){
     
     data_carpincho carpincho = malloc(size_of(data_carpincho);
-    carpincho->id = mate_inner_structure->id;
+    carpincho->id = id_carpincho;
     carpincho->rafaga_anterior = 0;
     carpincho->estimacion_anterior = 0;
     carpincho->estimacion_siguiente = /*calculo para estimación que va a ser la misma para todos*/
@@ -204,7 +204,7 @@ int mate_init(mate_instance *mate_inner_structure){
     */
 }
 
-int mate_close(mate_instance *mate_inner_structure){
+int mate_close(int id_carpincho){
     
     int id_carpincho_a_eliminar = mate_inner_structure->id;
 
@@ -213,32 +213,43 @@ int mate_close(mate_instance *mate_inner_structure){
     //acá estamos eliminando lo que hay en ese index pero medio que dejamos ese index muerto
 }
 
-int mate_sem_init(mate_instance *mate_inner_structure){  
+
+//////////////// FUNCIONES SEMAFOROS ///////////////////
+
+int mate_sem_init(int id_carpincho, mate_sem_name nombre_semaforo, int valor_semaforo){  
 }
 
-int mate_sem_wait(mate_instance *mate_inner_structure){
+int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){
 }
 
-int mate_sem_post(mate_instance *mate_inner_structure){
+int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo){
 }
 
-int mate_sem_destroy(mate_instance *mate_inner_structure) {
+int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo) {
 }
 
-int mate_call_io(mate_instance *mate_inner_structure){
+
+//////////////// FUNCIONES IO ///////////////////
+
+int mate_call_io(int id_carpincho, mate_io_resource nombre_io){
 }
 
-mate_pointer mate_memalloc(mate_instance *mate_inner_structure){
+
+//////////////// FUNCIONES MEMORIA ///////////////////
+
+mate_pointer mate_memalloc(int id_carpincho, int size){
 }
 
-int mate_memfree(mate_instance *mate_inner_structure){
+int mate_memfree(int id_carpincho, mate_pointer addr){
 }
 
-int mate_memread(mate_instance *mate_inner_structure){
+int mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size){
 }
 
-int mate_memwrite(mate_instance *mate_inner_structure){
+int mate_memwrite(int id_carpincho, void origin, mate_pointer dest, int size){
 }
+    
+
 
 ///////////////// PLANIFICACIÓN ////////////////////////
 

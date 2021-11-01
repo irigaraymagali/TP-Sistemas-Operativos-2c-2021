@@ -12,7 +12,7 @@
 t_list lista_carpinchos; // crear lista carpinchos con el tipo de dato de las commons
 
 
-typedef struct data_carpincho
+typedef struct data_carpincho // la data que le importa tener al backend
 {
     int id;
     float *rafaga_anterior; // para despues poder calcular la estimación siguiente
@@ -22,6 +22,20 @@ typedef struct data_carpincho
     bool *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
     char *estado; 
 } data_carpincho;
+
+typedef struct mate_inner_structure // para deserializar lo que va a mandarle la lib
+{
+    int *id;
+    char *semaforo; 
+    int *valor_semaforo; 
+    char *dispositivo_io; 
+    int *size_memoria;
+    int *addr_memfree;
+    int *origin_memread;
+    int *dest_memread;
+    int *origin_memwrite;
+    int *dest_memwrite;
+} mate_inner_structure;
 
 /* Estados:*/
     t_queue* new;
