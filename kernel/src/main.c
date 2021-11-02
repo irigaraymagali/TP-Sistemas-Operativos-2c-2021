@@ -285,20 +285,28 @@ bool esIgualASemaforo(mate_sem_name nombre_semaforo, void *semaforo){
     return semaforo->nombre === nombre_semaforo;
 }
 
+semaforo semaforoIgualANombreSemaforo(mate_sem_name nombre_semaforo, void *semaforo){
+    return semaforo->nombre === nombre_semaforo;
+}
+
 
 int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){
 
-    bool esIgualA( void *semaforo){
+    bool esIgualA(void *semaforo){
         return esIgualASemaforo(semaforo, nombre_semaforo);
+    }
+
+    semaforo semaforoIgualA(void *semaforo){
+        return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
     }
 
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
 
         // si el sem esta en 0 le puedo hacer wait?
 
-        (list_find(semaforos_carpinchos, esIgualA))->valor_semaforo -= 1;
+        (list_find(semaforos_carpinchos, esIgualA))->valor_semaforo --; // hacer las funciones que devuelvan el semaforo
 
-        if(semaforo->valor_semaforo<=0){
+        if(semaforo->valor_semaforo<1){
             
             // logica para que el carpincho se quede esperando el post si es que tiene que hacerlo
         
@@ -399,10 +407,31 @@ void ready_a_exec(){
 
     // Asignar hilo CPU:
     void asignar_hilo_CPU(lista_semaforos_CPU){ //al primer semaforo CPU que valga 1 (que este disponible) le hace un wait (marcandolo como ocupado)
- 
-     hilo_CPU_disponible = list_find(t_list *lista_semaforos_CPU, sem_getvalue());  //ver
-     sem_wait(&hilo_CPU_disponible); // --> post cuando deja el hilo?
-    }
+    
+    t_sem hilo_CPU_disponible;
+    
+    /*
+        funcion(semaforo){
+            if (sem_gevalue(semaforo) === 1)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        funcion(semaforo){
+
+            return sem_gevalue(semaforo) === 1; 
+        
+        }
+    */
+
+     hilo_CPU_disponible = list_find(*lista_semaforos_CPU, funcion);  //ver
+        sem_wait(&hilo_CPU_disponible); // --> post cuando deja el hilo?
+    } 
 
     
 }
@@ -413,6 +442,14 @@ void ready_a_exec(){
 void ejecuta(){ 
 
 // recibimos todo lo que pide el carpincho (semaforos y dispositivos io) hasta que termine o se bloquee --> seria avisarle al capincho (desbloquearlo) para que pueda seguir despues del init
+
+while(1){
+
+    // ...
+
+    wait(LIBERAR_HILO_CPU);
+}
+
 
 }
 
@@ -428,6 +465,12 @@ void ready_a_exec_HRRN(){ // De la cola de ready te da el que debe ejecutar ahor
 
     
        
+}
+
+void exec_a_block(data_carpincho *carpincho){
+
+    // le pasan el carpincho y aca lo saca de la lista de exec, lo pone en block y le hace signal al cpu
+
 }
 
 void exec(){
