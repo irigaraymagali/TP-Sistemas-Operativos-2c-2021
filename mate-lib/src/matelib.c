@@ -10,11 +10,6 @@ int armar_socket_desde_binario(char* config,t_log* logger){
     char *ip;
     char *puerto;
 
-    // para pruebas, mientras que no estemos leyendo el binario
-    ip = malloc(sizeof(char)*50);
-    puerto = malloc(sizeof(char)*10);
-    ip = "363.4634.3336.345";
-    puerto = "3000";
 
     return _connect(ip, puerto, logger); // crea la conexión con backend los ip y puerto del config
     
@@ -25,7 +20,7 @@ int armar_socket_desde_binario(char* config,t_log* logger){
 void* armar_paquete(mate_inner_structure* estructura_interna){ // serializar estructura interna para mandar al carpincho
 
     return _serialize(
-                        + sizeof(int) 
+                        sizeof(int) 
                         + sizeof(char*) 
                         + sizeof(int) 
                         + sizeof(char*)                         
@@ -73,30 +68,45 @@ int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_intern
 
 int mate_init(mate_instance *lib_ref, char *config)
 {
-    
-    if(id_carpincho = 0){
-        logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
-    }
 
+    logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
+    
+
+    printf("hola\n");
 
     int conexion_con_backend;
 
-    int *socket = malloc(sizeof(int));
-    socket = armar_socket_desde_binario(config,logger);
+    int socket;
+
+    // para pruebas
+    socket =  _connect("127.0.0.1", "5001", logger);
+
+    printf("socket: %d\n", socket);
+    
+    // socket = armar_socket_desde_binario(config,logger);
 
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    estructura_interna->id = id_carpincho;
-
     conexion_con_backend = _send_message(socket, ID_MATE_LIB, MATE_INIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
-    
-    if(conexion_con_backend < 0 ){ // no uso la función que armé porque acá voy a necesitar también incrementar el id
+
+    if(conexion_con_backend < 0 ){ 
+        printf("no se pudo conectar con backend \n");
         return conexion_con_backend;  
     }
     else{
-        id_carpincho ++; //incremento id para que el proximo tenga el siguiente
-        return _receive_message(socket, logger);
-    }   
+
+        int id_recibido;
+
+        _receive_message(socket, logger);
+        
+        // deserializar mensaje
+
+        estructura_interna->id = id_recibido;
+
+        printf("el id es: %d\n", estructura_interna->id);
+
+        return 0;
+    }  
 }
 
 int mate_close(mate_instance *lib_ref)
@@ -162,6 +172,8 @@ int mate_call_io(mate_instance *lib_ref, mate_io_resource io, void *msg)
 
 // Funciones módulo memoria ------------------------------------------------------------------
 
+// CAMBIAR TODAS LAS FUNCIONES DE MEMORIA PARA QUE LE PASEN SOLO LOS DATOS IMPORTANTES Y QUE SEA POLIMORFICO CON KERNEL Y MEMORIA
+
 mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 {
 
@@ -169,7 +181,7 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 
     estructura_interna->size_memoria = size; 
 
-    return conexion_con_backend(MATE_MEMALLOC, estructura_interna);    
+    return conexion_con_backend(MATE_MEMALLOC, estructura_interna);     
 
 }
 
