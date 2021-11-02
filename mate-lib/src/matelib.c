@@ -1,19 +1,7 @@
 #include "matelib.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <semaphore.h>
-#include <commons/config.h>
-#include <commons/log.h>
-#include <commons/string.h>
-#include <commons/collections/list.h>
-#include <commons/collections/queue.h>
-
-
 
 t_log* logger;
-int *id_carpincho;
+int id_carpincho;
 
 int armar_socket_desde_binario(char* config,t_log* logger){
    
@@ -29,29 +17,6 @@ int armar_socket_desde_binario(char* config,t_log* logger){
     puerto = "3000";
 
     return _connect(ip, puerto, logger); // crea la conexión con backend los ip y puerto del config
-    
-}
-
-int main(){ 
-
-    logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
-
-    id_carpincho = malloc(sizeof(int));
-    id_carpincho = 0;
-
-    // está bien guardar esto acá y así?
-    int *respuesta_backend = malloc(sizeof(int));
-    int *respuesta_para_carpincho = malloc(sizeof(int)); //sizeofchar*100 va bien?
-    int *conexion_con_backend = malloc(sizeof(int));
-
-    
-
-    log_destroy(logger); 
-    free(id_carpincho);
-    free(respuesta_backend);
-    free(respuesta_para_carpincho);
-    free(conexion_con_backend);
-    free(socket);
     
 }
 
@@ -108,6 +73,12 @@ int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_intern
 
 int mate_init(mate_instance *lib_ref, char *config)
 {
+    
+    if(id_carpincho = 0){
+        logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
+    }
+
+
     int conexion_con_backend;
 
     int *socket = malloc(sizeof(int));
