@@ -44,19 +44,12 @@ typedef struct mate_inner_structure
     t_queue* suspended_blocked;
     t_queue* suspended_ready;
 
-/* Mutex para modificar las colas:*/
-    pthread_mutex_t sem_cola_new;
-    pthread_mutex_t sem_cola_ready;
-    pthread_mutex_t sem_cola_exec;
-    pthread_mutex_t sem_cola_blocked;
-    pthread_mutex_t sem_cola_exit;
-    pthread_mutex_t sem_cola_suspended_blocked;
-    pthread_mutex_t sem_cola_suspended_ready;
+
 
     t_config* config;
 
 // que onda esto y la memoria que usa? quien se encarga de darsela y de borrarla?
-t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
+    t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
 
 // Config:  (falta) 
 	ip_memoria= config_get_string_value(config, "IP_MEMORIA");
@@ -70,10 +63,28 @@ t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INF
     estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
     alfa = config_get_int_value(config, "ALFA");
 
-  
+/* Colas con elementos:*/
+    cola_new_con_elementos;
+    cola_ready_con_elementos;
+    cola_exec_con_elementos;
+    cola_exit_con_elementos; //va?
+    cola_blocked_con_elementos;
+    cola_suspended_blocked_con_elementos;
+    cola_suspended_ready_con_elementos;
+
+ /* Mutex para modificar las colas:*/
+    pthread_mutex_t sem_cola_new;
+    pthread_mutex_t sem_cola_ready;
+    pthread_mutex_t sem_cola_exec;
+    pthread_mutex_t sem_cola_blocked;
+    pthread_mutex_t sem_cola_exit;
+    pthread_mutex_t sem_cola_suspended_blocked;
+    pthread_mutex_t sem_cola_suspended_ready; 
+    sem_grado_multiprocesamiento;
+    sem_grado_multiprogramacion;
 
 
-// Colas estados y sus mutex:
+// Colas estados e inicializacion de sus mutex:
 void inicializar_colas(){
     new = queue_create();
 	pthread_mutex_init(&sem_cola_new, NULL);
@@ -96,16 +107,9 @@ void inicializar_colas(){
     suspended_ready = queue_create();
 	pthread_mutex_init(&sem_cola_suspended_ready, NULL);
 	
-    pthread_mutex_init(&socket_memoria, NULL);
+    pthread_mutex_init(&socket_memoria, NULL); //falta declarar socket_memoria
 }
 
-cola_new_con_elementos;
-cola_ready_con_elementos;
-cola_exec_con_elementos;
-cola_exit_con_elementos;
-cola_blocked_con_elementos;
-cola_suspended_blocked_con_elementos;
-cola_suspended_ready_con_elementos;
 
 // Inicializacion de semaforos:
 void inicializar_semaforos(){
