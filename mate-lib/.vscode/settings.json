@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "matelib.h": "c",
+        "shared_utils.h": "c",
+        "stdlib.h": "c",
+        "semaphore.h": "c"
+    }
+}

@@ -10,7 +10,7 @@
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "Make",
-            "program": "${workspaceFolder}/mate-lib.out",
+            "program": "${workspaceFolder}/example.out",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

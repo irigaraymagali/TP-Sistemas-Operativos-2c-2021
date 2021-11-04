@@ -1,24 +1,5 @@
 #include "memory_utils.h"
 
-void comandos(int valor){
-    switch(valor){
-        case MEM_INIT:
-        break;
-        case MEM_ALLOC:
-        break;
-        case MEM_FREE:
-        break;
-        case MEM_READ:
-        break;
-        case MEM_WRITE:
-        break;
-        
-        default:
-            log_error(logger,"Comando incorrecto");
-            //que hacemos en este caso? nada?
-    }
-}
-
 void initPaginacion(){
     log_info(logger,"iniciando paginacion");
 
@@ -228,7 +209,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
                     memcpy(&unHeap->isfree, paginaAux + offset, sizeof(uint8_t));
                 }
                 
-                if (unHeap->nextAlloc == NULL)
+                if (unHeap->nextAlloc == NULL_ALLOC)
                 {
                     return -1;
                 }
@@ -513,6 +494,7 @@ Pagina *getPageDe(int processId,int nroPagina){
 }
 
 void inicializarUnProceso(int idDelProceso){
+    log_info(logger, "Inicializando el Proceso %d", idDelProceso);
 
     HeapMetaData* nuevoHeap = malloc(sizeof(HeapMetaData));
     nuevoHeap->prevAlloc = 0;
@@ -592,14 +574,10 @@ void inicializarUnProceso(int idDelProceso){
                 
                 list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
             }
-            
-            
             paginasCargadas++;
-        }
-        
+        }  
     }
-
-
+    log_info(logger, "Proceso %d inicializado con Exito", idDelProceso);
 }
 
 int memwrite(int direccionLogicaBuscada, int idProcess, void* loQueQuierasEscribir){

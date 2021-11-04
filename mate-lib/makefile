@@ -1,36 +1,46 @@
-PROCESS_NAME=mate-lib.out
-IDIR =./include
-SHARED_IDIR = ../shared/include
+#Mate Dir
+SRC_DIR=src
+IDIR=./include
+ODIR=obj
+
 CC=gcc
 CFLAGS=-I$(IDIR) -I$(SHARED_IDIR) -g -Wall
-
-ODIR=./obj
-SRCDIR =./src
 LIBS=-lcommons -lpthread -lreadline -lcunit -lrt
+EX_LIBS=-lcommons -lpthread -lreadline -lmate -lrt
 
+# Shared Dir
 SHARED_SRCDIR = ../shared/src
+SHARED_IDIR = ../shared/include
 SHARED_ODIR = ../shared/obj
 
-DEPS = $(wildcard $(IDIR)/*.h)
-
-SRC = $(wildcard $(SRCDIR)/*.c)
-OBJ = $(patsubst $(SRCDIR)/%.c,$(ODIR)/%.o,$(SRC))
-
-$(ODIR)/%.o: $(SRCDIR)/%.c $(DEPS) $(SHARED_DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
-
 $(SHARED_ODIR)/%.o: $(SHARED_SRCDIR)/%.c $(SHARED_DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
+	$(CC) -g -c -o $@ $< $(CFLAGS)
 
 SHARED_DEPS = $(wildcard $(SHARED_IDIR)/*.h)
 
 SHARED_SRC = $(wildcard $(SHARED_SRCDIR)/*.c)
 SHARED_OBJ = $(patsubst $(SHARED_SRCDIR)/%.c,$(SHARED_ODIR)/%.o,$(SHARED_SRC))
 
-$(PROCESS_NAME): $(OBJ) $(SHARED_OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+# Create obj in Shared Library
+$(SO_DIR)/%.o: 
+	@mkdir -p $(SHARED_ODIR)
 
-.PHONY: clean
+SHARED_OBJ_DIR = $(SO_DIR)/%.o
+
+build: $(SHARED_OBJ_DIR) $(SHARED_OBJ)
+	# Compiling all .c    
+	$(CC) -Wall -fPIC -c $(SRC_DIR)/*.c $(CFLAGS) $(LIBS)
+	# Compiling all .o
+	$(CC) -shared matelib.o -o $(ODIR)/libmate.so
+	# Removing obj files..
+	rm *.o
+	# Done
+
 
 clean:
-	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ $(PROCESS_NAME) $(SHARED_ODIR)/*.o 
+	# Remove Libmate shared object    
+	rm $(ODIR)/libmate.so
+	# Done
+
+test: build
+	$(CC) -g3 -Wall -L$(ODIR) -I$(IDIR) main.c $(EX_LIBS) -o example.out
