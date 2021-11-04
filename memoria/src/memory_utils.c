@@ -602,6 +602,95 @@ void inicializarUnProceso(int idDelProceso){
 
 }
 
+int memwrite(int direccionLogicaBuscada, int idProcess, void* loQueQuierasEscribir){
+    int paginaActual=1;
+
+    TablaDePaginasxProceso *tablaDelProceso = get_pages_by(idProcess);
+
+    int dirAllocFinal = tablaDelProceso->lastHeap;
+    int dirAllocActual=0;
+
+
+    while((dirAllocActual <= direccionLogicaBuscada) && dirAllocFinal>=direccionLogicaBuscada){
+        
+        if (dirAllocActual == direccionLogicaBuscada)
+        {
+            int finDelAlloc = 0;
+            
+            paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
+
+            
+            int frameBuscado = getFrameDeUn(idProcess, paginaActual);
+
+            int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
+
+            int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
+
+            memcpy(&finDelAlloc, memoria + offset, sizeof(uint32_t));
+
+            int offsetInicioAlloc = (frameBuscado*tamanioDePagina) + (dirAllocActual) - ((paginaActual-1) * tamanioDePagina) + HEAP_METADATA_SIZE;
+            
+            int paginaFinDelAlloc = (finDelAlloc/tamanioDePagina)+1;
+
+            if (paginaFinDelAlloc == paginaActual)
+            {
+                memcpy(memoria + offsetInicioAlloc, loQueQuierasEscribir, sizeof(loQueQuierasEscribir));
+            }
+            else
+            {
+                int nroPagAux = paginaActual;
+                
+                void* espacioAuxiliar = malloc(tamanioDePagina*((paginaFinDelAlloc - paginaActual) + 1));
+                
+                int unOffset =0;
+                
+                while(nroPagAux<=paginaFinDelAlloc){
+                    frameBuscado = getFrameDeUn(idProcess, nroPagAux);
+                       
+                    memcpy(espacioAuxiliar + unOffset,memoria + (frameBuscado*tamanioDePagina) ,tamanioDePagina);
+                    
+                    unOffset +=tamanioDePagina;
+
+                    nroPagAux++;    
+                }
+
+                offsetInicioAlloc -= (frameBuscado*tamanioDePagina);
+
+                memcpy(espacioAuxiliar + offsetInicioAlloc, loQueQuierasEscribir , sizeof(loQueQuierasEscribir));
+
+                nroPagAux = paginaActual;
+                
+                unOffset =0;
+                
+                while(nroPagAux<=paginaFinDelAlloc){
+                    frameBuscado = getFrameDeUn(idProcess, nroPagAux);
+                       
+                    memcpy(memoria + (frameBuscado*tamanioDePagina) ,espacioAuxiliar + unOffset ,tamanioDePagina);
+                    
+                    unOffset +=tamanioDePagina;
+
+                    nroPagAux++;    
+                }
+            }
+            
+
+            return 1;
+        }
+        else
+        {
+            paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
+            
+            int frameBuscado = getFrameDeUn(idProcess, paginaActual);
+
+            int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
+
+            int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
+
+            memcpy(&dirAllocActual, memoria + offset, sizeof(uint32_t));
+        }
+
+}
+}
 
 void send_message_swamp(int command, void* payload, int pay_len){
     if (_send_message(swamp_fd, MEM_ID, command, payload, pay_len, logger) < 0){

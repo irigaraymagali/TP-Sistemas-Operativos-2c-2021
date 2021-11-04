@@ -99,5 +99,7 @@ int getframeNoAsignadoEnMemoria();
 int frameAsignado(int unFrame);
 int memfree(int direccionLogica, int idProcess);
 Pagina *getPageDe(int processId,int nroPagina);
+int memwrite(int direccionLogica, int idProcess, void* loQueQuierasEscribir);
+
 
 #endif
