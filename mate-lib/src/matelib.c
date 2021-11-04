@@ -1,5 +1,4 @@
 #include "matelib.h"
-// #include <matelib.h> --> OJO acá estas importando la lib compilada, para importar el .h de la lib es con ".h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -7,71 +6,63 @@
 #include <semaphore.h>
 
 
-// habria que cambiar el manejo de los errores para que lo maneje memoria
-
-//------------------General Functions---------------------/
-
-
-#define ERROR_RESPUESTA_BACKEND = -1 // error a devolver cuando la respuesta del backend no sea ni 1 ni 2 como se espera
-#define ERROR_FUNCION_NO_VALIDA = -2 // error a devolver cuando se quiera usar una función del kernel pero se conectó con memoria
-
-typedef struct mate_inner_structure
+typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
 {
-    //void *memory;
-    float *rafaga_anterior; // para despues poder calcular la estimación siguiente
-    float *estimacion_anterior; // idem
-    float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
-    float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
-    int *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
-    char *estado; // no sé cuánto nos va a servir, si no se puede hacer que sea estado_anterior y que nos evite tener otro para prioridad
- 
-  // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
+    int *id;
     char *semaforo; 
     int *valor_semaforo; 
     char *dispositivo_io; 
     int *size_memoria;
     int *addr_memfree;
     int *origin_memread;
-    int **dest_memread;
-    int **origin_memwrite;
+    int *dest_memread;
+    int *origin_memwrite;
     int *dest_memwrite;
-    char *respuesta_a_carpincho;
-
 } mate_inner_structure;
 
 
-// que onda esto y la memoria que usa? quien se encarga de darsela y de borrarla?
-t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
 
-// idem anterior ?
-int *respuesta_backend; // donde vamos a ir guardando la ultima respuesta del backend
+int main(){ 
 
+    t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
 
-mate_inner_structure armar_paquete(mate_inner_structure estructura_interna){
+    int *id_carpincho = malloc(sizeof(int));
+    id_carpincho = 0;
+
+    // está bien guardar esto acá y así?
+    int *respuesta_backend = malloc(sizeof(int));
+    int *respuesta_para_carpincho = malloc(sizeof(int)); //sizeofchar*100 va bien?
+    int *conexion_con_backend = malloc(sizeof(int));
+
+    int *socket;
+
+    log_destroy(logger); 
+    free(id_carpincho);
+    free(respuesta_backend);
+    free(respuesta_para_carpincho);
+    free(conexion_con_backend);
+    free(socket);
+    
+    
+}
+
+/////////////////////////---------------------------- funciones a parte ------------------------///////////////////////////////////////
+
+mate_inner_structure armar_paquete(mate_inner_structure estructura_interna){ // serializar estructura interna para mandar al carpincho
 
     return _serialize(
-                          4 * sizeof(float) 
-                        + sizeof(int) 
-                        + 2 * sizeof(char*) 
                         + sizeof(int) 
                         + sizeof(char*) 
-                        + 6 * sizeof(int)
                         + sizeof(int) 
-                       , "%f%f%f%f%d%s%s%d%s%s%d%d%d%d%d%d%s",
-                        estructura_interna->rafaga_anterior, 
-                        estructura_interna->estimacion_anterior, 
-                        estructura_interna->estimacion_siguiente, 
-                        estructura_interna->llegada_a_ready, 
-                        estructura_interna->prioridad, 
-                        string_length(estructura_interna->estado),
-                        estructura_interna->estado, 
+                        + sizeof(char*)                         
+                        + 6 * sizeof(int)
+                       , "%d%s%d%s%d%d%d%d%d%d",
+                        estructura_interna->id,
                         string_length(estructura_interna->semaforo),
-                        estructura_interna->semaforo, 
+                        estructura_interna->semaforo,
                         estructura_interna->valor_semaforo, 
                         string_length(estructura_interna->dispositivo_io),
                         estructura_interna->dispositivo_io, 
-                        string_length(estructura_interna->mnesaje_io),
-                        estructura_interna->mnesaje_io, 
                         estructura_interna->size_memoria, 
                         estructura_interna->addr_memfree, 
                         estructura_interna->origin_memread, 
@@ -79,285 +70,181 @@ mate_inner_structure armar_paquete(mate_inner_structure estructura_interna){
                         estructura_interna->origin_memwrite, 
                         estructura_interna->dest_memwrite,
                         string_length(estructura_interna->respuesta_a_carpincho),
-                        estructura_interna->respuesta_a_carpincho 
                     );
 
 }
 
+mate_inner_structure convertir_a_estructura_interna(lib_ref estructura_carpincho){ // usarla para, de lo que manda el capincho, poder utilizar la estructura interna
+    return (mate_inner_structure *)lib_ref->group_info); 
+}
+
+void armar_socket_desde_binario(char *config){
+   
+    // leer archivo binario
+
+    char *ip;
+    char *puerto;
+
+    socket = _connect(ip, port, logger); // crea la conexión con backend los ip y puerto del config
+    
+}
+
+int conexion_con_backend(int id_funcion){
+
+    conexion_con_backend = mandar_mensaje_a_backend(id_funcion)
+    if(conexion_con_backend < 0 ){ 
+        return conexion_con_backend;  
+    }
+    else{
+        // está bien así?
+        return _receive_message(socket, logger);
+    }
+}
+
+
+int mandar_mensaje_a_backend(int id_funcion){
+     
+     return _send_message(socket, ID_MATE_LIB, id_funcion, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
+    
+}
+
+////////////////////////////////////////                        LIB                          /////////////////////////////////////////////
+
+ // Funciones generales --------------------------------------------------------------
+
 int mate_init(mate_instance *lib_ref, char *config)
 {
-    mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)   // creo la estructura interna 
+    mate_inner_structure estructura_interna = convertir_a_estructura_interna(lib_ref);
 
+    estructura_interna->id = id_carpincho;
 
-    // falta leer archivo config que recibe la función para tener los datos de conexión, como se hace?
+    armar_socket_desde_binario(config);
+
+    conexion_con_backend = _send_message(socket, ID_MATE_LIB, MATE_INIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
     
-    char *ip; // valor del archivo de config recibido
-    char *port: // valor del archivo de config recibido
-
-    socket = _connect(ip, port, logger); // crea la conexión con los ip y puerto del config
-
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_INIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
-    
-    if(respuesta_backend < 0 ){ 
-        return respuesta_backend;  
+    if(conexion_con_backend < 0 ){ // no uso la función que armé porque acá voy a necesitar también incrementar el id
+        return conexion_con_backend;  
     }
     else{
-        return estructura_interna->respuesta_a_carpincho;
-    }    
-} 
+        // hacer que se quede esperando con un recv a la respuesta del backend y que lo guarde para responder al carpincho
+        respuesta_para_carpincho = recv();
+        id_carpincho ++; //incremento id para que el proximo tenga el siguiente
+        return respuesta_para_carpincho;
+    }   
+}
 
-////////////////////// correcciones
 int mate_close(mate_instance *lib_ref)
 {
-    mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
+    mate_inner_structure estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_CLOSE,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
+    return conexion_con_backend(MATE_CLOSE);
     
-    // si el mensaje no logra mandarse, qué devuelve _send_message? 
-        //para ver si lo sumo al if de abajo y devuelvo otro error
-
-    if(respuesta_backend === KERNEL_BAKEND || respuesta_backend === MEMORIA_BACKEND ){ // para que el carpincho reciba siempre lo mismo. la respuesta del backend va a devolver 1 o 2 según si va con memoria o con kernel
-        return 0;
-    }
-    else{
-        return ERROR_RESPUESTA_BACKEND;
-    }
 }
 
-//-----------------Semaphore Functions---------------------/ 
+ // Semáforos --------------------------------------------------------------------
 
-int mate_sem_init(mate_instance *lib_ref, mate_sem_name sem, unsigned int value) {
+int mate_sem_init(mate_instance *lib_ref, mate_sem_name sem, unsigned int value) 
+{
+    mate_inner_structure estructura_interna = convertir_a_estructura_interna(lib_ref);
+
+    estructura_interna->semaforo = sem;
+    estructura_interna->valor_semaforo = value; 
+
+    return conexion_con_backend(MATE_SEM_INIT);
     
-    if(respuesta_backend === KERNEL_BACKEND) // si la respuesta del backend fue 1, quiere decir que esta comunicandose con el kernel
-    {
-        mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
+}   
 
-        estructura_interna->semaforo = sem; // pongo el semaforo en la estructura que se va a mandar al backend:
-        estructura_interna->valor_semaforo = value; // pongo el valor del semaforo en la estructura que se va a mandar al backend:
+int modificar_semaforo(int id_funcion, mate_sem_name sem){
 
-        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_INIT ,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
-        
-        // si el mensaje no logra mandarse, qué devuelve _send_message?    
+    mate_inner_structure estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-        if (respuesta_backend === KERNEL_BACKEND){
-            return 0;
-        }
-        else{
-            return ERROR_RESPUESTA_BACKEND;
-        }
-        
-    }
-    else{
-        return ERROR_FUNCION_NO_VALIDA; 
-    }
+    estructura_interna->semaforo = sem;
+
+    return conexion_con_backend(id_funcion);
 
 }
 
-int mate_sem_wait(mate_instance *lib_ref, mate_sem_name sem) {
-
-    if(respuesta_backend === KERNEL_BACKEND) // si la respuesta del backend fue 1, quiere decir que esta comunicandose con el kernel
-    {
-        mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
-
-        estructura_interna->semaforo = sem; // pongo en la estructura el semaforo que se va a mandar al backend:
-
-        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_WAIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
-        
-        if (respuesta_backend === KERNEL_BACKEND){ 
-            return 0;
-        }
-        else{
-            return ERROR_RESPUESTA_BACKEND;
-        }
-        
-    }
-    else{
-        return ERROR_FUNCION_NO_VALIDA; // error de que no se puede comunicar con el kernel 
-    }
-
+int mate_sem_wait(mate_instance *lib_ref, mate_sem_name sem) 
+{
+    return modificar_semaforo(MATE_SEM_WAIT, sem);
 }
 
-int mate_sem_post(mate_instance *lib_ref, mate_sem_name sem) {
-
-    // podríamos sumar un if que, si en la respuesta_backend tiene 1 (o sea que esta comunicandose con kernel), haga todo esto y que, si no, retorne otra cosa
-
-    if(respuesta_backend === KERNEL_BACKEND) // si la respuesta del backend fue 1, quiere decir que esta comunicandose con el kernel
-    {
-        mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
-
-        estructura_interna->semaforo = sem;  // pongo en la estructura el semaforo que se va a mandar al backend
-
-        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_POST, armar_paquete(estructura_interna) , sizeof(estructura_interna), logger);
-
-        if (respuesta_backend === KERNEL_BACKEND){
-            return 0;
-        }
-        else{
-            return ERROR_RESPUESTA_BACKEND;
-        }
-        
-    }
-    else{
-        return ERROR_FUNCION_NO_VALIDA; // error de que no se puede comunicar con el kernel 
-    }
-
+int mate_sem_post(mate_instance *lib_ref, mate_sem_name sem) 
+{
+    return modificar_semaforo(MATE_SEM_POST, sem);
 }
 
-int mate_sem_destroy(mate_instance *lib_ref, mate_sem_name sem) {
+int mate_sem_destroy(mate_instance *lib_ref, mate_sem_name sem) 
+{
 
-    if(respuesta_backend === KERNEL_BACKEND) // si la respuesta del backend fue 1, quiere decir que esta comunicandose con el kernel
-    {
-        mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
-
-        estructura_interna->semaforo = sem;  // pongo en la estructura el semaforo que se va a mandar al backend
-
-        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_SEM_DESTROY ,armar_paquete(estructura_interna), sizeof(estructura_interna) logger);
-
-        // si el mensaje no logra mandarse, qué devuelve _send_message? para ver si sirve el if de abajo    
-        
-        if (respuesta_backend === KERNEL_BACKEND){
-            return 0;
-        }
-        else{
-            return ERROR_RESPUESTA_BACKEND;
-        }
-        
-    }
-    else{
-        return ERROR_FUNCION_NO_VALIDA; // error de que no se puede comunicar con el kernel 
-    }
+    return modificar_semaforo(MATE_SEM_DESTROY, sem);
 }
 
-//--------------------IO Functions------------------------/
+
+ // Funcion Entrada y Salida --------------------------------------------------------------
 
 int mate_call_io(mate_instance *lib_ref, mate_io_resource io, void *msg)
 {
-    if(respuesta_backend === KERNEL_BACKEND) // si la respuesta del backend fue 1, quiere decir que esta comunicandose con el kernel
-    {
-        mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
+    mate_inner_structure estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-        estructura_interna->dispositivo_io = mate_io_resource;  // pongo en la estructura el dispositivo que se va a mandar al backend:
-        estructura_interna->mnesaje_io = msg; //  // pongo en la estructura el mensaje que se va a mandar al backend:
-
-        respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_CALL_IO ,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
-
-        // si el mensaje no logra mandarse, qué devuelve _send_message? para ver si sirve el if de abajo    
-        
-        if (respuesta_backend === KERNEL_BACKEND){
-            return 0;
-        }
-        else{
-            return ERROR_RESPUESTA_BACKEND;
-        }
-        
-    }
-    else{
-        return ERROR_FUNCION_NO_VALIDA; // error de que no se puede comunicar con el kernel 
-    }
-
+    estructura_interna->dispositivo_io = mate_io_resource;  
+    estructura_interna->mnesaje_io = msg; 
+    
+    return conexion_con_backend(MATE_CALL_IO);    
 
 }
 
-//--------------Memory Module Functions-------------------/ 
-// ni idea qué tendríamos que hacer acá
+// Funciones módulo memoria ------------------------------------------------------------------
 
 mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 {
-    mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
 
-    estructura_interna->size_memoria = size;  // pongo en la estructura el size que se va a mandar al backend:
+    mate_inner_structure estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
-    
-    // si el mensaje no logra mandarse, qué devuelve _send_message? 
-        //para ver si lo sumo al if de abajo y devuelvo otro error
+    estructura_interna->size_memoria = size; 
 
-    if(respuesta_backend === KERNEL_BAKEND || respuesta_backend === MEMORIA_BACKEND ){ // para que el carpincho reciba siempre lo mismo. la respuesta del backend va a devolver 1 o 2 según si va con memoria o con kernel
-        return 0;
-    }
-    else{
-        return ERROR_RESPUESTA_BACKEND;
-    }
+    return conexion_con_backend(MATE_MEMALLOC);    
+
 }
 
 int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
 {
-    /* en el ejemplo estaba esto, tendríamos que hacerlo?
-    if (addr != 0)
-    {
-        return -1;
-    }
-    */
 
-    mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
+    mate_inner_structure estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    estructura_interna->addr_memfree = addr;  // pongo en la estructura el address que se va a mandar al backend:
+    estructura_interna->addr_memfree = addr; 
 
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
-    
-    // si el mensaje no logra mandarse, qué devuelve _send_message? 
-        //para ver si lo sumo al if de abajo y devuelvo otro error
-
-    if(respuesta_backend === KERNEL_BAKEND || respuesta_backend === MEMORIA_BACKEND ){ // para que el carpincho reciba siempre lo mismo. la respuesta del backend va a devolver 1 o 2 según si va con memoria o con kernel
-        return 0;
-    }
-    else{
-        return ERROR_RESPUESTA_BACKEND;
-    }
+    return conexion_con_backend(MATE_MEMFREE);    
 
 }
 
 int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int size)
 {
-    /* en el ejemplo estaba esto, tendríamos que hacerlo?
-    if (addr != 0)
-    {
-        return -1;
-    }
-    */
+    mate_inner_structure estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
+    estructura_interna->size_memoria = size;  
+    estructura_interna->dest_memread = dest; 
 
-    estructura_interna->size_memoria = size;  // pongo en la estructura el size que se va a mandar al backend
-    estructura_interna->dest_memread = dest;  // pongo en la estructura el dest que se va a mandar al backend    
+    return conexion_con_backend(MATE_MEMREAD);    
 
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
-    
-    // si el mensaje no logra mandarse, qué devuelve _send_message? 
-        //para ver si lo sumo al if de abajo y devuelvo otro error
-
-    if(respuesta_backend === KERNEL_BAKEND || respuesta_backend === MEMORIA_BACKEND ){ // para que el carpincho reciba siempre lo mismo. la respuesta del backend va a devolver 1 o 2 según si va con memoria o con kernel
-        return 0;
-    }
-    else{
-        return ERROR_RESPUESTA_BACKEND;
-    }
 }
 
 int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int size)
 {
-    /* en el ejemplo estaba esto, tendríamos que hacerlo?
-    if (addr != 0)
-    {
-        return -1;
-    }
-    */
+    mate_inner_structure estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    mate_inner_structure estructura_interna = (mate_inner_structure *)lib_ref->group_info)
+    estructura_interna->origin_memwrite = origin; 
+    estructura_interna->dest_memwrite = dest;  
+    estructura_interna->size_memoria = size; 
 
-    estructura_interna->origin_memwrite = origin;  // pongo en la estructura el origin que se va a mandar al backend
-    estructura_interna->dest_memwrite = dest;  // pongo en la estructura el dest que se va a mandar al backend    
-    estructura_interna->size_memoria = size;  // pongo en la estructura el size que se va a mandar al backend
+    return conexion_con_backend(MATE_MEMWRITE);    
 
-    respuesta_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC,armar_paquete(estructura_interna), sizeof(estructura_interna), logger);
-    
-    // si el mensaje no logra mandarse, qué devuelve _send_message? 
-        //para ver si lo sumo al if de abajo y devuelvo otro error
-
-    if(respuesta_backend === KERNEL_BAKEND || respuesta_backend === MEMORIA_BACKEND ){ // para que el carpincho reciba siempre lo mismo. la respuesta del backend va a devolver 1 o 2 según si va con memoria o con kernel
-        return 0;
-    }
-    else{
-        return ERROR_RESPUESTA_BACKEND;
-    }
 }
+
+
+
+
+    
+
+
+

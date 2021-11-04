@@ -9,82 +9,28 @@
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
 
-// tendría que conocer la estructura interna acá también
-typedef struct mate_inner_structure
-{
-    //void *memory;
-    float *rafaga_anterior; // para despues poder calcular la estimación siguiente
-    float *estimacion_anterior; // idem
-    float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
-    float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
-    int *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
-    char *estado; // no sé cuánto nos va a servir, si no se puede hacer que sea estado_anterior y que nos evite tener otro para prioridad
- 
-  // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
-    char *semaforo; 
-    int *valor_semaforo; 
-    char *dispositivo_io; 
-    char *mnesaje_io;
-    int *size_memoria;
-    int *addr_memfree;
-    int *origin_memread;
-    int **dest_memread;
-    int **origin_memwrite;
-    int *dest_memwrite;
-    int *respuesta_a_carpincho;
 
-} mate_inner_structure;
+int main(int argc, char ** argv){
 
-/* Estados:*/
-    t_queue* new;
-    t_queue* ready;
-    t_list*  exec;
-    t_list*  exit;
-    t_queue* blocked;
-    t_queue* suspended_blocked;
-    t_queue* suspended_ready;
-
-
-
-    t_config* config;
-
-// que onda esto y la memoria que usa? quien se encarga de darsela y de borrarla?
     t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
 
-// Config:  (falta) 
-	ip_memoria= config_get_string_value(config, "IP_MEMORIA");
-	puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
-    algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
-    dispositivos_io= config_get_string_value(config, "DISPOSITIVOS_IO");
-    duraciones_io = config_get_int_value(config, "DURACIONES_IO");
-    grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
-    grado_multiprocesamiento= config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
-    tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
-    estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
-    alfa = config_get_int_value(config, "ALFA");
+    crear_hilos_CPU();
+    crear_hilos_planificadores();
+	inicializar_semaforos();
+	inicializar_colas();
+    leer_archivo_config();
 
-/* Colas con elementos:*/
-    cola_new_con_elementos;
-    cola_ready_con_elementos;
-    cola_exec_con_elementos;
-    cola_exit_con_elementos; //va?
-    cola_blocked_con_elementos;
-    cola_suspended_blocked_con_elementos;
-    cola_suspended_ready_con_elementos;
+    lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
 
- /* Mutex para modificar las colas:*/
-    pthread_mutex_t sem_cola_new;
-    pthread_mutex_t sem_cola_ready;
-    pthread_mutex_t sem_cola_exec;
-    pthread_mutex_t sem_cola_blocked;
-    pthread_mutex_t sem_cola_exit;
-    pthread_mutex_t sem_cola_suspended_blocked;
-    pthread_mutex_t sem_cola_suspended_ready; 
-    sem_grado_multiprocesamiento;
-    sem_grado_multiprogramacion;
+    _start_server(puerto_escucha, handler, logger);
 
+    // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
+    free_memory();
 
-// Colas estados e inicializacion de sus mutex:
+} 
+
+///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
+// Colas estados y sus mutex:
 void inicializar_colas(){
     new = queue_create();
 	pthread_mutex_init(&sem_cola_new, NULL);
@@ -109,12 +55,15 @@ void inicializar_colas(){
 	
     pthread_mutex_init(&socket_memoria, NULL); //falta declarar socket_memoria
 }
-
-
 // Inicializacion de semaforos:
 void inicializar_semaforos(){
+
+// (tener en cuenta: el segundo parámetro deberia ser 1 si es compartido entre carpinchos)
+
     sem_init(&sem_grado_multiprogramacion,0,grado_multiprogramacion);  
 	sem_init(&sem_grado_multiprocesamiento, 0,grado_multiprocesamiento); 
+
+    //sem_init(&hilo_CPU, 0,(1,1,1)); //long vector = grado multiprocesamiento 
 
 	sem_init(&cola_new_con_elementos,0,0);
     sem_init(&cola_ready_con_elementos,0,0);
@@ -123,180 +72,39 @@ void inicializar_semaforos(){
     sem_init(&cola_blocked_con_elementos,0,0);
     sem_init(&cola_suspended_blocked_con_elementos,0,0);
     sem_init(&cola_suspended_ready_con_elementos,0,0); 
+
+
+    //hacer sem_destroy al final
+}
+
+void leer_archivo_config(){
+
+    config = config_create("../cfg/kernel.conf");
+
+	ip_memoria = config_get_string_value(config, "IP_MEMORIA");
+	puerto_memoria = config_get_int_value(config, "PUERTO_MEMORIA");
+	puerto_escucha = config_get_int_value(config, "PUERTO_ESCUCHA");    
+    algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
+    alfa = config_get_int_value(config, "ALFA");
+    dispositivos_io = config_get_array_value(config, "DISPOSITIVOS_IO");
+    duraciones_io = config_get_array_value(config, "DURACIONES_IO"); 
+    grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
+    grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
+    tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
+
+}
+
+void free_memory(){
+
+    config_destroy(config);
+    list_clean_and_destroy_elements(lista_carpinchos,/*void(*element_destroyer)(void*))*/);
+    log_destroy(logger);
+
+    // pthread_mutex_destroy
+
 }
  
-
-int main(int argc, char ** argv){
-
-    crear_hilos_planificadores();
-    crear_hilos_CPU;
-	inicializar_semaforos();
-	inicializar_colas();
-	//inicializar_configuracion();
-
-} 
-
-
-int crear_socket_listener(){
-
-    //leer archivo config para tener puerto_ escucha
-
-    int puerto_escucha;
-
-    return _create_socket_listenner(puerto_escucha, logger);
-
-}
-
-
-int recibir_mensaje(){
-
-    int str_len;
-    char* string;
-    int offset = 0;
-    mate_inner_structure* estructura_interna = malloc(sizeof(mate_inner_structure));
-
-    void* buffer = _recive_message(buffer, logger);
-    memcpy(&(estructura_interna)->rafaga_anterior, buffer, sizeof(float));
-    offset += sizeof(float); 
-    memcpy(&estructura_interna)->estimacion_anterior, buffer, sizeof(float));
-    offset += sizeof(float); 
-    memcpy(&estructura_interna)->estimacion_siguiente, buffer, sizeof(float));
-    offset += sizeof(float); 
-    memcpy(&estructura_interna)->llegada_a_ready, buffer, sizeof(float));
-    offset += sizeof(float); 
-    memcpy(&estructura_interna)->prioridad, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&str_len, buffer + offset, sizeof(int));
-    offset += sizeof(int);
-    estructura_interna->estado = malloc(str_len + 1);
-    memcpy(&estructura_interna)->estado, buffer + offset, str_len);
-    memcpy(&str_len, buffer + offset, sizeof(int));
-    offset += sizeof(int);
-    estructura_interna->semaforo = malloc(str_len + 1);
-    memcpy(&estructura_interna)->semaforo, buffer + offset, str_len);
-    memcpy(&estructura_interna)->valor_semaforo, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&str_len, buffer + offset, sizeof(int));
-    offset += sizeof(int);
-    estructura_interna->dispositivo_io = malloc(str_len + 1);
-    memcpy(&estructura_interna)->dispositivo_io, buffer + offset, str_len);
-    memcpy(&estructura_interna)->size_memoria, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->addr_memfree, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->origin_memread, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->dest_memread, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->origin_memwrite, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->dest_memwrite, buffer, sizeof(int));
-    offset += sizeof(int); 
-    memcpy(&estructura_interna)->respuesta_a_carpincho, buffer, sizeof(int));
-    offset += sizeof(int);
-
-
-    ejecutar_funcion_switch(buffer->codigo_operacion);
-
-}
-
-ejecutar_funcion_switch(void * buffer){
-    switch(codigo){
-        case MATE_INIT:
-            mate_init(mensaje);
-        case MATE_CLOSE: 
-            mate_close(mensaje);
-        case MATE_SEM_INIT: 
-            mate_sem_init(mensaje);            
-        case MATE_SEM_WAIT: 
-            mate_sem_wait(mensaje);            
-        case MATE_SEM_POST: 
-            mate_sem_post(mensaje);            
-        case MATE_SEM_DESTROY:
-            mate_sem_destroy(mensaje);            
-        case MATE_CALL_IO:
-            mate_call_io(mensaje);            
-        case MATE_MEMALLOC: 
-            mate_memalloc(mensaje);            
-        case MATE_MEMFREE:
-            mate_memfree(mensaje);            
-        case MATE_MEMREAD:
-            mate_memread(mensaje);            
-        case MATE_MEMWRITE: 
-            mate_memwrite(mensaje);      
-        break;      
-    }
-}
-
-
-
-//////////////// FUNCIONES GENERALES ///////////////////
-
-int mate_init(mate_instance *mate_inner_structure){
-    /*
-    - completar con id
-    - completar la estructura con por ej los valores del config de la rafaga y estimacion
-    - reservar espacio en memoria 
-    - avisar que llegó un nuevo carpincho a new => post a new_con_elementos
-    - una vez que está en EXEC retornar 0
-    */
-}
-
-int mate_close(mate_instance *mate_inner_structure){
-    /* conectar con memoria para borrar todo*/
-}
-
-int mate_sem_init(mate_instance *mate_inner_structure){
-    mate_instance->sem_instance = malloc(sizeof(sem_t));
-
-        /* 
-           guardar el semaforo en la estructura del carpincho
-        */
-        
-    return sem_init(mate_instance->sem_instance, 0, value); // qué pasa si quiero inicializar más de un hilo?
-
-}
-
-int mate_sem_wait(mate_instance *mate_inner_structure){
-   /* 
-        cuando le hagan post le retorne 0 por la conexión así ahí puede seguir
-        meter en lista de blocked
-    */
-    sem_wait(sem); //
-    return pasar_a_ready_o_bloqueado_ready();
-}
-
-int mate_sem_post(mate_instance *mate_inner_structure){
-   /* 
-        
-    */
-    sem_post(sem); //
-}
-
-int mate_sem_destroy(mate_instance *mate_inner_structure) {
-
-}
-
-int mate_call_io(mate_instance *mate_inner_structure){
-
-}
-
-mate_pointer mate_memalloc(mate_instance *mate_inner_structure){
-
-}
-
-int mate_memfree(mate_instance *mate_inner_structure){
-
-}
-
-int mate_memread(mate_instance *mate_inner_structure){
-
-}
-
-int mate_memwrite(mate_instance *mate_inner_structure){
-
-}
-
 ///////////////// CREACION HILOS //////////////////////// 
 
 void crear_hilos_planificadores(){
@@ -311,12 +119,147 @@ void crear_hilos_planificadores(){
     pthread_create(&planficador_mediano_plazo, NULL, (void*) x, NULL); //FALTA función "x"
 }
 
-void crear_hilos_CPU(){
+void crear_hilos_CPU(){ // creación de los hilos CPU
 
-    //segun grado multiprocesamiento
-    
-  
+    pthread_t hilo_cpu[grado_multiprocesamiento];
+	lista_ejecutando = list_create(); 			// lista que tiene a los que estan ejecutando
+	for(int i= 0; i< grado_multiprocesamiento; i++){
+         (pthread_create(&hilo_cpu[i], NULL, (void*)ejecuta, NULL)
+	}
 }
+
+//Alternativa ¿?:
+void crear_semaforos_CPU(){
+	lista_semaforos_CPU = list_create();
+	for(int i= 0; i< grado_multiprocesamiento; i++){
+         sem_init(&semaforo_CPU[i],0,1)
+	}
+}
+
+
+int crear_socket_listener(){
+
+    //leer archivo config para tener puerto_ escucha
+
+    int puerto_escucha;
+
+    return _create_socket_listenner(puerto_escucha, logger);
+
+}
+
+void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
+    log_info(logger, "Recibí un mensaje");
+   
+   mate_inner_structure mensaje;
+
+    switch(opcode){
+        case MATE_INIT:
+            mensaje = /*deserializar*/
+            mate_init(mensaje->id);
+        case MATE_CLOSE: 
+            mensaje = /*deserializar*/
+            mate_close(mensaje->id);
+        case MATE_SEM_INIT: 
+            mensaje = /*deserializar*/
+            mate_sem_init(mensaje->id, mensaje->semaforo, mensaje->valor_semaforo);            
+        case MATE_SEM_WAIT: 
+            mensaje = /*deserializar*/
+            mate_sem_wait(mensaje->id, mensaje->semaforo);            
+        case MATE_SEM_POST: 
+            mensaje = /*deserializar*/
+            mate_sem_post(mensaje->id, mensaje->semaforo);            
+        case MATE_SEM_DESTROY:
+            mensaje = /*deserializar*/
+            mate_sem_destroy(mensaje->id, mensaje->semaforo);            
+        case MATE_CALL_IO:
+            mensaje = /*deserializar*/
+            mate_call_io(mensaje->id, mensaje->dispositivo_io);            
+        case MATE_MEMALLOC: 
+            mensaje = /*deserializar*/
+            mate_memalloc(mensaje->id, mensaje->size_memoria);            
+        case MATE_MEMFREE:
+            mensaje = /*deserializar*/
+            mate_memfree(mensaje->id, mensaje->addr_memfree);            
+        case MATE_MEMREAD:
+            mensaje = /*deserializar*/
+            mate_memread(mensaje->id, mensaje->origin_memread, mensaje->dest_memread, mensaje->size_memoria);            
+        case MATE_MEMWRITE: 
+            mensaje = /*deserializar*/
+            mate_memwrite(mensaje->id, mensaje->origin_memwrite, mensaje->dest_memwrite, mensaje->size_memoria);      
+        break;  
+
+    }
+}
+
+
+
+//////////////// FUNCIONES GENERALES ///////////////////
+
+int mate_init(int id_carpincho){
+    
+    data_carpincho carpincho = malloc(size_of(data_carpincho);
+    carpincho->id = id_carpincho;
+    carpincho->rafaga_anterior = 0;
+    carpincho->estimacion_anterior = 0;
+    carpincho->estimacion_siguiente = /*calculo para estimación que va a ser la misma para todos*/
+    // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
+    carpincho->prioridad = false;
+    carpincho->estado = 'N';
+
+    list_add_in_index(lista_carpinchos, id_carpincho, carpincho);
+
+    /*
+    - reservar espacio en memoria 
+    - avisar que llegó un nuevo carpincho a new => post a new_con_elementos
+    - una vez que está en EXEC retornar 0
+    */
+}
+
+int mate_close(int id_carpincho){
+    
+    int id_carpincho_a_eliminar = mate_inner_structure->id;
+
+    list_remove_and_destroy_element(lista_carpinchos, id_carpincho_a_eliminar, /*void(*element_destroyer)(void*)*/)
+    
+    // acá estamos eliminando lo que hay en ese index pero medio que dejamos ese index muerto
+}
+
+
+//////////////// FUNCIONES SEMAFOROS ///////////////////
+
+int mate_sem_init(int id_carpincho, mate_sem_name nombre_semaforo, int valor_semaforo){  
+}
+
+int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){
+}
+
+int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo){
+}
+
+int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo) {
+}
+
+
+//////////////// FUNCIONES IO ///////////////////
+
+int mate_call_io(int id_carpincho, mate_io_resource nombre_io){
+}
+
+
+//////////////// FUNCIONES MEMORIA ///////////////////
+
+mate_pointer mate_memalloc(int id_carpincho, int size){
+}
+
+int mate_memfree(int id_carpincho, mate_pointer addr){
+}
+
+int mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size){
+}
+
+int mate_memwrite(int id_carpincho, void origin, mate_pointer dest, int size){
+}
+    
 
 
 ///////////////// PLANIFICACIÓN ////////////////////////
@@ -324,7 +267,7 @@ void crear_hilos_CPU(){
 void new_a_ready(){
 
     while(1){
-        //sem_wait(&cola_new_con_elementos); //si hay procesos en new  --> quien hace el post?, cuando se inicializa?
+        //sem_wait(&cola_new_con_elementos); //si hay procesos en new  --> post cuando se inicializa?
         sem_wait(sem_grado_multiprogramacion); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC!
 		
        // saco de cola new y pongo en cola ready al primero (FIFO):
@@ -342,42 +285,48 @@ void new_a_ready(){
     
 }
 
-//calcular ráfaga siguiente. Esto se debería hacer para todos los carpinchos cuando ingresan a la cola de ready
-//      float calculo_rafaga_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * alfa
+// calcular ráfaga siguiente. Esto se debería hacer para todos los carpinchos cuando ingresan a la cola de ready
+    //    float calculo_rafaga_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * alfa
 
 void ready_a_exec(){  
     sem_wait(&cola_ready_con_elementos); //espera aviso que hay en ready    
 
-    // depende del algoritmo en el config (algoritmo_planificacion)
+    sem_wait(&sem_grado_multiprocesamiento); //falta el post, cuando sale de exec? 
+
+    // Depende del algoritmo en el config (algoritmo_planificacion)
     if(algoritmo_planificacion == "SJF"){
         ready_a_exec_SJF();
     }
     else{
         ready_a_exec_HRRN();
     }
+
+    // Sacar de la cola de ready al elegido (por el algoritmo) y ponerlo en la la lista de exec
+
+    // Asignarle un hilo CPU:
+    for(int i= 0; i< grado_multiprocesamiento; i++){
+         sem_wait(&semaforo_hilo_CPU[i]); // --> post cuando deja el hilo
+	}
+
+}
+
+void ejecuta(){ 
+
+// recibimos todo lo que pide el carpincho (semaforos y dispositivos io) hasta que termine o se bloquee --> seria avisarle al capincho (desbloquearlo) para que pueda seguir despues del init
+
 }
 
 ///////////////// ALGORITMOS ////////////////////////
 
-void ready_a_exec_SJF(){
+void ready_a_exec_SJF(){ // De la cola de ready te da el que debe ejecutar ahora según SJF
 
-    //chequear grado multiprocesamiento
-    sem_wait(&sem_grado_multiprocesamiento); // --> falta el post
-
-    //fun que de la cola de exec te da el que debe ejecutar ahora ("ejecutar el algoritmo")
     
-    //sacar de la cola de ready al elegido y ponerlo en la la lista de exec
-
-    //asignarle un hilo cpu
-
-
-    //  o sino que todo eso se haga directamente en ready_a_exec y que ready_a_exec sea directamnete el algoritmo que devuelve el proeso que debe ejecutar?
     
-        
 }
 
-void ready_a_exec_HRRN(){
+void ready_a_exec_HRRN(){ // De la cola de ready te da el que debe ejecutar ahora según HRRN
 
+    
        
 }
 
