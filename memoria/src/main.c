@@ -20,10 +20,10 @@ void init_swamp_connection(){
 }
 
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
-    log_info(logger, "Recibí un mensaje");
-
-    int pid, espacioAReservar = 10;
+    void* resp;
+    int pid, iresp, espacioAReservar = 10, dir_logica;
     log_info(logger, "Deserializando los parametros recibidos...");
+
     switch(opcode){
         case MEM_INIT:
             deserialize_init_process(&pid, payload);
@@ -31,18 +31,26 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             break;
         case MEM_ALLOC:
             deserialize_mem_alloc(&pid, &espacioAReservar, payload);
-            memalloc(espacioAReservar, pid);
+            iresp = memalloc(pid, espacioAReservar);
             break;
         case MEM_FREE:
+            iresp = memfree(pid, dir_logica);
             break;
         case MEM_READ:
+            resp = memread(pid, dir_logica);
             break;
         case MEM_WRITE:
+            iresp = memwrite(pid, dir_logica, payload); // PAYLOAD NO VA
             break;
         default:
             log_error(logger,"Comando incorrecto");
             //que hacemos en este caso? nada?
     }
+    if(opcode != MEM_READ){
+        resp = _serialize(sizeof(int), "%d", iresp);
+    }
+
+    _send_message(fd, MEM_ID, opcode, resp, sizeof(resp), logger);
 }
 
 void deserialize_init_process(int* pid, void* payload){
