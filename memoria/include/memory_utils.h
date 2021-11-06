@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <commons/collections/list.h>
 #include "server.h"
+#include "serialization.h"
 
 #define CONFIG_PATH "./cfg/memoria.conf"
 #define    MEM_INIT  100
@@ -28,14 +29,18 @@
 
 #define HEAP_METADATA_SIZE 9
 
+
+//MATE ERRORS 
+#define MATE_FREE_FAULT  -5
+#define MATE_READ_FAULT  -6
+
 // SWAMP CONST
 #define MEM_ID    "MEM"
 #define RECV_PAGE 99
 int swamp_fd;
 
-
 t_log* logger;
-pthread_mutex_t swamp_mutex;
+pthread_mutex_t swamp_mutex, lru_mutex;
 
 
 typedef struct 
@@ -51,6 +56,7 @@ typedef struct
     uint32_t pagina;
     uint8_t isfree;
     uint32_t bitPresencia;
+    uint32_t bitUso;
     uint32_t bitModificado;
     uint32_t lRU;
 } Pagina;
@@ -81,7 +87,7 @@ int tamanioDeMemoria;
 int cantidadDePaginasPorProceso;
 
 void initPaginacion();
-int memalloc(int espacioAReservar, int processId);
+int memalloc(int processId, int espacioAReservar);
 int entraEnElEspacioLibre(int espacioAReservar, int processId);
 void agregarXPaginasPara(int processId, int espacioRestante);
 Pagina *getLastPageDe(int processId);
@@ -95,9 +101,12 @@ void send_message_swamp(int command, void* payload, int pay_len);
 void deserealize_payload(void* payload);
 int getframeNoAsignadoEnMemoria();
 int frameAsignado(int unFrame);
-int memfree(int direccionLogica, int idProcess);
+int memfree(int idProcess, int direccionLogica);
 Pagina *getPageDe(int processId,int nroPagina);
-int memwrite(int direccionLogica, int idProcess, void* loQueQuierasEscribir);
-
+int memwrite(int idProcess, int direccionLogica, void* loQueQuierasEscribir);
+Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada);
+HeapMetaData* get_heap_metadata(int offset);
+HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset);
+void* memread(uint32_t pid, int dir_logica);
 
 #endif

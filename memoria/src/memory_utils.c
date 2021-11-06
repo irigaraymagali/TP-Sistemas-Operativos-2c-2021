@@ -3,6 +3,8 @@
 void initPaginacion(){
     log_info(logger,"iniciando paginacion");
 
+    pthread_mutex_init(&lru_mutex, NULL);
+
     config = config_create(CONFIG_PATH);
 
     tamanioDePagina = config_get_int_value(config, "TAMANIO_PAGINA");
@@ -27,7 +29,7 @@ void initPaginacion(){
     todasLasTablasDePaginas = list_create();
 }
 
-int memalloc(int espacioAReservar, int processId){
+int memalloc(int processId, int espacioAReservar){
     int entra = entraEnElEspacioLibre(espacioAReservar, processId);
     uint32_t mayorNroDePagina = 0; // 0 porque indica que no tiene asignado ninguna pagina, las pags siempre arancan en 1
     int ultimoFrame = 0;
@@ -70,14 +72,14 @@ int memalloc(int espacioAReservar, int processId){
         if(espacioFinalDisponible >= espacioAReservar){
             offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - ((mayorNroDePagina-1) * tamanioDePagina)) ;
 
-            int espacioTotal = tempLastHeap + espacioAReservar;
+            uint32_t espacioTotal = tempLastHeap + espacioAReservar;
             memcpy(memoria + offset + sizeof(uint32_t), &espacioTotal, sizeof(uint32_t));
             offset = offset + 2*sizeof(uint32_t);
-
+            
             memcpy(memoria + offset, &nuevoHeap->isfree, sizeof(uint8_t));
             offset = offset  + espacioAReservar - 2*sizeof(uint32_t);
 
-            memcpy(memoria + offset, &nuevoHeap->prevAlloc, sizeof(uint32_t));
+            memcpy(memoria + offset, &nuevoHeap->prevAlloc, sizeof(uint32_t));            
             offset = offset + sizeof(uint32_t);
 
             memcpy(memoria + offset, &nuevoHeap->nextAlloc, sizeof(uint32_t));
@@ -143,6 +145,53 @@ int memalloc(int espacioAReservar, int processId){
     
     return entra;
 
+}
+
+void* memread(uint32_t pid, int dir_logica){
+    void* read;
+    int size_to_read, offset_to_read;
+
+    void* err_msg = _serialize(sizeof(int), "%d", MATE_READ_FAULT);
+    HeapMetaData* heap;
+
+    log_info(logger, "Buscando la tabla de paginas del proceso %d", pid);
+
+    TablaDePaginasxProceso* pages = get_pages_by(pid);
+    if (pages->id != pid){
+        log_error(logger, "El proceso ingresado es incorrecto");
+        return err_msg;
+    }
+
+    Pagina* page = get_page_by_dir_logica(pages, dir_logica);
+    if (page == NULL){
+        return err_msg;
+    } 
+    if(page->bitPresencia == 0){
+        log_info(logger, "TODO: buscar en swap");
+    }
+
+    heap = get_heap_metadata(dir_logica);
+    if(heap->isfree != BUSY && heap->isfree != FREE){
+        log_error(logger, "La direccion logica recibida es incorrecta");
+        return err_msg;
+    }
+    if(heap->isfree == FREE){
+        log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
+        return err_msg;
+    }
+    
+    offset_to_read = dir_logica + HEAP_METADATA_SIZE; //TODO: AVERIGUAR si apunta por fuera
+    size_to_read = heap->nextAlloc - HEAP_METADATA_SIZE;
+    read = malloc(size_to_read);
+    memcpy(read, memoria + offset_to_read, size_to_read);
+
+    pthread_mutex_lock(&lru_mutex);
+    page->lRU = lRUACTUAL;
+    lRUACTUAL++;
+    pthread_mutex_unlock(&lru_mutex);
+    page->bitUso = 1;
+
+    return read;
 }
 
 TablaDePaginasxProceso* get_pages_by(int processID){
@@ -429,7 +478,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
     return -1;
 }
 
-int memfree(int direccionLogicaBuscada, int idProcess){
+int memfree(int idProcess, int direccionLogicaBuscada){
     
     int paginaActual=1;
 
@@ -472,8 +521,31 @@ int memfree(int direccionLogicaBuscada, int idProcess){
     }
 
     //falta hacer lo de liberar paginas pero deberia preguntar si deberia compactar y si debe llevar algun procesdimiento
-    
-    return -5;
+    return MATE_FREE_FAULT;
+}
+
+Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada){
+    int paginaActual = 1;
+    int dirAllocFinal = tabla->lastHeap;
+    int dirAllocActual = 0, pid = tabla->id;
+    int frameBuscado;
+
+    while((dirAllocActual <= dir_buscada) && dirAllocFinal >= dir_buscada){
+        if (dirAllocActual == dir_buscada){
+            paginaActual = (dirAllocActual / tamanioDePagina) + 1;
+            return getPageDe(pid, paginaActual);
+        } else {
+            paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
+            frameBuscado = getFrameDeUn(pid, paginaActual);
+
+            int posAllocDentroDelFrame = (dirAllocActual) - ((paginaActual-1) * tamanioDePagina);
+            int offset = (frameBuscado * tamanioDePagina) + posAllocDentroDelFrame;
+            
+            HeapMetaData* heap = get_heap_metadata(offset);
+            dirAllocActual = heap->nextAlloc;
+        }
+    }
+    return NULL;
 }
 
 Pagina *getPageDe(int processId,int nroPagina){
@@ -580,7 +652,7 @@ void inicializarUnProceso(int idDelProceso){
     log_info(logger, "Proceso %d inicializado con Exito", idDelProceso);
 }
 
-int memwrite(int direccionLogicaBuscada, int idProcess, void* loQueQuierasEscribir){
+int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir){
     int paginaActual=1;
 
     TablaDePaginasxProceso *tablaDelProceso = get_pages_by(idProcess);
@@ -668,6 +740,32 @@ int memwrite(int direccionLogicaBuscada, int idProcess, void* loQueQuierasEscrib
         }
 
 }
+}
+
+HeapMetaData* get_heap_metadata(int offset){
+    HeapMetaData* newHeap = malloc(sizeof(HeapMetaData));
+
+    memcpy(&newHeap->prevAlloc, memoria + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    memcpy(&newHeap->nextAlloc, memoria + offset, sizeof(uint32_t));
+    offset = offset + sizeof(uint32_t);
+
+    memcpy(&newHeap->isfree, memoria + offset, sizeof(uint8_t));
+
+    return newHeap;
+}
+
+HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset){
+    memcpy(memoria + offset, &heap->prevAlloc, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    memcpy(memoria + offset, &heap->nextAlloc, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    memcpy(memoria + offset, &heap->isfree, sizeof(uint8_t));
+
+    return heap;
 }
 
 void send_message_swamp(int command, void* payload, int pay_len){
