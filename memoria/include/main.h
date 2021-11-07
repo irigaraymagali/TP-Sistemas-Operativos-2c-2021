@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <commons/log.h>
 #include <commons/config.h>
+#include <commons/temporal.h>
+#include <commons/txt.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include "server.h"
@@ -20,10 +22,19 @@
 #define SWAMP_IP    "IP_SWAMP"
 #define SWAMP_PORT  "PUERTO_SWAMP"
 
+typedef struct{
+    int entrada;
+    char* status;
+    char* pid;
+    char* page;
+    char* frame;
+} Dump;
 
 
-
-
+void print_dump();
+void write_dump(FILE* file, char* record);
+void print_metrics();
+void clean_tlb();
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger);
 void deserialize_init_process(int* pid, void* payload);
 void deserialize_mem_alloc(int* pid, int* espacioAReservar, void* payload);
