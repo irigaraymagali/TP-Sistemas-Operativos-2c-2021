@@ -25,6 +25,8 @@ void initPaginacion(){
     cantidadDePaginasPorProceso = config_get_int_value(config, "MARCOS_POR_CARPINCHO");
 
     todasLasTablasDePaginas = list_create();
+
+    punteroFrameClock =0;
 }
 
 int memalloc(int espacioAReservar, int processId){
@@ -667,7 +669,206 @@ int memwrite(int direccionLogicaBuscada, int idProcess, void* loQueQuierasEscrib
             memcpy(&dirAllocActual, memoria + offset, sizeof(uint32_t));
         }
 
+    }
+    return -1;
 }
+
+void utilizarAlgritmoDeAsignacion(int cantidadDePags){
+
+    if (string_equals_ignore_case(config_get_string_value(config,"ALGORITMO_REEMPLAZO_MMU"), "LRU"))
+    {
+       seleccionLRU( cantidadDePags);
+    }
+    else
+    {
+       seleccionClockMejorado(cantidadDePags);
+    }
+    
+
+
+}
+
+void seleccionLRU(int processID){
+
+    uint32_t LRUmenor=0; //recordar que lo que se busca es el LRU menor
+    uint32_t frameVictima=0;
+
+    if (tipoDeAsignacionDinamica)
+    {
+        t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+    
+        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+        
+        while (list_iterator_has_next(iterator)) {
+        
+            t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
+        
+            Pagina *paginatemp = list_iterator_next(iterator2);
+
+            while (list_iterator_has_next(iterator2))
+            {
+                /* code */
+                if(paginatemp->lRU < LRUmenor && paginatemp->bitPresencia==1){
+                    LRUmenor= paginatemp->lRU;
+                    frameVictima = paginatemp->frame;
+                }
+
+                paginatemp = list_iterator_next(iterator2);
+            }
+        
+            list_iterator_destroy(iterator2);
+            temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+        }
+        
+        list_iterator_destroy(iterator);
+    }
+    else
+    {
+        TablaDePaginasxProceso* temp = get_pages_by(processID);
+
+        t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
+        
+        Pagina *paginatemp = list_iterator_next(iterator2);
+
+        while (list_iterator_has_next(iterator2))
+        {
+        
+            if(paginatemp->lRU < LRUmenor && paginatemp->bitPresencia==1){
+                LRUmenor= paginatemp->lRU;
+                frameVictima = paginatemp->frame;
+            }
+
+            paginatemp = list_iterator_next(iterator2);
+        }
+        
+        list_iterator_destroy(iterator2);
+    }
+
+    //falta una parte que le mande el mendaje a gonza
+
+    /*
+        if(gonza tiene espacio)
+        liberarFrame(uint32_t nroDeFrame)
+     */
+    liberarFrame(frameVictima);
+}
+
+void seleccionClockMejorado(){
+
+    int frameNoEncontrado =1;
+
+    int frameInicial = punteroFrameClock; 
+
+    int frameFinal = tamanioDeMemoria/tamanioDePagina;
+
+    punteroFrameClock++;
+
+    while(frameNoEncontrado && frameInicial!=punteroFrameClock){
+
+        if(punteroFrameClock>= frameFinal){
+            punteroFrameClock =0;
+        }
+
+        Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+        
+        if(paginaEncontrada->bitModificado == 0 && paginaEncontrada->bitUso==0){
+            frameNoEncontrado =0;
+            
+            /*
+                le pido a gonza que se agarre esta pagina y libero el frame
+                liberarFrame(paginaEncontrada->frame)
+             */
+        }
+
+        punteroFrameClock++;
+    }
+
+    while(frameNoEncontrado ){
+
+        if(punteroFrameClock>= frameFinal){
+            punteroFrameClock =0;
+        }
+
+        Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+        
+        if(paginaEncontrada->bitUso==0){
+            frameNoEncontrado =0;
+            
+            /*
+                le pido a gonza que se agarre esta pagina y libero el frame
+                liberarFrame(paginaEncontrada->frame)
+             */
+        }else
+        {
+            paginaEncontrada->bitUso =0;
+        }
+        
+
+        punteroFrameClock++;
+    }
+
+
+}
+
+Pagina *getMarcoDe(uint32_t nroDeFrame){
+
+    t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+    
+    TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+
+    Pagina *paginatemp = malloc(sizeof(Pagina));
+        
+    while (list_iterator_has_next(iterator)) {
+        
+        t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
+        
+        paginatemp = list_iterator_next(iterator2);
+
+        while (list_iterator_has_next(iterator2))
+        {
+            /* code */
+            if(paginatemp->frame == nroDeFrame){
+                return paginatemp;
+            }
+
+            paginatemp = list_iterator_next(iterator2);
+        }
+        
+        list_iterator_destroy(iterator2);
+        temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+    }
+        
+    list_iterator_destroy(iterator);
+
+    return paginatemp;
+}
+
+void liberarFrame(uint32_t nroDeFrame){
+    t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+    
+    TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+        
+    while (list_iterator_has_next(iterator)) {
+        
+        t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
+        
+        Pagina *paginatemp = list_iterator_next(iterator2);
+
+        while (list_iterator_has_next(iterator2))
+        {
+            /* code */
+            if(paginatemp->frame == nroDeFrame){
+                paginatemp->isfree = 1;
+            }
+
+            paginatemp = list_iterator_next(iterator2);
+        }
+        
+        list_iterator_destroy(iterator2);
+        temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+    }
+        
+    list_iterator_destroy(iterator);
 }
 
 void send_message_swamp(int command, void* payload, int pay_len){

@@ -51,6 +51,7 @@ typedef struct
     uint32_t pagina;
     uint8_t isfree;
     uint32_t bitPresencia;
+    uint32_t bitUso;
     uint32_t bitModificado;
     uint32_t lRU;
 } Pagina;
@@ -77,6 +78,7 @@ void* memoria;
 int tamanioDePagina;
 int tipoDeAsignacionDinamica;
 int lRUACTUAL;
+int punteroFrameClock;
 int tamanioDeMemoria;
 int cantidadDePaginasPorProceso;
 
@@ -98,6 +100,11 @@ int frameAsignado(int unFrame);
 int memfree(int direccionLogica, int idProcess);
 Pagina *getPageDe(int processId,int nroPagina);
 int memwrite(int direccionLogica, int idProcess, void* loQueQuierasEscribir);
+void utilizarAlgritmoDeAsignacion(int cantidadDePags);
+void seleccionLRU(int processID);
+void seleccionClockMejorado();
+void liberarFrame(uint32_t nroDeFrame);
+Pagina *getMarcoDe(uint32_t nroDeFrame);
 
 
 #endif
