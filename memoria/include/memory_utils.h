@@ -40,7 +40,7 @@
 int swamp_fd;
 
 t_log* logger;
-pthread_mutex_t swamp_mutex, lru_mutex;
+pthread_mutex_t swamp_mutex, lru_mutex, tlb_mutex;
 
 
 typedef struct 
@@ -61,6 +61,14 @@ typedef struct
     uint32_t lRU;
 } Pagina;
 
+typedef struct 
+{
+    int      pid;
+    uint32_t pagina;
+    uint32_t frame;
+} TLB;
+
+t_list* tlb_list;
 
 typedef struct 
 {

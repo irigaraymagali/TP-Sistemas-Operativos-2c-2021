@@ -4,6 +4,7 @@ void initPaginacion(){
     log_info(logger,"iniciando paginacion");
 
     pthread_mutex_init(&lru_mutex, NULL);
+    pthread_mutex_init(&tlb_mutex, NULL);
 
     config = config_create(CONFIG_PATH);
 
@@ -27,6 +28,8 @@ void initPaginacion(){
     cantidadDePaginasPorProceso = config_get_int_value(config, "MARCOS_POR_CARPINCHO");
 
     todasLasTablasDePaginas = list_create();
+
+    tlb_list = list_create();
 }
 
 int memalloc(int processId, int espacioAReservar){
