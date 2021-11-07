@@ -343,7 +343,7 @@ void new_a_ready(){
         pthread_mutex_lock(&sem_cola_ready); 
 		pthread_mutex_lock(&sem_cola_new);
 
-        queue_push(ready, *queue_peek(new);
+        queue_push(ready, *queue_peek(new));
         queue_pop(new);
 
 		pthread_mutex_unlock(&sem_cola_new);
@@ -360,7 +360,7 @@ void new_a_ready(){
 void ready_a_exec(){  
     sem_wait(&cola_ready_con_elementos); //espera aviso que hay en ready    
 
-    sem_wait(&sem_grado_multiprocesamiento); //falta el post, cuando sale de exec? 
+    sem_wait(&sem_grado_multiprocesamiento); // --> post cuando sale de exec? 
 
     // Depende del algoritmo en el config (algoritmo_planificacion)
     if(algoritmo_planificacion == "SJF"){
@@ -371,13 +371,32 @@ void ready_a_exec(){
     }
 
     // Sacar de la cola de ready al elegido (por el algoritmo) y ponerlo en la la lista de exec
+        pthread_mutex_lock(&sem_cola_ready); 
+		pthread_mutex_lock(&sem_lista_exec);
 
-    // Asignarle un hilo CPU:
-    for(int i= 0; i< grado_multiprocesamiento; i++){
-         sem_wait(&semaforo_hilo_CPU[i]); // --> post cuando deja el hilo
-	}
+        list_add(lista_exec, *elegido);//elegido: proceso que va a ejecutar
+        queue_pop(ready, *elegido); 
+    
+		pthread_mutex_unlock(&sem_lista_exec);
+		pthread_mutex_unlock(&sem_cola_ready);
 
+
+    // Asignar hilo CPU:
+    void asignar_hilo_CPU(lista_semaforos_CPU){ //devuelve el primer semaforo CPU que valga 1 => que este disponible y le hace un wait
+     //list_map(lista_semaforos_CPU*, void*(*lista_valores_sems)(void*));
+     
+     hilo_CPU_disponible = list_find(t_list *lista_semaforos_CPU, sem_getvalue());
+     sem_wait(&hilo_CPU_disponible); // --> post cuando deja el hilo
+    }
+
+    
 }
+
+
+
+
+
+
 
 void ejecuta(){ 
 
