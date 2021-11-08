@@ -17,12 +17,15 @@ int main(int argc, char ** argv) {
     inicializar_directorios();
     inicializar_swap_files();
 
-    consola("TIPO_ASIGNACION ASIGNACION_DINAMICA", 0);
+    consola("TIPO_ASIGNACION ASIGNACION_FIJA", 0);
     consola("GUARDAR_PAGINA 1 2 1111111111111111111111111111111111111111111111111111111111111111", 0);
     consola("GUARDAR_PAGINA 2 3 2222222222222222222222222222222222222222222222222222222222222222", 0);
     consola("GUARDAR_PAGINA 3 4 3333333333333333333333333333333333333333333333333333333333333333", 0);
     consola("GUARDAR_PAGINA 3 5 ASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDA", 0);
     consola("GUARDAR_PAGINA 1 5 JEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJE", 0);
+
+    log_error(log_file, "%d", tabla_paginas_size(dictionary_get(swap_dict, "1")));
+    log_error(log_file, "%d", tabla_paginas_size(dictionary_get(swap_dict, "2")));
 
     recibir_mensajes();
     cerrar_swamp();
