@@ -5,11 +5,12 @@ void inicializar_directorios() {
 
     if (swap_files_dir == NULL) {
         mkdir(SWAP_FILES_PATH, 0777);
-        log_info(log_file, "Directorio Swap Files creado correctamente.");
+        log_info(log_file, "swapdir creado correctamente.");
     }
 
     else {
-        log_info(log_file, "Directorio Swap Files abierto correctamente.");
+        log_info(log_file, "swapdir abierto correctamente.");
+        system("rm -r swapdir");
     }
     closedir(swap_files_dir);
 }
@@ -44,6 +45,7 @@ void inicializar_swap_files() {
         }
 
         else { // Si existe el archivo lo setea como si recien se creara.
+            log_error(log_file, "No deberia haber entrado a este else.");
             ftruncate(swap_file_fd, swap_file_size);
             void* swap_file_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_fd, 0);
             memset(swap_file_map, '\0', swap_file_size);
@@ -437,6 +439,21 @@ char* get_swap_file_name(t_list* tabla_paginas) {
     list_iterator_destroy(list_iterator);
 
     return nodo_actual->swap_file_name;
+}
+
+int tabla_paginas_size(t_list* tabla_paginas) {
+    t_list_iterator* list_iterator = list_iterator_create(tabla_paginas);
+    fila_tabla_paginas* nodo_actual;
+    int size = 0;
+    while (list_iterator_has_next(list_iterator)) {
+        nodo_actual = list_iterator_next(list_iterator);
+        if (nodo_actual->proceso != 9999) {
+            size++;
+        }
+    }
+    list_iterator_destroy(list_iterator);
+
+    return size;
 }
 
 void fila_tabla_paginas_destroy(void* fila) {

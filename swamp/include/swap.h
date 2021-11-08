@@ -13,7 +13,7 @@
 #include <dirent.h>      // Biblioteca opendir()
 #include <errno.h>
 
-#define SWAP_FILES_PATH "./Swap Files/"
+#define SWAP_FILES_PATH "./swapdir/"
 #define ASIGNACION_FIJA 10
 #define ASIGNACION_DINAMICA 20
 
@@ -47,6 +47,7 @@ int get_frame_number(fila_tabla_paginas* nodo);
 bool frame_is_empty(int frame, void* swap_file_map);
 bool pagina_esta_en_swap(t_list* tabla_paginas, int proceso, int pagina);
 char* get_swap_file_name(t_list* tabla_paginas);
+int tabla_paginas_size(t_list* tabla_paginas);
 void fila_tabla_paginas_destroy(void* fila);
 void nodo_swap_list_destroy(void* nodo);
 
