@@ -436,14 +436,14 @@ void exec(){
 }
 
 // para SJF
-float calculo_rafaga_siguiente(data_carpincho carpincho){
+float calculo_rafaga_siguiente(data_carpincho *carpincho){
 
     carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa) 
 
 }
 
 // para HRRN
-float calculo_RR(data_carpincho carpincho){
+float calculo_RR(data_carpincho *carpincho){
 
    //float w = ahora - carpincho->llegada_a_ready // ahora = momento en el que se esta caulculando el RR
    //float s =  prox rafaga
