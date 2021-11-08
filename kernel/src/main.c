@@ -388,28 +388,24 @@ void ready_a_exec(){
 
     // Sacar de la cola de ready al elegido (por el algoritmo) y ponerlo en la la lista de exec
         pthread_mutex_lock(&sem_cola_ready); 
-		pthread_mutex_lock(&sem_lista_exec);
+		pthread_mutex_lock(&sem_cola_exec);
 
         list_add(lista_exec, *elegido);//elegido: proceso que va a ejecutar
         queue_pop(ready, *elegido); 
     
-		pthread_mutex_unlock(&sem_lista_exec);
+		pthread_mutex_unlock(&sem_cola_exec);
 		pthread_mutex_unlock(&sem_cola_ready);
 
 
     // Asignar hilo CPU:
-    void asignar_hilo_CPU(lista_semaforos_CPU){ //devuelve el primer semaforo CPU que valga 1 => que este disponible y le hace un wait
-     //list_map(lista_semaforos_CPU*, void*(*lista_valores_sems)(void*));
-     
-     hilo_CPU_disponible = list_find(t_list *lista_semaforos_CPU, sem_getvalue());
-     sem_wait(&hilo_CPU_disponible); // --> post cuando deja el hilo
+    void asignar_hilo_CPU(lista_semaforos_CPU){ //al primer semaforo CPU que valga 1 (que este disponible) le hace un wait (marcandolo como ocupado)
+ 
+     hilo_CPU_disponible = list_find(t_list *lista_semaforos_CPU, sem_getvalue());  //ver
+     sem_wait(&hilo_CPU_disponible); // --> post cuando deja el hilo?
     }
 
     
 }
-
-
-
 
 
 
@@ -439,4 +435,19 @@ void exec(){
     // carpicho_id_listo_para_exec()
 }
 
+// para SJF
+float calculo_rafaga_siguiente(data_carpincho carpincho){
 
+    carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa) 
+
+}
+
+// para HRRN
+float calculo_RR(data_carpincho carpincho){
+
+   //float w = ahora - carpincho->llegada_a_ready // ahora = momento en el que se esta caulculando el RR
+   //float s =  prox rafaga
+
+   //carpincho->RR = 1 + w/s 
+
+}
