@@ -378,13 +378,14 @@ void finalizar_proceso(int proceso) {
         t_list_iterator* list_iterator = list_iterator_create(tabla_paginas);
         while (list_iterator_has_next(list_iterator)) {
             fila_tabla_paginas* nodo_actual = list_iterator_next(list_iterator);
-            if (nodo_actual->proceso == proceso && nodo_actual->pagina != 9999) {
+            if (nodo_actual->proceso == proceso) {
                 int frame_asignado = get_frame_number(nodo_actual);
                 memcpy(swap_file_map + swap_page_size * frame_asignado, vacio, swap_page_size);
                 nodo_actual->proceso = 9999;
                 nodo_actual->pagina = 9999;
             }
         }
+        dictionary_remove(swap_dict, string_proceso);
         free(vacio);
         list_iterator_destroy(list_iterator);
         free(swap_file_path);
@@ -417,6 +418,20 @@ nodo_swap_list* swap_file_menos_ocupado() {
     else {
         return resultado;
     }
+}
+
+int frames_ocupados(t_list* tabla_paginas) {
+    t_list_iterator* list_iterator = list_iterator_create(tabla_paginas);
+    int i = 0;
+    while (list_iterator_has_next(list_iterator)) {
+        fila_tabla_paginas* nodo_actual = list_iterator_next(list_iterator);
+        if (nodo_actual->pagina != 9999) {
+            i++;
+        }
+    }
+    list_iterator_destroy(list_iterator);
+
+    return i;
 }
 
 int get_first_free_frame_number(fila_tabla_paginas* nodo, void* swap_file_map) {
@@ -482,12 +497,9 @@ bool frame_is_empty(int frame, void* swap_file_map) {
     memcpy(leido, swap_file_map + frame * swap_page_size, swap_page_size);
     leido[swap_page_size] = '\0';
 
-    // char* vacio = malloc(swap_page_size + 1);
-    // memset((void*) vacio, '\0', swap_page_size);
-    // vacio[swap_page_size] = '\0';
-
-    char* vacio = malloc(swap_page_size);
+    char* vacio = malloc(swap_page_size + 1);
     memset((void*) vacio, '\0', swap_page_size);
+    vacio[swap_page_size] = '\0';
 
     int resultado = strcmp(leido, vacio);
 

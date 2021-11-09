@@ -42,6 +42,7 @@ void guardar_pagina_asignacion_dinamica(int proceso, int pagina, char* contenido
 char* obtener_pagina(int proceso, int pagina);
 void finalizar_proceso(int proceso);
 nodo_swap_list* swap_file_menos_ocupado();
+int frames_ocupados(t_list* tabla_paginas);
 int get_first_free_frame_number(fila_tabla_paginas* nodo, void* swap_file_map);
 int get_frame_number(fila_tabla_paginas* nodo);
 bool frame_is_empty(int frame, void* swap_file_map);

@@ -24,8 +24,21 @@ int main(int argc, char ** argv) {
     consola("GUARDAR_PAGINA 3 5 ASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDA", 0);
     consola("GUARDAR_PAGINA 1 5 JEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJEJE", 0);
     consola("FINALIZAR_PROCESO 3", 0);
-    consola("GUARDAR_PAGINA 3 4 3333333333333333333333333333333333333333333333333333333333333333", 0);
-    consola("GUARDAR_PAGINA 3 5 ASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDA", 0);
+
+    // t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, "1");
+    // t_list_iterator* list_iterator = list_iterator_create(tabla_paginas);
+    // int i = 0;
+    // while (list_iterator_has_next(list_iterator)) {
+    //     fila_tabla_paginas* nodo_actual = list_iterator_next(list_iterator);
+    //     if (nodo_actual->proceso == 3) {
+    //         i++;
+    //     }
+    // }
+    // list_iterator_destroy(list_iterator);
+    // log_error(log_file, "%d", i);
+
+    consola("GUARDAR_PAGINA 7 4 3333333333333333333333333333333333333333333333333333333333333333", 0);
+    consola("GUARDAR_PAGINA 7 5 ASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDASDA", 0);
 
     recibir_mensajes();
     cerrar_swamp();
