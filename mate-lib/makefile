@@ -2,7 +2,7 @@
 SRC_DIR=src
 IDIR=./include
 ODIR=obj
-
+COMMONS=/usr/local/lib
 CC=gcc
 CFLAGS=-I$(IDIR) -I$(SHARED_IDIR) -g -Wall
 LIBS=-lcommons -lpthread -lreadline -lcunit -lrt
@@ -31,7 +31,7 @@ build: $(SHARED_OBJ_DIR) $(SHARED_OBJ)
 	# Compiling all .c    
 	$(CC) -Wall -fPIC -c $(SRC_DIR)/*.c $(CFLAGS) $(LIBS)
 	# Compiling all .o
-	$(CC) -shared matelib.o -o $(ODIR)/libmate.so
+	$(CC) -shared matelib.o $(SHARED_ODIR)/*.o -L$(COMMONS) -lcommons -o $(ODIR)/libmate.so
 	# Removing obj files..
 	rm *.o
 	# Done
