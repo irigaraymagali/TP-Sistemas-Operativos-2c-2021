@@ -39,6 +39,7 @@ int memalloc(int processId, int espacioAReservar){
     int ultimoFrame = 0;
     int tempLastHeap = 0;
     int espacioFinalDisponible = 0;
+    Pagina* paginaFInalEncontrada = malloc(sizeof(Pagina));
 
     if(entra == -1){
        /* 1-generar un nuevo alloc al final del espacio de direcciones
@@ -57,9 +58,14 @@ int memalloc(int processId, int espacioAReservar){
             if(mayorNroDePagina < paginaTemporal->pagina && paginaTemporal->isfree == BUSY){
                 mayorNroDePagina = paginaTemporal->pagina;
                 ultimoFrame = paginaTemporal->frame;
+                //agragar el bit de presencia para despues pedirle a gonza
+                paginaFInalEncontrada = paginaTemporal;
             }
         }
         list_iterator_destroy(iterator2);
+        
+
+        //agregar algo que le pida la pagina a gonza si el bit presencia es 0
         
         espacioFinalDisponible = (mayorNroDePagina* tamanioDePagina) - tempLastHeap - HEAP_METADATA_SIZE; // el 9 es porque hay que agregar el puto heap atras
 
@@ -89,7 +95,8 @@ int memalloc(int processId, int espacioAReservar){
             memcpy(memoria + offset, &nuevoHeap->nextAlloc, sizeof(uint32_t));
             offset = offset + sizeof(uint32_t);
 
-            
+            paginaFInalEncontrada->lRU = lRUACTUAL;
+            paginaFInalEncontrada->bitUso = 1 ;
 
             temp->lastHeap = tempLastHeap + espacioAReservar;
 
@@ -136,6 +143,13 @@ int memalloc(int processId, int espacioAReservar){
                 int framenecesitado = mayorNroDePagina;
                 
                 framenecesitado = getFrameDeUn(processId, mayorNroDePagina);
+
+                Pagina *pagNeeded = getMarcoDe(framenecesitado);
+                
+                if(pagNeeded->bitPresencia == 0){
+                    utilizarAlgritmoDeAsignacion(processId);
+                    // pedirle la pag a gonza
+                }
 
                 memcpy(memoria + (framenecesitado*tamanioDePagina), espacioAuxiliar + (tamanioDePagina*(mayorNroDePagina-paginaInicial)), tamanioDePagina);
 
@@ -282,7 +296,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
 
 Pagina *getLastPageDe(int processId){
     uint32_t mayorNroDePagina = 0;
-    Pagina *ultimaPagina; //Nose si necesitamos un malloc porque en caso de encontrar una pagina temporal creo estariamos guardando este malloc basura. PROBAR.
+    Pagina *ultimaPagina= malloc(sizeof(Pagina)); //Nose si necesitamos un malloc porque en caso de encontrar una pagina temporal creo estariamos guardando este malloc basura. PROBAR.
     
     TablaDePaginasxProceso* temp = get_pages_by(processId);
     if(list_is_empty(temp->paginas)){
@@ -306,21 +320,30 @@ Pagina *getLastPageDe(int processId){
 void agregarXPaginasPara(int processId, int espacioRestante){
     int cantidadDePaginasAAgregar = (espacioRestante / tamanioDePagina) + 1; //por que +1?
     Pagina *ultimaPagina;
-    Pagina *nuevaPagina = malloc(sizeof(Pagina));
+    
        
     if(tipoDeAsignacionDinamica == 1){
         while(cantidadDePaginasAAgregar != 0){
+            Pagina *nuevaPagina = malloc(sizeof(Pagina));
             ultimaPagina = getLastPageDe(processId); // que pasaría si no tenes paginas?
             if(ultimaPagina == NULL){
                 nuevaPagina->pagina = FIRST_PAGE;
             } else {
-                nuevaPagina->pagina = ultimaPagina->pagina + 1;
+                int nroUltimaPagina = ultimaPagina->pagina ;
+                nroUltimaPagina++;
+                nuevaPagina->pagina= nroUltimaPagina;
             }
 
             nuevaPagina->frame = getNewEmptyFrame(processId);
-            nuevaPagina->isfree = FREE;
+
+            if(nuevaPagina->frame == -1){
+                utilizarAlgritmoDeAsignacion(processId);
+                nuevaPagina->frame = getNewEmptyFrame(processId);
+            }
+            nuevaPagina->isfree = BUSY;
             nuevaPagina->bitModificado = 0;
-            nuevaPagina->bitPresencia = 0;
+            nuevaPagina->bitPresencia = 1;
+            nuevaPagina->bitUso=1;
             lRUACTUAL++;
             nuevaPagina->lRU = lRUACTUAL;
 
@@ -344,11 +367,18 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                paginaSiguienteALaUltima = (Pagina*) list_iterator_next(iterator);
             }
 
+            if(paginaSiguienteALaUltima->isfree == BUSY){
+                utilizarAlgritmoDeAsignacion(processId);
+
+                agregarXPaginasPara(processId,espacioRestante);
+            }else{
             paginaSiguienteALaUltima->isfree = BUSY;
+            lRUACTUAL++;
+            paginaSiguienteALaUltima->lRU = lRUACTUAL;
 
             list_iterator_destroy(iterator);
             
-            cantidadDePaginasAAgregar--;
+            cantidadDePaginasAAgregar--;}
         }
     }      
 }
@@ -368,6 +398,7 @@ int getNewEmptyFrame(int idProcess){
 
             emptyFrame++;
         }
+        return -1;
     }
     else
     {
@@ -392,6 +423,7 @@ int getNewEmptyFrame(int idProcess){
                     return tempPagina->frame;
                 }
         }
+        return -1;
     }
 
     return emptyFrame;
@@ -414,6 +446,7 @@ int estaOcupadoUn(int emptyFrame, int idProcess){
                     return tempPagina->isfree;
                 }
             }
+            list_iterator_destroy(iterator2);
         }
     list_iterator_destroy(iterator);
     }
@@ -600,8 +633,9 @@ void inicializarUnProceso(int idDelProceso){
         nuevaPagina->lRU = lRUACTUAL;
         nuevaPagina->isfree= BUSY;
         nuevaPagina->frame = nuevoFrame;
-        nuevaPagina->bitPresencia =0;
+        nuevaPagina->bitPresencia =1;
         nuevaPagina->bitModificado = 1;
+        nuevaPagina->bitUso=1;
 
         list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
 
@@ -747,15 +781,15 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
     return -1;
 }
 
-void utilizarAlgritmoDeAsignacion(int cantidadDePags){
+void utilizarAlgritmoDeAsignacion(int processID){
 
     if (string_equals_ignore_case(config_get_string_value(config,"ALGORITMO_REEMPLAZO_MMU"), "LRU"))
     {
-       seleccionLRU( cantidadDePags);
+       seleccionLRU( processID);
     }
     else
     {
-       seleccionClockMejorado(cantidadDePags);
+       seleccionClockMejorado();
     }
     
 
@@ -764,7 +798,7 @@ void utilizarAlgritmoDeAsignacion(int cantidadDePags){
 
 void seleccionLRU(int processID){
 
-    uint32_t LRUmenor=0; //recordar que lo que se busca es el LRU menor
+    uint32_t LRUmenor=9999; //recordar que lo que se busca es el LRU menor
     uint32_t frameVictima=0;
 
     if (tipoDeAsignacionDinamica)

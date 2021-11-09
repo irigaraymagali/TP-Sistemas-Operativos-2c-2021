@@ -113,11 +113,12 @@ int frameAsignado(int unFrame);
 int memfree(int idProcess, int direccionLogica);
 Pagina *getPageDe(int processId,int nroPagina);
 
-void utilizarAlgritmoDeAsignacion(int cantidadDePags);
+void utilizarAlgritmoDeAsignacion(int processID);
 void seleccionLRU(int processID);
 void seleccionClockMejorado();
 void liberarFrame(uint32_t nroDeFrame);
 Pagina *getMarcoDe(uint32_t nroDeFrame);
+void setAsUsedRecently(int idProcess, int nroDePagina);
 
 int memwrite(int idProcess, int direccionLogica, void* loQueQuierasEscribir);
 Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada);
