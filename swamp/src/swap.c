@@ -378,7 +378,7 @@ void finalizar_proceso(int proceso) {
         t_list_iterator* list_iterator = list_iterator_create(tabla_paginas);
         while (list_iterator_has_next(list_iterator)) {
             fila_tabla_paginas* nodo_actual = list_iterator_next(list_iterator);
-            if (nodo_actual->proceso == proceso) {
+            if (nodo_actual->proceso == proceso && nodo_actual->pagina != 9999) {
                 int frame_asignado = get_frame_number(nodo_actual);
                 memcpy(swap_file_map + swap_page_size * frame_asignado, vacio, swap_page_size);
                 nodo_actual->proceso = 9999;
@@ -387,7 +387,6 @@ void finalizar_proceso(int proceso) {
         }
         free(vacio);
         list_iterator_destroy(list_iterator);
-        free(swap_file_name);
         free(swap_file_path);
         munmap(swap_file_map, swap_file_size);
         close(swap_file_fd);
