@@ -31,7 +31,7 @@ build: $(SHARED_OBJ_DIR) $(SHARED_OBJ)
 	# Compiling all .c    
 	$(CC) -Wall -fPIC -c $(SRC_DIR)/*.c $(CFLAGS) $(LIBS)
 	# Compiling all .o
-	$(CC) -shared matelib.o $(SHARED_ODIR)/*.o -L$(COMMONS) -lcommons -o $(ODIR)/libmate.so
+	$(CC) -shared matelib.o $(SHARED_ODIR)/*.o -L$(COMMONS) $(LIBS) -o $(ODIR)/libmate.so
 	# Removing obj files..
 	rm *.o
 	# Done
