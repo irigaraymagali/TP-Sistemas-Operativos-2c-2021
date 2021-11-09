@@ -359,7 +359,40 @@ char* obtener_pagina(int proceso, int pagina) {
 }
 
 void finalizar_proceso(int proceso) {
-
+    char* string_proceso = string_itoa(proceso);
+    t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso);
+    if (tabla_paginas == NULL) {
+        log_error(log_file, "El proceso %d no se encuentra utilizando swap.", proceso);
+    }
+    else {
+        // Abro el archivo de swap y lo mapeo para eliminar las paginas guardadas.
+        char* swap_file_name = get_swap_file_name(tabla_paginas);
+        char* swap_file_path = string_from_format("%s%s", SWAP_FILES_PATH, swap_file_name);
+        int swap_file_fd = open(swap_file_path, O_RDWR, (mode_t)0777);
+        if (swap_file_fd == -1) {
+            log_error(log_file, "Error al abrir el archivo %s", swap_file_name);
+        }
+        void* swap_file_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_fd, 0);
+        char* vacio = malloc(swap_page_size);
+        memset((void*) vacio, '\0', swap_page_size);
+        t_list_iterator* list_iterator = list_iterator_create(tabla_paginas);
+        while (list_iterator_has_next(list_iterator)) {
+            fila_tabla_paginas* nodo_actual = list_iterator_next(list_iterator);
+            if (nodo_actual->proceso == proceso) {
+                int frame_asignado = get_frame_number(nodo_actual);
+                memcpy(swap_file_map + swap_page_size * frame_asignado, vacio, swap_page_size);
+                nodo_actual->proceso = 9999;
+                nodo_actual->pagina = 9999;
+            }
+        }
+        free(vacio);
+        list_iterator_destroy(list_iterator);
+        free(swap_file_name);
+        free(swap_file_path);
+        munmap(swap_file_map, swap_file_size);
+        close(swap_file_fd);
+    }
+    free(string_proceso);
 }
 
 nodo_swap_list* swap_file_menos_ocupado() {
@@ -450,9 +483,12 @@ bool frame_is_empty(int frame, void* swap_file_map) {
     memcpy(leido, swap_file_map + frame * swap_page_size, swap_page_size);
     leido[swap_page_size] = '\0';
 
-    char* vacio = malloc(swap_page_size + 1);
+    // char* vacio = malloc(swap_page_size + 1);
+    // memset((void*) vacio, '\0', swap_page_size);
+    // vacio[swap_page_size] = '\0';
+
+    char* vacio = malloc(swap_page_size);
     memset((void*) vacio, '\0', swap_page_size);
-    vacio[swap_page_size] = '\0';
 
     int resultado = strcmp(leido, vacio);
 

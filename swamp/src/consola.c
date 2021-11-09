@@ -81,8 +81,7 @@ void consola(char* buffer, int socket_conexion) {
 
     else if (string_starts_with(buffer, "FINALIZAR_PROCESO")) { // Ejemplo: FINALIZAR_PROCESO PROCESO
         if (cantidad_de_parametros == 2) {
-            // Funcion que elimina de swap todas las paginas del proceso especificado en los parametros (reemplaza su contenido por '\0')
-            // y ademas elimina su informacion de las estructuras administrativas
+            finalizar_proceso(atoi(parametros[1]));
         }
 
         else {
