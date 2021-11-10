@@ -252,9 +252,11 @@ int mate_init(int id_carpincho){
 
     list_add_in_index(lista_carpinchos, id_carpincho, carpincho);
 
-    // avisar que hay uno en ready e invocar función --> ?
     sem_post(&estructura_creada);
 
+    //sem_wait(retornar_init); --> ver
+    // responder al carpincho que todo ok
+    
 
 }
 
@@ -263,6 +265,8 @@ int mate_close(int id_carpincho){
     list_remove_and_destroy_element(lista_carpinchos, id_carpincho, /*void(*element_destroyer)(void*)*/)
     
     // acá estamos eliminando lo que hay en ese index pero medio que dejamos ese index muerto
+
+    exec_a_exit(id_carpincho);
 
     // responder al carpincho que todo ok
 }
@@ -466,6 +470,25 @@ void exec_a_block(int id_carpincho){
 
         // "libera" el hilo cpu en el que estaba:
         // sem_post(carpincho_a_bloquear-> hilo_CPU); // --> agregar en la estructura del carpincho al hilo cpu?
+}
+
+
+
+void exec_a_exit(int id_carpincho){
+    
+ carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
+
+    // Sacar de la lista de exec --> hace falta ponerlo en la lista de exit?
+        pthread_mutex_lock(&sem_cola_exec); 
+		
+        //list_(lista_exec, *carpincho_que_termino); 
+    
+		pthread_mutex_unlock(&sem_cola_exec);
+
+        // "libera" el hilo cpu en el que estaba:
+        // sem_post(carpincho_que_termino-> hilo_CPU); // --> agregar en la estructura del carpincho al hilo cpu?
+
+        //avisar a mem?
 }
 
 
