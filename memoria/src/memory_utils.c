@@ -367,16 +367,29 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                paginaSiguienteALaUltima = (Pagina*) list_iterator_next(iterator);
             }
 
-            if(paginaSiguienteALaUltima->isfree == BUSY){
+            if(getNewEmptyFrame(processId) == -1){
                 utilizarAlgritmoDeAsignacion(processId);
 
-                agregarXPaginasPara(processId,espacioRestante);
-            }else{
-            paginaSiguienteALaUltima->isfree = BUSY;
-            lRUACTUAL++;
-            paginaSiguienteALaUltima->lRU = lRUACTUAL;
+                paginaSiguienteALaUltima->frame = getNewEmptyFrame(processId);
+                paginaSiguienteALaUltima->isfree = BUSY;
+                lRUACTUAL++;
+                paginaSiguienteALaUltima->lRU = lRUACTUAL;
+                paginaSiguienteALaUltima->bitUso=1;
+                paginaSiguienteALaUltima->bitModificado=1;
+                paginaSiguienteALaUltima->bitPresencia=1;
 
-            list_iterator_destroy(iterator);
+                list_iterator_destroy(iterator);
+            
+                cantidadDePaginasAAgregar--;
+            }else{
+                paginaSiguienteALaUltima->isfree = BUSY;
+                lRUACTUAL++;
+                paginaSiguienteALaUltima->lRU = lRUACTUAL;
+                paginaSiguienteALaUltima->bitUso=1;
+                paginaSiguienteALaUltima->bitModificado=1;
+                paginaSiguienteALaUltima->bitPresencia=1;
+
+                list_iterator_destroy(iterator);
             
             cantidadDePaginasAAgregar--;}
         }
@@ -390,7 +403,7 @@ int getNewEmptyFrame(int idProcess){
 
     if (tipoDeAsignacionDinamica)
     {
-        while(emptyFrame <= paginaFinal){
+        while(emptyFrame < paginaFinal){
             isfree= estaOcupadoUn(emptyFrame, idProcess);
             if(isfree!= BUSY){
                 return emptyFrame;
@@ -663,7 +676,7 @@ void inicializarUnProceso(int idDelProceso){
                 nuevaPagina->lRU = lRUACTUAL;
                 nuevaPagina->isfree= BUSY;
                 nuevaPagina->frame = nuevoFrame;
-                nuevaPagina->bitPresencia =0;
+                nuevaPagina->bitPresencia =1;
                 nuevaPagina->bitModificado = 1;
 
                 
