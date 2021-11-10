@@ -405,38 +405,26 @@ void ready_a_exec(){
 		pthread_mutex_unlock(&sem_cola_ready);
 
 
-    // Asignar hilo CPU:
-    void asignar_hilo_CPU(lista_semaforos_CPU){ //al primer semaforo CPU que valga 1 (que este disponible) le hace un wait (marcandolo como ocupado)
-    
-    t_sem hilo_CPU_disponible;
-    
-    /*
-        funcion(semaforo){
-            if (sem_gevalue(semaforo) === 1)
-            {
-                return 1;
+    // Asignar hilo CPU: al primer semaforo CPU que valga 1 (que este disponible) le hace un wait (marcandolo como ocupado)
+       
+        void asignar_hilo_CPU(lista_semaforos_CPU, t_sem *semaforo){ 
+            t_sem hilo_CPU_disponible;
+            //sem_init(&hilo_CPU_disponible,1,0);
+
+            bool disponible(void *semaforo){
+              sem_getvalue(semaforo, valor);
+              return valor === 1;
             }
-            else
-            {
-                return 0;
-            }
+            
+            hilo_CPU_disponible = list_find(lista_semaforos_CPU, disponible);
+            sem_wait(&hilo_CPU_disponible); // --> post cuando deja el hilo?
         }
-
-        funcion(semaforo){
-
-            return sem_gevalue(semaforo) === 1; 
         
-        }
-    */
-
-     hilo_CPU_disponible = list_find(*lista_semaforos_CPU, funcion);  //ver
-        sem_wait(&hilo_CPU_disponible); // --> post cuando deja el hilo?
-    } 
+        
+     
 
     
 }
-
-
 
 
 void ejecuta(){ 
