@@ -5,6 +5,7 @@
 
 
 // serialización de cosas que ya no
+/*
 int recibir_mensaje(){
 
     int str_len;
@@ -75,3 +76,4 @@ int recibir_mensaje(){
 
 
 
+*/

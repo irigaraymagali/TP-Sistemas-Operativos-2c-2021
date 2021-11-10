@@ -1,37 +1,31 @@
 #include "main.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <semaphore.h>
-#include <commons/config.h>
-#include <commons/log.h>
-#include <commons/string.h>
-#include <commons/collections/list.h>
-#include <commons/collections/queue.h>
+
 
 
 int main(int argc, char ** argv){
 
-    t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
-
-    crear_hilos_CPU();
-    crear_hilos_planificadores();
-	inicializar_semaforos();
-	inicializar_colas();
-    leer_archivo_config();
-
+    int id_carpincho = 1;
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
     semaforos_carpinchos = list_create(); // crear lista para ir guardando los semaforos
 
-    void* buffer = _recive_message(buffer, logger); // recibir mensajes de la lib
-    deserializar(buffer);
+    t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
 
+    leer_archivo_config();
+	inicializar_semaforos();
+	inicializar_colas();
+    crear_hilos_CPU();
+    crear_hilos_planificadores();
+    
     _start_server(puerto_escucha, handler, logger);
+    
+    t_mensaje* buffer = _recive_message(buffer, logger); // recibir mensajes de la lib
+    deserializar(buffer);
 
     // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
     free_memory();
 
 } 
+
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
 
@@ -45,7 +39,7 @@ void inicializar_colas(){ // Colas estados y sus mutex:
 	exec = list_create();
 	pthread_mutex_init(&sem_cola_exec, NULL);
 
-    exit = list_create();
+    exit_list = list_create();
     pthread_mutex_init(&sem_cola_exit, NULL);
 
 	blocked = queue_create();
@@ -59,6 +53,7 @@ void inicializar_colas(){ // Colas estados y sus mutex:
 	
     pthread_mutex_init(&socket_memoria, NULL); //falta declarar socket_memoria
 }
+
 void inicializar_semaforos(){ // Inicializacion de semaforos:
 
     // (tener en cuenta: el segundo parámetro deberia ser 1 si es compartido entre carpinchos)
@@ -127,14 +122,14 @@ void crear_hilos_CPU(){ // creación de los hilos CPU
     pthread_t hilo_cpu[grado_multiprocesamiento];
 	lista_ejecutando = list_create(); 			// lista que tiene a los que estan ejecutando
 	for(int i= 0; i< grado_multiprocesamiento; i++){
-         (pthread_create(&hilo_cpu[i], NULL, (void*)ejecuta, NULL)
+         (pthread_create(&hilo_cpu[i], NULL, (void*)ejecuta, NULL);
 	}
 }
 
 void crear_semaforos_CPU(){
 	lista_semaforos_CPU = list_create();
 	for(int i= 0; i< grado_multiprocesamiento; i++){
-         sem_init(&semaforo_CPU[i],0,1)
+         sem_init(&semaforo_CPU[i],0,1);
 	}
 }
 
@@ -207,6 +202,8 @@ void handler( int opcode, data_carpincho estructura_interna){
     
     log_info(logger, "Recibí un mensaje");
 
+    // fijarme cómo acá tengo que mandarle tambien a las funciones el socket para que despues puedan responderle
+
     switch(opcode){
         case MATE_INIT:
             mate_init(estructura_interna->id);
@@ -245,24 +242,42 @@ int mate_init(int id_carpincho){
     carpincho->id = id_carpincho;
     carpincho->rafaga_anterior = 0;
     carpincho->estimacion_anterior = 0;
-    carpincho->estimacion_siguiente = /*calculo para estimación que va a ser la misma para todos*/
+    carpincho->estimacion_siguiente = estimacion_inical();
     // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
+    // carpincho->RR no le pongo nada todavia
     carpincho->prioridad = false;
     carpincho->estado = 'N';
 
-    list_add_in_index(lista_carpinchos, id_carpincho, carpincho);
+    list_add(lista_carpinchos, carpincho);
 
     sem_post(&estructura_creada);
 
+
+    pthread_t esperando_estar_en_exec;
+    pthread_create(&esperando_estar_en_exec, NULL, (void*) esperando_en_new(carpincho), NULL);
+    // 
     //sem_wait(retornar_init); --> ver
     // responder al carpincho que todo ok
     
 
 }
 
+void esperando_en_new(){
+while(true){
+    if(carpincho->estado === 'E'){
+        // enviar mensaje a matelib de que esta listo 
+    }
+}
+}
+
+int estimacion_inical(){
+    // calcular estimacion inicial 
+    return 0;
+}
+
 int mate_close(int id_carpincho){
 
-    list_remove_and_destroy_element(lista_carpinchos, id_carpincho, /*void(*element_destroyer)(void*)*/)
+    //list_remove_and_destroy_element(lista_carpinchos, id_carpincho, /*void(*element_destroyer)(void*)*/)
     
     // acá estamos eliminando lo que hay en ese index pero medio que dejamos ese index muerto
 
@@ -548,7 +563,7 @@ void ready_a_exec_HRRN(){ // De la cola de ready te da el que debe ejecutar ahor
 // para SJF
 float calculo_rafaga_siguiente(data_carpincho *carpincho){
 
-    carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa) 
+    carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa);
 
 }
 
@@ -560,4 +575,5 @@ float calculo_RR(data_carpincho *carpincho){
 
    //carpincho->RR = 1 + w/s 
 
+    
 }

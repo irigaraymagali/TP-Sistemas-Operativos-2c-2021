@@ -42,6 +42,7 @@ enum {
  *     "c" -> CHAR
  *     "f" -> DOUBLE
  *     "u" -> UINT32
+ *     "v" -> VOID_PTR
  * 
  */
 void *_serialize(int size, char *format, ...);

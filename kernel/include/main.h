@@ -2,15 +2,23 @@
 #define MAIN_H
 
 #include <stdio.h>
-#include <commons/log.h>
 #include <stdbool.h>
 #include "shared_utils.h"
 #include "tests.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <semaphore.h>
+#include <commons/config.h>
+#include <commons/log.h>
+#include <commons/string.h>
+#include <commons/collections/list.h>
+#include <commons/collections/queue.h>
+#include "socket.h"
+#include "shared_utils.h"
+#include "serialization.h"
 
 #endif
-
-t_list lista_carpinchos; // lista carpinchos con el tipo de dato de las commons
-
 
 typedef struct data_carpincho // la data que le importa tener al backend
 {
@@ -32,6 +40,8 @@ typedef struct data_carpincho // la data que le importa tener al backend
     int *dest_memread;
     int *origin_memwrite;
     int *dest_memwrite;
+
+    void *responder; // para saber a quién responder cuando el carpincho esté listo
 } data_carpincho;
 
 
@@ -43,13 +53,15 @@ typedef struct semaforo
 } semaforo;
 
 
-t_list semaforos_carpinchos;
+t_list* semaforos_carpinchos;
+t_list* lista_carpinchos; 
+
 
 /* Estados:*/
     t_queue* new;
     t_queue* ready;
     t_list*  exec;
-    t_list*  exit;
+    t_list*  exit_list;
     t_queue* blocked;
     t_queue* suspended_blocked;
     t_queue* suspended_ready;
