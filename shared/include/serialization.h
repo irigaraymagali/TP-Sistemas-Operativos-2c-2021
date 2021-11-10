@@ -14,6 +14,7 @@ enum {
     CHAR,
     DOUBLE,
     UINT32,
+    VOID_PTR,
 };
 
 /**
