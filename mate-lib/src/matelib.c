@@ -18,14 +18,16 @@ int armar_socket_desde_binario(char* config,t_log* logger){
 /////////////////////////---------------------------- funciones a parte ------------------------///////////////////////////////////////
 
 void* armar_paquete(mate_inner_structure* estructura_interna){ // serializar estructura interna para mandar al carpincho
-
     return _serialize(
-                        sizeof(int) 
-                        + sizeof(char*) 
+        
+                          sizeof(int) 
                         + sizeof(int) 
-                        + sizeof(char*)                         
+                        + sizeof(char) 
+                        + sizeof(int) 
+                        + sizeof(int) 
+                        + sizeof(char)                         
                         + 6 * sizeof(int)
-                       , "%d%s%d%s%d%d%d%d%d%d",
+                       , "%d%d%s%d%d%s%d%d%d%d%d%d",
                         estructura_interna->id,
                         string_length(estructura_interna->semaforo),
                         estructura_interna->semaforo,
@@ -37,10 +39,12 @@ void* armar_paquete(mate_inner_structure* estructura_interna){ // serializar est
                         estructura_interna->origin_memread, 
                         estructura_interna->dest_memread, 
                         estructura_interna->origin_memwrite, 
-                        estructura_interna->dest_memwrite
+                        estructura_interna->dest_memwrite               
                     );
 
 }
+
+
 
 mate_inner_structure* convertir_a_estructura_interna(mate_instance* lib_ref){ // usarla para, de lo que manda el capincho, poder utilizar la estructura interna
     return (mate_inner_structure *)lib_ref->group_info; 
@@ -70,9 +74,6 @@ int mate_init(mate_instance *lib_ref, char *config)
 {
 
     logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
-    
-
-    printf("hola\n");
 
     int conexion_con_backend;
 
@@ -82,11 +83,12 @@ int mate_init(mate_instance *lib_ref, char *config)
     socket =  _connect("127.0.0.1", "5001", logger);
 
     printf("socket: %d\n", socket);
-    
+
     // socket = armar_socket_desde_binario(config,logger);
 
+    //para pruebas
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
-
+   /* 
     conexion_con_backend = _send_message(socket, ID_MATE_LIB, MATE_INIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
 
     if(conexion_con_backend < 0 ){ 
@@ -106,7 +108,7 @@ int mate_init(mate_instance *lib_ref, char *config)
         printf("el id es: %d\n", estructura_interna->id);
 
         return 0;
-    }  
+    }  */
 }
 
 int mate_close(mate_instance *lib_ref)
