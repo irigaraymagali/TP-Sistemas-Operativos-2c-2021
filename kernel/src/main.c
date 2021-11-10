@@ -271,14 +271,27 @@ int mate_close(int id_carpincho){
 //////////////// FUNCIONES SEMAFOROS ///////////////////
 
 int mate_sem_init(int id_carpincho, mate_sem_name nombre_semaforo, int valor_semaforo){  
+    
+    //"Al momento de ejecutar un mate_sem_init(), si el semáforo ya se encuentra inicializado, el valor del mismo no debe modificarse"
+    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
 
-    semaforo semaforo = malloc(size_of(semaforo));
-    semaforo->nombre = nombre_semaforo;
-    semaforo->valor = valor_semaforo;
+        // no modifica al que ya esta inicializado => no hace nada? o log de error
 
-    list_add(semaforos_carpinchos,semaforo);
+        bool esIgualA(void *semaforo){
+        return esIgualASemaforo(semaforo, nombre_semaforo);
+        }
+    }
+    else // si no existe un sem que se llame igual (=> no fue inicializado):
+    {
+        semaforo semaforo = malloc(size_of(semaforo));
+        semaforo->nombre = nombre_semaforo;
+        semaforo->valor = valor_semaforo;
+
+        list_add(semaforos_carpinchos,semaforo);
+    }
 
     // responder al carpincho que todo ok 
+
 
 }
 
@@ -340,6 +353,10 @@ int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo) {
 //////////////// FUNCIONES IO ///////////////////
 
 int mate_call_io(int id_carpincho, mate_io_resource nombre_io){
+
+    // si nombre_io esta disponible => bloquear al carpincho
+    // si no => suspenderlo? a la espera de que se desocupe
+
 }
 
 
@@ -447,20 +464,21 @@ void exec_a_block(int id_carpincho){
 		pthread_mutex_unlock(&sem_cola_blocked);
 		pthread_mutex_unlock(&sem_cola_exec);
 
-
-        sem_post(carpincho_a_bloquear-> hilo_CPU); // "libera" el hilo cpu en el que estaba
+        // "libera" el hilo cpu en el que estaba:
+        // sem_post(carpincho_a_bloquear-> hilo_CPU); // --> agregar en la estructura del carpincho al hilo cpu?
 }
 
 
 
 ///////////////////////////////////////////////////////////////
 
-// encontrar el carpincho segun su id:
+
 
 bool pertenece_al_carpincho(int ID, data_carpincho *carpincho){
         return carpincho->id === ID;
     }
 
+// encontrar el carpincho segun su id:
 data_carpincho encontrar_estructura_segun_id(int ID){
 
     bool buscar_id(void *ID){
