@@ -205,8 +205,8 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido) {
             nuevo->proceso = proceso;
             nuevo->pagina = 9999;
             int frame_asignado = get_frame_number(nuevo);
-            if (frame_asignado == tabla_paginas_size(tabla_paginas) - 1) {
-                log_error(log_file, "El proceso no posee frames libres en el archivo %s.", swap_file_name);
+            if (frame_asignado == tabla_paginas_size(tabla_paginas)) {
+                log_error(log_file, "El proceso %d no posee frames libres en el archivo %s.", proceso, swap_file_name);
             }
             else {
                 memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
