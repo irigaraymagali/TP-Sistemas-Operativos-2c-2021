@@ -30,6 +30,7 @@ typedef struct data_carpincho // la data que le importa tener al backend
     float *RR; //para HRRN -> fijarnos si es necesario o no
     bool *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
     char *estado; // => ir cambiandole el estado
+    hilo_CPU hilo_CPU_usado; // para saber en qué hilo cpu se esta ejecutando
 
     char *semaforo; 
     int *valor_semaforo; 
@@ -41,7 +42,6 @@ typedef struct data_carpincho // la data que le importa tener al backend
     int *origin_memwrite;
     int *dest_memwrite;
 
-    void *responder; // para saber a quién responder cuando el carpincho esté listo
 } data_carpincho;
 
 
@@ -51,6 +51,12 @@ typedef struct semaforo
     int valor;
     t_list en_espera; // cambiar a una cola
 } semaforo;
+
+typedef struct hilo_cpu
+{
+    int id;
+    t_sem semaforo;
+} hilo_cpu;
 
 
 t_list* semaforos_carpinchos;
