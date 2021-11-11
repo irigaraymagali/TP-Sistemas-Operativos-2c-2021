@@ -127,16 +127,6 @@ void crear_hilos_CPU(){ // creación de los hilos CPU
 	}
 }
 
-/* ya no iria mas
-void crear_semaforos_CPU(){
-	lista_semaforos_CPU = list_create();
-	for(int i= 0; i< grado_multiprocesamiento; i++){
-         sem_init(&semaforo_CPU[i],0,1);
-	}
-}
-*/
-
-
 void free_memory(){
 
     config_destroy(config);
@@ -484,24 +474,9 @@ void ready_a_exec(){
 		pthread_mutex_unlock(&sem_cola_ready);
 
         asignarle_hilo_CPU(carpincho_a_mover);
-    // Asignar hilo CPU: al primer semaforo CPU que valga 1 (que este disponible) le hace un wait (marcandolo como ocupado)
 
     }
 }
-
-       /*
-        void asignar_hilo_CPU(lista_semaforos_CPU, t_sem *semaforo){ 
-            t_sem hilo_CPU_disponible;
-            //sem_init(&hilo_CPU_disponible,1,0);
-
-            bool disponible(void *semaforo){
-              sem_getvalue(semaforo, valor);
-              return valor === 1;
-            }
-            
-            hilo_CPU_disponible = list_find(lista_semaforos_CPU, disponible);
-            sem_wait(&hilo_CPU_disponible); // --> post cuando deja el hilo?
-        }*/
 
 void asignar_hilo_CPU(data_carpincho carpincho){
 
