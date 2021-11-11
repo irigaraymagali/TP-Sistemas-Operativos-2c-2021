@@ -29,7 +29,7 @@ typedef struct data_carpincho // la data que le importa tener al backend
     float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
     float *RR; //para HRRN -> fijarnos si es necesario o no
     bool *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
-    char *estado; // => ir cambiandole el estado, hace flata tenerlo?
+    char *estado; // => ir cambiandole el estado
 
     char *semaforo; 
     int *valor_semaforo; 

@@ -336,8 +336,6 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){
 
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
 
-        // si el sem esta en 0 le puedo hacer wait?
-
         (list_find(semaforos_carpinchos, esIgualA))->valor_semaforo --; // hacer las funciones que devuelvan el semaforo
 
         if(semaforo->valor_semaforo<1){
@@ -407,13 +405,16 @@ void new_a_ready(){
         pthread_mutex_lock(&sem_cola_ready); 
 		pthread_mutex_lock(&sem_cola_new);
 
+        data_carpincho carpincho_a_mover = queue_peek(new);
+        carpincho_a_mover->estado = 'R';
+
         queue_push(ready, *queue_peek(new));
         queue_pop(new);
 
 		pthread_mutex_unlock(&sem_cola_new);
 		pthread_mutex_unlock(&sem_cola_ready);
 
-        //pasarle el id a memoria?
+        //llego a ready => pasarle el id a memoria?
 
 		sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
     }
@@ -441,6 +442,8 @@ void ready_a_exec(){
     // Sacar de la cola de ready al elegido (por el algoritmo) y ponerlo en la la lista de exec
         pthread_mutex_lock(&sem_cola_ready); 
 		pthread_mutex_lock(&sem_cola_exec);
+
+        //elegido->estado = 'E';
 
         list_add(lista_exec, *elegido);//elegido: proceso que va a ejecutar
         queue_pop(ready, *elegido); 
@@ -548,8 +551,10 @@ while(1){
 
 ///////////////// ALGORITMOS ////////////////////////
 
-void ready_a_exec_SJF(){ // De la cola de ready te da el que debe ejecutar ahora según SJF
-
+data_carpincho ready_a_exec_SJF(){ // De la cola de ready te da el que debe ejecutar ahora según SJF
+//calcula estimacion de todos
+// la menor estimacion
+// devuelve el carpincho que va a ejecutar
     
     
 }
