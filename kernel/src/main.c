@@ -82,7 +82,7 @@ void inicializar_semaforos(){ // Inicializacion de semaforos:
     sem_init(&sem_grado_multiprogramacion_libre,0,grado_multiprogramacion);  
 	sem_init(&sem_grado_multiprocesamiento_libre, 0,grado_multiprocesamiento); 
 
-    sem_init(&estructura_creada,0,0);
+    sem_init(&hay_estructura_creada,0,0);
     sem_init(&cola_ready_con_elementos,0,0);
     sem_init(&cola_exec_con_elementos,0,0);
     sem_init(&cola_blocked_con_elementos,0,0);
@@ -107,23 +107,21 @@ void crear_hilos_planificadores(){
 void crear_hilos_CPU(){ // creación de los hilos CPU
 
     pthread_t hilo_cpu[grado_multiprocesamiento];
-	lista_ejecutando = list_create(); 			// lista que tiene a los que estan ejecutando
 	for(int i= 0; i< grado_multiprocesamiento; i++){
-         (pthread_create(&hilo_cpu[i], NULL, (void*)ejecuta(i), NULL); 
-         //esta bien mandar el i así en la función?
+
+        sem_init(&liberar_CPU[i], 0, 0);
+        sem_init(&CPU_libre[i], 0, 1; // ver si es 0 o 1 en el segundo argumento
+        sem_init(&usar_CPU[i], 0, 0);        
         
-        sem_init(&semaforo_CPU[i],0,1);
-         
+        (pthread_create(&hilo_cpu[i], NULL, (void*)ejecuta, i); 
+        
         hilo_cpu *nuevo_cpu;
         nuevo_cpu = malloc(sizeof(hilo_cpu)); //es necsario? esta bien?
         nuevo_cpu->id = i;
-        nuevo_cpu->semaforo = &semaforo_CPU[i]; //esto funciona asi?
+        nuevo_cpu->semaforo = &CPU_libre[i]; //esto funciona asi?
         
         list_add(hilos_CPU, nuevo_cpu);
 
-        sem_init(&liberar_CPU[i], 0, 0);
-        sem_init(&CPU_libre[i], 0, 0);
-        sem_init(&usar_CPU[i], 0, 0);        
 	}
 }
 
@@ -131,7 +129,9 @@ void free_memory(){
 
     config_destroy(config);
     list_clean_and_destroy_elements(lista_carpinchos,/*void(*element_destroyer)(void*))*/);
-    list_clean_and_destroy_elements(semaforos_carpinchos,/*void(*element_destroyer)(void*))*/);    
+    list_clean_and_destroy_elements(semaforos_carpinchos,/*void(*element_destroyer)(void*))*/);   
+    list_clean_and_destroy_elements(hilos_CPU,/*void(*element_destroyer)(void*))*/);    
+     
     log_destroy(logger);
 
     // pthread_mutex_destroy
@@ -147,7 +147,6 @@ void free_memory(){
 
 	for(int i= 0; i< grado_multiprocesamiento; i++){
         pthread_destroy(&hilo_cpu[i]);
-        sem_destroy(&semaforo_CPU[i]);
         sem_destroy(&liberar_CPU[i]);
         sem_destroy(&CPU_libre[i]);
         sem_destroy(&usar_CPU[i]);   
@@ -259,7 +258,7 @@ int mate_init(int id_carpincho){
     carpincho->id = id_carpincho;
     carpincho->rafaga_anterior = 0;
     carpincho->estimacion_anterior = 0;
-    carpincho->estimacion_siguiente = estimacion_inical();
+    carpincho->estimacion_siguiente = estimacion_inical(); // revisar que hay que ponerle aca
     // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
     // carpincho->RR no le pongo nada todavia
     carpincho->prioridad = false;
@@ -267,7 +266,7 @@ int mate_init(int id_carpincho){
 
     list_add(lista_carpinchos, carpincho);
 
-    sem_post(&estructura_creada);
+    sem_post(&hay_estructura_creada);
 
     id_carpincho += 2; // incrementa carpinchos impares
 
@@ -419,7 +418,7 @@ void new_a_ready(){
     data_carpincho carpincho_a_mover;
 
     while(1){
-        sem_wait(&estructura_creada);
+        sem_wait(&hay_estructura_creada);
         sem_wait(sem_grado_multiprogramacion_libre); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC!
 		
         // saco de cola new y pongo en cola ready al primero (FIFO):
@@ -502,7 +501,7 @@ void asignar_hilo_CPU(data_carpincho carpincho){
 
 void exec_a_block(int id_carpincho){
     
- carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
+    carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
 
     // le pasan el carpincho y aca lo saca de la lista de exec, lo pone en block y le hace signal al cpu
 
@@ -517,14 +516,15 @@ void exec_a_block(int id_carpincho){
 		pthread_mutex_unlock(&sem_cola_exec);
 
         // "libera" el hilo cpu en el que estaba:
-        // sem_post(carpincho_a_bloquear-> hilo_CPU); // --> agregar en la estructura del carpincho al hilo cpu?
+        sem_post(liberarCPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
+
 }
 
 
 
 void exec_a_exit(int id_carpincho){
     
- carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
+    carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
 
     // Sacar de la lista de exec --> hace falta ponerlo en la lista de exit?
         pthread_mutex_lock(&sem_cola_exec); 
@@ -549,6 +549,7 @@ bool pertenece_al_carpincho(int ID, data_carpincho *carpincho){
         return carpincho->id === ID;
     }
 
+
 // encontrar el carpincho segun su id:
 data_carpincho encontrar_estructura_segun_id(int ID){
 
@@ -558,7 +559,7 @@ data_carpincho encontrar_estructura_segun_id(int ID){
 
     carpincho_encontrado = list_find(lista_carpinchos,buscar_id);
 
-        return carpincho_encontrado;
+    return carpincho_encontrado;
 }
 
 
@@ -574,13 +575,13 @@ while(1){
     sem_wait(&CPU_libre[id]); // indica que ya no está más libre ese cpu
     // mutex
     
-    sem_wait(liberar_CPU[id]); // espera a que algun carpincho indique que quiere liberar el cpu
+    sem_wait(&liberar_CPU[id]); // espera a que algun carpincho indique que quiere liberar el cpu
+    
+    //
     sem_post(&CPU_libre[id]); // indica que ya esta el cpu libre de nuevo
     sem_post(&grado_multiprocesamiento_libre); // indica que ya hay algun cpu libre
-
+    //
 }
-
-
 }
 
 ///////////////// ALGORITMOS ////////////////////////
