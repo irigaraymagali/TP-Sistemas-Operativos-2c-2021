@@ -118,6 +118,13 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido) {
             nuevo->pagina = pagina;
             dictionary_put(swap_dict, string_proceso, (void*) swap_file_asignado->tabla_paginas);
             int frame_asignado = get_first_free_frame_number(nuevo, swap_file_map);
+
+            // Guardo la pagina recibida en el archivo de swap
+            memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
+            munmap(swap_file_map, swap_file_size);
+            close(swap_file_fd);
+            free(swap_file_path);
+
             // list_add(swap_file_asignado->tabla_paginas, (void*) nuevo);
             //
             // // Reservo los frames contiguos como pide el enunciado
@@ -132,7 +139,7 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido) {
             ////////////////////////////// RECONTRA BETA VERSION HAY QUE PROBARLO ///////////////////////////////
             ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            if (tabla_paginas_size(swap_file_asignado->tabla_paginas) > frame_asignado) { // Si el frame que se le asigno habia sido utilizado anteriormente por un proceso que fue finalizado.
+            if (list_size(swap_file_asignado->tabla_paginas) - 1 > frame_asignado) { // Si el frame que se le asigno habia sido utilizado anteriormente por un proceso que fue finalizado.
                 // Cambio el numero del proceso eliminado (9999) por el del nuevo proceso en la tabla de paginas.
                 list_replace_and_destroy_element(swap_file_asignado->tabla_paginas, frame_asignado, (void*) nuevo, fila_tabla_paginas_destroy);
 
@@ -141,7 +148,8 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido) {
                 fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
                 nuevo->proceso = proceso;
                 nuevo->pagina = 9999;
-                frame_asignado = get_first_free_frame_number(nuevo, swap_file_map);
+                // frame_asignado = get_first_free_frame_number(nuevo, swap_file_map);
+                frame_asignado++;
                 list_replace_and_destroy_element(swap_file_asignado->tabla_paginas, frame_asignado, (void*) nuevo, fila_tabla_paginas_destroy);
                 }
             }
@@ -161,12 +169,6 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido) {
             //////////////////////////////////////////////////////////////////////////////////////////////////////
             ////////////////////////////// RECONTRA BETA VERSION HAY QUE PROBARLO ///////////////////////////////
             ////////////////////////////////////////////////////////////////////////////////////////////////////
-
-            // Guardo la pagina recibida en el archivo de swap
-            memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
-            munmap(swap_file_map, swap_file_size);
-            close(swap_file_fd);
-            free(swap_file_path);
         }
     }
 
@@ -252,7 +254,7 @@ void guardar_pagina_asignacion_dinamica(int proceso, int pagina, char* contenido
             ////////////////////////////// RECONTRA BETA VERSION HAY QUE PROBARLO ///////////////////////////////
             ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            if (tabla_paginas_size(swap_file_asignado->tabla_paginas) > frame_asignado) { // Si el frame que se le asigno habia sido utilizado anteriormente por un proceso que fue finalizado.
+            if (tabla_paginas_size(swap_file_asignado->tabla_paginas) - 1 > frame_asignado) { // Si el frame que se le asigno habia sido utilizado anteriormente por un proceso que fue finalizado.
                 // Cambio el numero del proceso eliminado (9999) por el del nuevo proceso en la tabla de paginas.
                 list_replace_and_destroy_element(swap_file_asignado->tabla_paginas, frame_asignado, (void*) nuevo, fila_tabla_paginas_destroy);
             }
