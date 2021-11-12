@@ -2,8 +2,23 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <matelib.h>
+#include "matelib.h"
 
+int id;
+int* p_id;
+
+
+int main(){
+ mate_instance mate_ref;
+char algo = 'a';
+char *p_algo;
+p_algo = algo;
+
+mate_init(&mate_ref,p_algo);
+    
+}
+
+/*
 void* io_thread(void* mate_ref) {
     mate_sem_wait(mate_ref, "SEM1");
     printf("And this one second...\n");
@@ -46,3 +61,4 @@ int main(int argc, char *argv[]) {
     mate_close(&mate_ref);
     return 0;
 }
+*/

@@ -14,17 +14,34 @@
 #define MATE_SEM_DESTROY 6
 #define MATE_CALL_IO 7
 #define MATE_MEMALLOC 8
-#define MATE_MEM_FREE 9
-#define MATE_MEM_READ 10
-#define MATE_MEM_WRITE 11
+#define MATE_MEMFREE 9
+#define MATE_MEMREAD 10
+#define MATE_MEMWRITE 11
 
 // constante para saber quién envia mensaje a memoria
-#define ID_MATE_LIB 111
+#define ID_MATE_LIB '1'
 
 // valores que devuelve el backend
 #define KERNEL_BACKEND = 1 // cuando el kernel responda, va a deolver 1.
 #define MEMORIA_BACKEND = 2 // cuando la memoria responda, va a responder 2
 
+typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
+{
+    int *id;
+    char *semaforo; 
+    int *valor_semaforo; 
+    char *dispositivo_io; 
+    int *size_memoria;
+    int *addr_memfree;
+    int *origin_memread;
+    int *dest_memread;
+    int *origin_memwrite;
+    int *dest_memwrite;
+} mate_inner_structure;
+
+
+
 char* mi_funcion_compartida();
+
 
 #endif
