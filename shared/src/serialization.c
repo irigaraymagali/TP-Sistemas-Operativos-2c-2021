@@ -2,11 +2,12 @@
 
 int get_type(char *type) {
     return 
-        !strcmp(type, "s") ? STRING :
-        !strcmp(type, "d") ? INT :
-        !strcmp(type, "c") ? CHAR :
-        !strcmp(type, "f") ? DOUBLE :
-        !strcmp(type, "u") ? UINT32 :
+    !strcmp(type, "s") ? STRING :
+    !strcmp(type, "d") ? INT :
+    !strcmp(type, "c") ? CHAR :
+    !strcmp(type, "f") ? DOUBLE :
+    !strcmp(type, "u") ? UINT32 :
+    !strcmp(type, "v") ? VOID_PTR :
     -1;
 }
 
@@ -22,9 +23,11 @@ void *_serialize(int size, char *format, ...) {
     char *string;
     int stringLength;
     int value;
+    int vptr_size;
     char c_value;
     double d_value;
     uint32_t u_value;
+    void* vptr_value;
 
     int arg_c = 0;
 
@@ -109,6 +112,15 @@ void *_serialize(int size, char *format, ...) {
                 memcpy(stream + offset, &u_value, sizeof(uint32_t));
                 offset += sizeof(uint32_t);
 
+            break;
+
+            case VOID_PTR:
+                vptr_value = va_arg(lista_argumentos, void*);
+                // printf("[Shared Library]: Serializing type of UInt32_t: %d\n", u_value);
+                memcpy(&vptr_size , stream + (offset - sizeof(int)), sizeof(int));
+
+                memcpy(stream + offset, vptr_value, vptr_size);
+                offset += vptr_size;
             break;
 
             default:

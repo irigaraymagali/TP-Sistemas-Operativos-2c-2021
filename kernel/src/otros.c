@@ -1,3 +1,11 @@
+// para dejar cosas que no están sirviendo pero tenerlas por las dudas para despues.
+// ni se estan usando estas cosas
+
+
+
+
+// serialización de cosas que ya no
+/*
 int recibir_mensaje(){
 
     int str_len;
@@ -49,3 +57,23 @@ int recibir_mensaje(){
     ejecutar_funcion_switch(buffer->codigo_operacion);
 
 }
+
+
+
+
+    ip_memoria = malloc(sizeof(char)); // esta bien ponerle el size asi?
+    puerto_memoria = malloc(sizeof(int));
+    puerto_escucha = malloc(sizeof(int));
+    algoritmo_planificacion = malloc(sizeof(char)); // idem
+    estimacion_inicial = malloc(sizeof(int));
+    alfa = malloc(sizeof(int));
+    dispositivos_io = malloc(sizeof(char)); // es una lista de strings, como le doy el size?
+    duraciones_io = malloc(sizeof(int));
+    grado_multiprogramacion = malloc(sizeof(int));
+    grado_multiprocesamiento = malloc(sizeof(int));
+    tiempo_deadlock = malloc(sizeof(int));
+
+
+
+
+*/
