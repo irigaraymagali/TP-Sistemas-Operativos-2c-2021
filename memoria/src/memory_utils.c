@@ -520,6 +520,13 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 
     if(tempPagina->pagina == mayorNroDePagina){
         list_iterator_destroy(iterator);
+        
+        if(tempPagina->bitPresencia==0){
+            utilizarAlgritmoDeAsignacion(processId);
+            tempPagina->frame = getNewEmptyFrame(processId);
+            //pedirselo a gonza
+        }
+        
         return tempPagina->frame;
     }
 
@@ -984,6 +991,7 @@ void liberarFrame(uint32_t nroDeFrame){
             Pagina *paginatemp = list_iterator_next(iterator2);
             if(paginatemp->frame == nroDeFrame){
                 paginatemp->frame = (tamanioDeMemoria/tamanioDePagina)+1;
+                paginatemp->bitPresencia = 0;
             }
 
             
