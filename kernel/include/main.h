@@ -65,7 +65,7 @@ t_list* lista_carpinchos;
 
 /* Estados:*/
     t_queue* new;
-    t_queue* ready;
+    t_list* ready;
     t_list*  exec;
     t_list*  exit_list;
     t_queue* blocked;

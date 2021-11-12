@@ -54,7 +54,7 @@ void inicializar_colas(){ // Colas estados y sus mutex:
     new = queue_create();
 	pthread_mutex_init(&sem_cola_new, NULL);
 
-	ready = queue_create();
+	ready = list_create();
 	pthread_mutex_init(&sem_cola_ready, NULL);
 
 	exec = list_create();
@@ -419,7 +419,7 @@ void new_a_ready(){
 
     while(1){
         sem_wait(&hay_estructura_creada);
-        sem_wait(sem_grado_multiprogramacion_libre); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC!
+        sem_wait(&sem_grado_multiprogramacion_libre); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC!
 		
         // saco de cola new y pongo en cola ready al primero (FIFO):
         pthread_mutex_lock(&sem_cola_ready); 
@@ -429,7 +429,7 @@ void new_a_ready(){
         
         carpincho_a_mover->estado = 'R';
 
-        queue_push(ready, *queue_peek(new));
+        //queue_push(ready, *queue_peek(new)); seria poner ese el la lista de ready
         queue_pop(new);
 
 		pthread_mutex_unlock(&sem_cola_new);
@@ -467,7 +467,7 @@ void ready_a_exec(){
         //elegido->estado = 'E';
 
         list_add(lista_exec, *elegido);//elegido: proceso que va a ejecutar
-        queue_pop(ready, *elegido); 
+        //queue_pop(ready, *elegido);  sacar ese de la lista de ready
     
 		pthread_mutex_unlock(&sem_cola_exec);
 		pthread_mutex_unlock(&sem_cola_ready);
@@ -586,12 +586,28 @@ while(1){
 
 ///////////////// ALGORITMOS ////////////////////////
 
+
+
 data_carpincho ready_a_exec_SJF(){ // De la cola de ready te da el que debe ejecutar ahora según SJF
-//calcula estimacion de todos
-// la menor estimacion
-// devuelve el carpincho que va a ejecutar
-    
-    
+
+    float obtener_la_menor_estimacion(){
+        for(int i= 0; i<list_size(ready); i++){
+
+        float min_hasta_el_momento = 0;
+        data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
+        calculo_estimacion_siguiente(carpincho_listo);       // le calculo su estimacion
+        float estimacion_actual = carpincho_listo->estimacion_siguiente; //agarro su estimacion
+            if(estimacion_actual < min_hasta_el_momento){         //si esta es menor => pasa a ser la minima hasta el momento
+                min_hasta_el_momento = estimacion_actual;
+            }
+
+        }
+        return min_hasta_el_momento; // falta buscar el carpincho que tenga esa estimacion y ese es el que va a ejecutar (como la de buscar carpincho segun id)
+    }
+
+
+    // devuelve el carpincho que va a ejecutar --> con esa estimacion siguiente buscar al carpincho (ver caso en el que 2 tengan la misma estimacion)
+        
 }
 
 void ready_a_exec_HRRN(){ // De la cola de ready te da el que debe ejecutar ahora según HRRN
@@ -601,7 +617,7 @@ void ready_a_exec_HRRN(){ // De la cola de ready te da el que debe ejecutar ahor
 }
 
 // para SJF
-float calculo_rafaga_siguiente(data_carpincho *carpincho){
+float calculo_estimacion_siguiente(data_carpincho *carpincho){
 
     carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa);
 
