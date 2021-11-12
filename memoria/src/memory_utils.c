@@ -888,6 +888,7 @@ void seleccionClockMejorado(){
 
         if(punteroFrameClock>= frameFinal){
             punteroFrameClock =0;
+            continue;
         }
 
         Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
@@ -899,6 +900,7 @@ void seleccionClockMejorado(){
                 le pido a gonza que se agarre esta pagina y libero el frame
                 liberarFrame(paginaEncontrada->frame)
              */
+            liberarFrame(paginaEncontrada->frame);
         }
 
         punteroFrameClock++;
@@ -908,6 +910,7 @@ void seleccionClockMejorado(){
 
         if(punteroFrameClock>= frameFinal){
             punteroFrameClock =0;
+            continue;
         }
 
         Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
@@ -919,6 +922,7 @@ void seleccionClockMejorado(){
                 le pido a gonza que se agarre esta pagina y libero el frame
                 liberarFrame(paginaEncontrada->frame)
              */
+            liberarFrame(paginaEncontrada->frame);
         }else
         {
             paginaEncontrada->bitUso =0;
@@ -935,28 +939,27 @@ Pagina *getMarcoDe(uint32_t nroDeFrame){
 
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
-    TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
 
     Pagina *paginatemp = malloc(sizeof(Pagina));
         
     while (list_iterator_has_next(iterator)) {
+
+        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
         
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
         
-        paginatemp = list_iterator_next(iterator2);
+        
 
         while (list_iterator_has_next(iterator2))
         {
-            /* code */
+            paginatemp = list_iterator_next(iterator2);
             if(paginatemp->frame == nroDeFrame){
                 return paginatemp;
             }
 
-            paginatemp = list_iterator_next(iterator2);
         }
         
         list_iterator_destroy(iterator2);
-        temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
     }
         
     list_iterator_destroy(iterator);
@@ -967,26 +970,27 @@ Pagina *getMarcoDe(uint32_t nroDeFrame){
 void liberarFrame(uint32_t nroDeFrame){
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
-    TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+    
         
     while (list_iterator_has_next(iterator)) {
+        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
         
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
         
-        Pagina *paginatemp = list_iterator_next(iterator2);
+        
 
         while (list_iterator_has_next(iterator2))
         {
-            /* code */
+            Pagina *paginatemp = list_iterator_next(iterator2);
             if(paginatemp->frame == nroDeFrame){
                 paginatemp->isfree = 1;
             }
 
-            paginatemp = list_iterator_next(iterator2);
+            
         }
         
         list_iterator_destroy(iterator2);
-        temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+        
     }
         
     list_iterator_destroy(iterator);
