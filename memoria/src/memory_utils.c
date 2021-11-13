@@ -534,6 +534,13 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 
     if(tempPagina->pagina == mayorNroDePagina){
         list_iterator_destroy(iterator);
+        
+        if(tempPagina->bitPresencia==0){
+            utilizarAlgritmoDeAsignacion(processId);
+            tempPagina->frame = getNewEmptyFrame(processId);
+            //pedirselo a gonza
+        }
+        
         return tempPagina->frame;
     }
 
@@ -741,7 +748,7 @@ void inicializarUnProceso(int idDelProceso){
     log_info(logger, "Proceso %d inicializado con Exito", idDelProceso);
 }
 
-int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir){
+int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir, int tamanio){
     int paginaActual=1;
 
     TablaDePaginasxProceso *tablaDelProceso = get_pages_by(idProcess);
@@ -773,7 +780,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
 
             if (paginaFinDelAlloc == paginaActual)
             {
-                memcpy(memoria + offsetInicioAlloc, loQueQuierasEscribir, sizeof(loQueQuierasEscribir));
+                memcpy(memoria + offsetInicioAlloc, loQueQuierasEscribir, tamanio);
             }
             else
             {
@@ -795,7 +802,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
 
                 offsetInicioAlloc -= (frameBuscado*tamanioDePagina);
 
-                memcpy(espacioAuxiliar + offsetInicioAlloc, loQueQuierasEscribir , sizeof(loQueQuierasEscribir));
+                memcpy(espacioAuxiliar + offsetInicioAlloc, loQueQuierasEscribir , tamanio);
 
                 nroPagAux = paginaActual;
                 
@@ -1021,7 +1028,8 @@ void liberarFrame(uint32_t nroDeFrame){
         {
             Pagina *paginatemp = list_iterator_next(iterator2);
             if(paginatemp->frame == nroDeFrame){
-                paginatemp->isfree = 1;
+                paginatemp->frame = (tamanioDeMemoria/tamanioDePagina)+1;
+                paginatemp->bitPresencia = 0;
             }
 
             

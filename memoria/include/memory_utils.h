@@ -129,7 +129,7 @@ void liberarFrame(uint32_t nroDeFrame);
 Pagina *getMarcoDe(uint32_t nroDeFrame);
 void setAsUsedRecently(int idProcess, int nroDePagina);
 
-int memwrite(int idProcess, int direccionLogica, void* loQueQuierasEscribir);
+int memwrite(int idProcess, int direccionLogica, void* loQueQuierasEscribir, int tamanio);
 Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada);
 HeapMetaData* get_heap_metadata(int offset);
 HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset);
