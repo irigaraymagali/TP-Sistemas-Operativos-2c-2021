@@ -184,10 +184,11 @@ int deserializar(buffer){
 }
 
 
-void handler( int fd, char* id, int opcode, void* payload, t_log* loggera){
+void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     
     log_info(logger, "Recibí un mensaje");
-    data_carpincho estructura_interna;
+    data_carpincho* estructura_interna;
+    estructura_interna = malloc(sizeof(estructura_interna));
     int id_carpincho;
     int size_memoria;
     int addr_memfree;
@@ -204,31 +205,31 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* loggera){
     switch(opcode){
         case MATE_INIT:
             estructura_interna = deserializar(payload);
-            mate_init(estructura_interna->id);
+            mate_init(estructura_interna->id, fd);
             break;
         case MATE_CLOSE: 
             estructura_interna = deserializar(payload);
-            mate_close(estructura_interna->id);
+            mate_close(estructura_interna->id,fd);
             break;
         case MATE_SEM_INIT: 
             estructura_interna = deserializar(payload);
-            mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo);            
+            mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
             break;
         case MATE_SEM_WAIT: 
             estructura_interna = deserializar(payload);
-            mate_sem_wait(estructura_interna->id, estructura_interna->semaforo);            
+            mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
         case MATE_SEM_POST: 
             estructura_interna = deserializar(payload);
-            mate_sem_post(estructura_interna->id, estructura_interna->semaforo);            
+            mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
         case MATE_SEM_DESTROY:
             estructura_interna = deserializar(payload);
-            mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo);            
+            mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
         case MATE_CALL_IO:
             estructura_interna = deserializar(payload);
-            mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io);  
+            mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
             break;
         // ver qué tengo que pasar acá          
         case MATE_MEMALLOC: 
@@ -239,7 +240,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* loggera){
             memcpy(&size_memoria, payload, sizeof(int);
             offset += sizeof(int);
 
-            mate_memalloc(id_carpincho, size_memoria);      
+            mate_memalloc(id_carpincho, size_memoria, fd);      
             break;      
         case MATE_MEMFREE:
             // id_carpincho
@@ -249,7 +250,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* loggera){
             memcpy(&addr_memfree, payload, sizeof(int);
             offset += sizeof(int);
 
-            mate_memfree(id_carpincho, addr_memfree);      
+            mate_memfree(id_carpincho, addr_memfree, fd);      
             break;      
         case MATE_MEMREAD:
             // id_carpincho
@@ -261,12 +262,12 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* loggera){
             // dest_memread
             memcpy(&ptr_len, payload + offset, sizeof(int));
             offset += sizeof(int);
-            memcpy(&dest_memread, payload + offset, ptr_len);
+            memcpy(&dest_memread, payload + offset, sizeof(int)* ptr_len);
             // size_memoria
             memcpy(&size_memoria, payload, sizeof(int);
             offset += sizeof(int);
 
-            mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria);            
+            mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria), fd;            
             break;
         case MATE_MEMWRITE: 
             // id_carpincho
@@ -275,7 +276,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* loggera){
             // origin_memwrite
             memcpy(&ptr_len, payload + offset, sizeof(int));
             offset += sizeof(int);
-            memcpy(&origin_memwrite, payload + offset, ptr_len);
+            memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
             // dest_memwrite
             memcpy(&dest_memwrite, payload, sizeof(int);
             offset += sizeof(int);
@@ -283,7 +284,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* loggera){
             memcpy(&size_memoria, payload, sizeof(int);
             offset += sizeof(int);
 
-            mate_memwrite(id, origin_memwrite, dest_memwrite, size_memoria);     
+            mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);     
             break; 
         break;  
 
@@ -291,14 +292,9 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* loggera){
 }
 
 
-   
-
-
-
-
 //////////////// FUNCIONES GENERALES ///////////////////
 
-int mate_init(int id_carpincho){
+int mate_init(int id_carpincho, int fd){
     
     data_carpincho carpincho = malloc(size_of(data_carpincho);
     carpincho->id = id_carpincho;
@@ -311,79 +307,72 @@ int mate_init(int id_carpincho){
     carpincho->estado = 'N';
 
     list_add(lista_carpinchos, carpincho);
-
     sem_post(&hay_estructura_creada);
 
     id_carpincho += 2; // incrementa carpinchos impares
 
     pthread_t esperando_estar_en_exec;
-    pthread_create(&esperando_estar_en_exec, NULL, (void*) esperando_estar_en_exec(carpincho), NULL);
-    // 
-    // sem_wait(retornar_init); --> ver
-    // responder al carpincho que todo ok
+    pthread_create(&esperando_estar_en_exec, NULL, (void*) esperando_estar_en_exec, (carpincho,fd)); // estan bien pasados los dos argumentos?
     
-
 }
 
-void esperando_estar_en_exec(){
+void esperando_estar_en_exec(carpincho,fd){
 while(true){
     if(carpincho->estado === 'E'){
-        // enviar mensaje a matelib de que esta listo 
+        _send_message(fd, ID_MATE_LIB, 1, carpincho->id, sizeof(int), logger); // va así?
     }
 }
 }
 
 
-int mate_close(int id_carpincho){
+int mate_close(int id_carpincho, int fd){
 
-    //list_remove_and_destroy_element(lista_carpinchos, id_carpincho, /*void(*element_destroyer)(void*)*/)
-    
-    // acá estamos eliminando lo que hay en ese index pero medio que dejamos ese index muerto
+    list_remove_by_condition(lista_carpinchos, encontrar_estructura_segun_id);
 
     exec_a_exit(id_carpincho);
 
-    // responder al carpincho que todo ok
+    _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger); 
 }
 
 
 //////////////// FUNCIONES SEMAFOROS ///////////////////
 
-int mate_sem_init(int id_carpincho, mate_sem_name nombre_semaforo, int valor_semaforo){  
+int mate_sem_init(int id_carpincho, mate_sem_name nombre_semaforo, int valor_semaforo, int fd){  
     
-    //"Al momento de ejecutar un mate_sem_init(), si el semáforo ya se encuentra inicializado, el valor del mismo no debe modificarse"
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
-
-        // no modifica al que ya esta inicializado => no hace nada? o log de error
 
         bool esIgualA(void *semaforo){
         return esIgualASemaforo(semaforo, nombre_semaforo);
         }
+
+        log_info(logger, "El semaforo ya estaba incializado");
+        _send_message(fd, ID_MATE_LIB, 1, -1, sizeof(int), logger); // le manda que esta mal, va así? 
+
     }
-    else // si no existe un sem que se llame igual (=> no fue inicializado):
+    else 
     {
         semaforo semaforo = malloc(size_of(semaforo));
         semaforo->nombre = nombre_semaforo;
         semaforo->valor = valor_semaforo;
 
         list_add(semaforos_carpinchos,semaforo);
+
+        log_info(logger, "Se inicializó el semáforo");        
+        _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger); // va así? 
+    
     }
+}
 
-    // responder al carpincho que todo ok 
+bool esIgualASemaforo(mate_sem_name nombre_semaforo, void *semaforo){
+    return semaforo->nombre === nombre_semaforo;
+}
 
-
+semaforo semaforoIgualANombreSemaforo(mate_sem_name nombre_semaforo, void *semaforo){
+    return semaforo->nombre === nombre_semaforo;
 }
 
 
-    bool esIgualASemaforo(mate_sem_name nombre_semaforo, void *semaforo){
-        return semaforo->nombre === nombre_semaforo;
-    }
-
-    semaforo semaforoIgualANombreSemaforo(mate_sem_name nombre_semaforo, void *semaforo){
-        return semaforo->nombre === nombre_semaforo;
-    }
-
-
-int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){
+int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
     bool esIgualA(void *semaforo){
         return esIgualASemaforo(semaforo, nombre_semaforo);
@@ -395,19 +384,15 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){
 
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
 
-        (list_find(semaforos_carpinchos, esIgualA))->valor_semaforo --; // hacer las funciones que devuelvan el semaforo
+        (list_find(semaforos_carpinchos, semaforoIgualA))->valor_semaforo --; 
 
         if(semaforo->valor_semaforo<1){
-            
-            // logica para que el carpincho se quede esperando el post si es que tiene que hacerlo
-
-            // manda a bloquear al carpincho:
-               exec_a_block(id_carpincho); // --> pasa solo el id?
+            exec_a_block(id_carpincho); 
+            queue_push(semaforo->en_espera, encontrar_estructura_segun_id(id_carpincho); //queda esperando para que lo desbloqueen, es el primero. conviene usar una que
         }
         else
         {
-           list_add(semaforo->en_espera, id_carpincho);
-           // cual es la dif entre hacerlo como queue o como list?
+            // acá no pasa nada, no? o sea si el semaforo de decrementa y sigue siendo mayor a 1, sigue todo como si nada, no?
         }
     }
     else
@@ -419,16 +404,68 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo){
 
 
 
-int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo){
+int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
+
+    bool esIgualA(void *semaforo){
+        return esIgualASemaforo(semaforo, nombre_semaforo);
+    }
+
+    semaforo semaforoIgualA(void *semaforo){
+        return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
+    }
+
+    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
+
+        (list_find(semaforos_carpinchos, semaforoIgualA))->valor_semaforo ++; 
+
+        carpincho_a_desbloquear = queue_pop((list_find(semaforos_carpinchos, semaforoIgualA))->en_espera);
+
+        if(carpincho_a_desbloquear->estado === BLOCKED){
+            carpincho_a_desbloquear->estado = READY;
+            block_a_ready(carpincho_a_desbloquear);
+        }
+        else{ // si no esta en blocked es porque estaba en suspended blocked, ahora lo cambio a suspended_ready
+            carpincho_a_desbloquear->estado = SUSPENDED_READY;
+            suspended_a_ready(carpincho_a_desbloquear);
+        }
+    }
+    else
+    {
+        log_info(logger, "se intento hacer post de un semaforo no inicializado");
+    }
+
+
 }
 
-int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo) {
+int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
+
+    bool esIgualA(void *semaforo){
+        return esIgualASemaforo(semaforo, nombre_semaforo);
+    }
+
+    semaforo semaforoIgualA(void *semaforo){
+        return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
+    }
+
+    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
+
+        // if => qué pasa si tienen algun carpincho en wait? se puede eliminar el semaforo? que pasa con los que estan en espera?
+            list_remove_by_condition(semaforos_carpinchos,esIgualA);
+    }
+    else
+    {
+        log_info(logger, "se intento borrar un semaforo no inicializado");
+    }
+
+
+
+
 }
 
 
 //////////////// FUNCIONES IO ///////////////////
 
-int mate_call_io(int id_carpincho, mate_io_resource nombre_io){
+int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
     // si nombre_io esta disponible => bloquear al carpincho
     // si no => suspenderlo? a la espera de que se desocupe
@@ -438,16 +475,16 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io){
 
 //////////////// FUNCIONES MEMORIA ///////////////////
 
-mate_pointer mate_memalloc(int id_carpincho, int size){
+mate_pointer mate_memalloc(int id_carpincho, int size, int fd){
 }
 
-int mate_memfree(int id_carpincho, mate_pointer addr){
+int mate_memfree(int id_carpincho, mate_pointer addr, int fd){
 }
 
-int mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size){
+int mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size, int fd){
 }
 
-int mate_memwrite(int id_carpincho, void origin, mate_pointer dest, int size){
+int mate_memwrite(int id_carpincho, void origin, mate_pointer dest, int size, int fd){
 }
     
 
@@ -484,6 +521,18 @@ void new_a_ready(){
 		sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
     }
     
+}
+
+void block_a_ready(){
+
+    // logica para que cuando se desbloquea un semaforo o termina IO pase a ready
+
+}
+
+void suspended_a_ready(){
+
+    // logica para que cuando se desbloquee un semaforo o se termina IO de un carpincho que se habia suspendido y ahora esta en suspendido ready, vea si lo quiere pasar a ready segun grado de multiprogramacion y eso
+
 }
 
 // calcular ráfaga siguiente. Esto se debería hacer para todos los carpinchos cuando ingresan a la cola de ready
@@ -548,6 +597,7 @@ void asignar_hilo_CPU(data_carpincho carpincho){
 void exec_a_block(int id_carpincho){
     
     carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
+    carpincho_a_bloquear->estado = BLOCKED;
 
     // le pasan el carpincho y aca lo saca de la lista de exec, lo pone en block y le hace signal al cpu
 
@@ -590,14 +640,13 @@ void exec_a_exit(int id_carpincho){
 ///////////////////////////////////////////////////////////////
 
 
-
-bool pertenece_al_carpincho(int ID, data_carpincho *carpincho){
-        return carpincho->id === ID;
-    }
-
-
 // encontrar el carpincho segun su id:
 data_carpincho encontrar_estructura_segun_id(int ID){
+
+
+    bool pertenece_al_carpincho(int ID, data_carpincho *carpincho){
+        return carpincho->id === ID;
+    }
 
     bool buscar_id(void *ID){
         return pertenece_al_carpincho(ID, carpincho);
@@ -607,8 +656,6 @@ data_carpincho encontrar_estructura_segun_id(int ID){
 
     return carpincho_encontrado;
 }
-
-
 
 
 
