@@ -65,6 +65,7 @@ typedef struct hilo_cpu
 
 t_list* semaforos_carpinchos;
 t_list* lista_carpinchos; 
+t_list* lista_dispositivos_io;
 
 
 /* Estados:*/
@@ -95,7 +96,7 @@ t_list* lista_carpinchos;
     int *estimacion_inicial;
     int *alfa;
     char *dispositivos_io; 
-    int *duraciones_io; 
+    char *duraciones_io; 
     int *grado_multiprogramacion;
     int *grado_multiprocesamiento;
     int *tiempo_deadlock;

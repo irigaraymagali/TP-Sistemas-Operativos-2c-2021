@@ -26,6 +26,7 @@ int main(int argc, char ** argv){
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
     semaforos_carpinchos = list_create(); // crear lista para ir guardando los semaforos
     hilos_CPU = list_create(); // crear lista para ir guardando los hilos cpus
+    lista_dispositivos_io = list_create(); // crear lista para ir guardando los dispositivios io
 
     t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
 
@@ -541,8 +542,6 @@ int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
             }
 
     //para el any satisfy:
-
-
         dispositivo_io dispositivo_igual_a_nombre(mate_io_resource nombre_dispositivo, void *dispositivo){
                 return dispositivo->nombre === nombre_dispositivo;
             }
@@ -558,6 +557,7 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         return dispositivo_igual_a_nombre(nombre_io, dispositivo);
     }
 
+<<<<<<< HEAD
     bool igual_a(void *dispoitivo){
         return es_igual_dispositivo(dispositivo, nombre_dispositivo);
     }
@@ -569,14 +569,20 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     
 
     if(list_any_satisfy(dispositivos_io, igual_a)){  
+=======
+    if(list_any_satisfy(dispositivos_io, igual_a)){  //asi con la lista del config o con lista_dispositivos_io que es la que agregan al crearle la estructura al dispositivo
+>>>>>>> a3cb2fad72c2e68fd592bdf4301e3469e33f73d7
 
         dispositivo_pedido = list_find(dispositivos_io, dispositivo_igual_a); 
+        // o directamente bloquear al carpincho, y si lo puede usar lo usa y sino espera
 
         if(dispositivo_pedido->en_uso === false){
-            exec_a_block_io(id,dispositivo); //ver
+            exec_a_block_io(id,dispositivo_pedido); //ver, hace falta que sea otra distinta? lo puse para pasarle el dispositivo que pidio
             dispositivo_pedido->en_uso = true;        
         }
-        else{ // si esta en uso => ?
+        else{ 
+            exec_a_block_io(id,dispositivo_pedido); //pero no lo usa, queda a la espera --> agregarselo a la estructura del carpincho?
+            // por ej en carpincho: a_la_espera_de = dispositivo => ahi sabemos que pidio y que esta esperando cuando este bloqueado 
             
         }
     }
@@ -586,6 +592,22 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         _send_message(fd, ID_MATE_LIB, 1, -1, sizeof(int), logger);
         
     }
+
+}
+
+// lista dispositivos_io y duraciones_io por config
+void crear_estructura_dispositivo(){ //deberia crearse al principio, no cuando lo piden
+
+    for(int i= 0; i<list_size(dispositivos_io); i++){
+
+            dispositivo_io dispositivo = malloc(size_of(dispositivo_io); //free del malloc al final
+            dispositivo->nombre = list_get(dispositivos_io, i);
+            dispositivo->duracion = list_get(duraciones_io, i);
+            dispositivo->en_uso = false;
+
+            list_add(lista_dispositivos_io, *dispositivo);
+
+        }
 
 }
 
@@ -845,6 +867,24 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){
     int diferencia_milisegundos = tiempo_salida - tiempo_entrada;
 
     carpincho->rafaga_anterior = diferencia_milisegundos;
+
+}
+
+
+float calcular_milisegundos(){
+
+    char* string_tiempo = temporal_get_string_time("%M:%S:%MS"); // " 20: 30: 60 " 
+
+    //separar tiempo en hora, min, seg y miliseg:
+    while(retorno!=NULL){ //no
+        int minutos = str_split(string_tiempo,':');
+        
+                //o en una estructura?
+    }
+
+    //pasar todo a miliseg:
+    return minutos * 60000 + segundos * 60 + milisegundos
+
 
 }
 
