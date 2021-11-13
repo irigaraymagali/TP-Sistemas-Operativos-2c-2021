@@ -395,31 +395,7 @@ int mate_close(int id_carpincho, int fd){
 
 //////////////// FUNCIONES SEMAFOROS ///////////////////
 
-int mate_sem_init(int id_carpincho, mate_sem_name nombre_semaforo, int valor_semaforo, int fd){  
-    
-    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
-
-        bool esIgualA(void *semaforo){
-        return esIgualASemaforo(semaforo, nombre_semaforo);
-        }
-
-        log_info(logger, "El semaforo ya estaba incializado");
-        _send_message(fd, ID_MATE_LIB, 1, -1, sizeof(int), logger); // le manda que esta mal, va así? 
-
-    }
-    else 
-    {
-        semaforo semaforo = malloc(size_of(semaforo));
-        semaforo->nombre = nombre_semaforo;
-        semaforo->valor = valor_semaforo;
-
-        list_add(semaforos_carpinchos,semaforo);
-
-        log_info(logger, "Se inicializó el semáforo");        
-        _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger); // va así? 
-    
-    }
-}
+// para las funciones de orden superior
 
 bool esIgualASemaforo(mate_sem_name nombre_semaforo, void *semaforo){
     return semaforo->nombre === nombre_semaforo;
@@ -427,6 +403,31 @@ bool esIgualASemaforo(mate_sem_name nombre_semaforo, void *semaforo){
 
 semaforo semaforoIgualANombreSemaforo(mate_sem_name nombre_semaforo, void *semaforo){
     return semaforo->nombre === nombre_semaforo;
+}
+
+int mate_sem_init(int id_carpincho, mate_sem_name nombre_semaforo, int valor_semaforo, int fd){  
+    
+    bool esIgualA(void *semaforo){
+        return esIgualASemaforo(semaforo, nombre_semaforo);
+    }
+
+    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
+        log_info(logger, "El semaforo ya estaba incializado");
+        _send_message(fd, ID_MATE_LIB, 1, -1, sizeof(int), logger); // le manda que esta mal, va así? 
+    }
+    else 
+    {
+        semaforo semaforo = malloc(size_of(semaforo));
+        semaforo->nombre = nombre_semaforo;
+        semaforo->valor = valor_semaforo;
+        semaforo->en_espera = queue_create();
+
+        list_add(semaforos_carpinchos,semaforo);
+
+        log_info(logger, "Se inicializó el semáforo");        
+        _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger); // va así? 
+    
+    }
 }
 
 
@@ -462,11 +463,10 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     else
     {
         log_info(logger, "se intento hacer wait de un semaforo no inicializado");
+        _send_message(fd, ID_MATE_LIB, 1, -1, sizeof(int), logger);
     }
 
 }
-
-
 
 int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
@@ -529,20 +529,12 @@ int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
         log_info(logger, "se intento borrar un semaforo no inicializado");
         _send_message(fd, ID_MATE_LIB, 1, -1, sizeof(int), logger);
     }
-
-
-
-
 }
 
 
 //////////////// FUNCIONES IO ///////////////////
 
-
     //para el find:
-        bool igual_a(void *dispoitivo){
-            return es_igual_dispositivo(dispositivo, nombre_dispositivo);
-        }
 
         bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
                 return dispositivo->nombre === nombre_dispositivo;
@@ -564,6 +556,10 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
     dispositivo_io dispositivo_igual_a(void *dispositivo){
         return dispositivo_igual_a_nombre(nombre_io, dispositivo);
+    }
+
+    bool igual_a(void *dispoitivo){
+        return es_igual_dispositivo(dispositivo, nombre_dispositivo);
     }
 
     // si nombre_io esta disponible => bloquear al carpincho por io
