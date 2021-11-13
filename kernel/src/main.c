@@ -6,7 +6,6 @@ int main(int argc, char ** argv){
 
     int* socket;
     socket = malloc(sizeof(int));
-    // leer archivo config
 
     config = config_create("../cfg/kernel.conf");
 
@@ -21,8 +20,6 @@ int main(int argc, char ** argv){
     grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
     grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
     tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
-
-    //
 
     int id_carpincho = 1;
 
@@ -203,6 +200,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     int dest_memwrite;
     int offset = 0;
     int ptr_len = 0;
+    mate_pointer pointer;
     
     if(id === ID_MATE_LIB){
         switch(opcode){
@@ -266,6 +264,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&ptr_len, payload + offset, sizeof(int));
                 offset += sizeof(int);
                 memcpy(&dest_memread, payload + offset, sizeof(int)* ptr_len);
+                offset += sizeof(int)* ptr_len;
                 // size_memoria
                 memcpy(&size_memoria, payload, sizeof(int);
                 offset += sizeof(int);
@@ -280,6 +279,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&ptr_len, payload + offset, sizeof(int));
                 offset += sizeof(int);
                 memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
+                offset += sizeof(int)* ptr_len;                
                 // dest_memwrite
                 memcpy(&dest_memwrite, payload, sizeof(int);
                 offset += sizeof(int);
@@ -294,11 +294,14 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     else{
         switch(opcode){
             case MATE_MEMALLOC:
-                // id_carpincho
-                memcpy(&id_carpincho, payload, sizeof(int));
-                offset += sizeof(int);
 
-                responder_a_lib(id_carpincho, fd);
+                //mate_pointer
+                memcpy(&ptr_len, buffer, sizeof(int));
+                offset += sizeof(int);
+                memcpy(&pointer, buffer + offset, ptr_len);
+
+                _send_message(socket, ID_KERNEL, MATE_INIT, _serialize(sizeof(int)*(ptr_len + 1), "%d%d", ptr_len, pointer), sizeof(int)*(ptr_len + 1, logger); 
+                
             break;
             case MATE_MEMFREE:
                 // id_carpincho
@@ -308,8 +311,6 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 responder_a_lib(id_carpincho, fd);
             break;
             case MATE_MEMREAD:
-
-                //nos va a mandar un void pointer y se lo tengo que devolver
 
                 // id_carpincho
                 memcpy(&id_carpincho, payload, sizeof(int));
@@ -328,8 +329,14 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 }
 
 responder_a_lib(int id_carpincho, int fd){
-    //preguntarles que me van a devolver si esta todo mal asi devuelvo ese error
-    _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger);
+    if(id_carpincho < 0){
+        log_info("no se pudo realizar la operación de memoria");
+        _send_message(fd, ID_MATE_LIB, 1, id_carpincho, sizeof(int), logger);
+        
+    }
+    else{
+        _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger);
+    }
 }
 
 //////////////// FUNCIONES GENERALES ///////////////////
