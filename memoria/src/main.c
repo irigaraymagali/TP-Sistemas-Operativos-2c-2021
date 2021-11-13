@@ -12,25 +12,6 @@ int main(int argc, char ** argv){
 
     inicializarUnProceso(1);
     inicializarUnProceso(2);
-    
-    memalloc(5, 1);
-    //int b = memalloc(3, 1);
-
-    void* algo = malloc(5); 
-
-    int b = 3;
-
-    memcpy(algo, &b, sizeof(int));
-
-    int a = memwrite(1, 0, algo); 
-
-    void* res1 = memread(1, 0);
-    void* res2 = memread(1, 10);
-    void* res3 = memread(1, 10);
-    int ires1,ires2,ires3;
-    memcpy(&ires1, res1, sizeof(int));
-    memcpy(&ires2, res2, sizeof(int));
-    memcpy(&ires3, res3, sizeof(int));
 
     init_swamp_connection();
 
