@@ -300,7 +300,7 @@ int mate_init(int id_carpincho, int fd){
     carpincho->id = id_carpincho;
     carpincho->rafaga_anterior = 0;
     carpincho->estimacion_anterior = 0;
-    carpincho->estimacion_siguiente = estimacion_inical(); // revisar que hay que ponerle aca
+    carpincho->estimacion_siguiente = estimacion_inicial; // viene por config
     // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
     // carpincho->RR no le pongo nada todavia
     carpincho->prioridad = false;
@@ -311,7 +311,7 @@ int mate_init(int id_carpincho, int fd){
 
     id_carpincho += 2; // incrementa carpinchos impares
 
-    pthread_t esperando_estar_en_exec;
+    pthread_t esperando_estar_en_exec;   //sacar el hilo o lo dejamos así?
     pthread_create(&esperando_estar_en_exec, NULL, (void*) esperando_estar_en_exec, (carpincho,fd)); // estan bien pasados los dos argumentos?
     
 }
@@ -491,10 +491,6 @@ int mate_memwrite(int id_carpincho, void origin, mate_pointer dest, int size, in
 
 ///////////////// PLANIFICACIÓN ////////////////////////
 
-int estimacion_inical(){
-    // calcular estimacion inicial 
-    return 0;
-}
 
 void new_a_ready(){
 
@@ -523,20 +519,6 @@ void new_a_ready(){
     
 }
 
-void block_a_ready(){
-
-    // logica para que cuando se desbloquea un semaforo o termina IO pase a ready
-
-}
-
-void suspended_a_ready(){
-
-    // logica para que cuando se desbloquee un semaforo o se termina IO de un carpincho que se habia suspendido y ahora esta en suspendido ready, vea si lo quiere pasar a ready segun grado de multiprogramacion y eso
-
-}
-
-// calcular ráfaga siguiente. Esto se debería hacer para todos los carpinchos cuando ingresan a la cola de ready
-    //    float calculo_rafaga_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * alfa
 
 void ready_a_exec(){  
 
@@ -575,7 +557,7 @@ void ready_a_exec(){
 
 
 void exec_a_block(int id_carpincho){
-    // le pasan el id del carpincho y aca lo saca de la lista de exec, lo pone en block y le hace signal al cpu
+    // le pasan el id del carpincho y lo saca de la lista de exec, lo pone en block y le hace signal al cpu
     
     data_carpincho carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
     calculo_rafaga_anterior(carpincho_a_bloquear); 
@@ -584,8 +566,10 @@ void exec_a_block(int id_carpincho){
         pthread_mutex_lock(&sem_cola_exec); 
 		pthread_mutex_lock(&sem_cola_blocked);
 
+        carpincho_a_bloquear->estado = 'B';
+
         queue_push(blocked, *carpincho_a_bloquear); 
-        //list_(lista_exec, *carpincho_a_bloquear); 
+        //list_(lista_exec, *carpincho_a_bloquear);
     
 		pthread_mutex_unlock(&sem_cola_blocked);
 		pthread_mutex_unlock(&sem_cola_exec);
@@ -596,7 +580,6 @@ void exec_a_block(int id_carpincho){
 }
 
 
-
 void exec_a_exit(int id_carpincho){
     
     carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
@@ -604,14 +587,30 @@ void exec_a_exit(int id_carpincho){
     // Sacar de la lista de exec --> hace falta ponerlo en la lista de exit?
         pthread_mutex_lock(&sem_cola_exec); 
 		
+        //carpincho_que_termino->estado = '';
+
         //list_(lista_exec, *carpincho_que_termino); 
     
 		pthread_mutex_unlock(&sem_cola_exec);
 
         // "libera" el hilo cpu en el que estaba:
-        // sem_post(carpincho_que_termino-> hilo_CPU); // --> agregar en la estructura del carpincho al hilo cpu?
+        sem_post(liberarCPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
 
         //avisar a mem?
+}
+
+//FALTA
+void block_a_ready(){
+
+    // logica para que cuando se desbloquea un semaforo o termina IO pase a ready
+
+}
+
+//FALTA
+void suspended_a_ready(){
+
+    // logica para que cuando se desbloquee un semaforo o se termina IO de un carpincho que se habia suspendido y ahora esta en suspendido ready, vea si lo quiere pasar a ready segun grado de multiprogramacion y eso
+
 }
 
 
@@ -628,7 +627,7 @@ data_carpincho ready_a_exec_SJF(){ // De la lista de ready te da el que debe eje
         data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
         calculo_estimacion_siguiente(carpincho_listo);       // le calculo su estimacion
         float estimacion_actual = carpincho_listo->estimacion_siguiente; //agarro su estimacion
-            if(estimacion_actual < min_hasta_el_momento){         //si esta es menor => pasa a ser la minima hasta el momento
+            if(estimacion_actual < min_hasta_el_momento){    // si esta es menor => pasa a ser la minima hasta el momento
                 min_hasta_el_momento = estimacion_actual;
             }
         }
@@ -648,8 +647,8 @@ data_carpincho ready_a_exec_HRRN(){ // De la lista de ready te da el que debe ej
         float max_hasta_el_momento = 0;
         data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
         calculo_RR(carpincho_listo);                         // le calculo su RR
-        float RR_actual = carpincho_listo->RR;               //agarro su RR
-            if(RR_actual > max_hasta_el_momento){            //si este es mayor => pasa a ser el max hasta el momento
+        float RR_actual = carpincho_listo->RR;               // agarro su RR
+            if(RR_actual > max_hasta_el_momento){            // si este es mayor => pasa a ser el max hasta el momento
                 max_hasta_el_momento = RR_actual;
             }
         }
@@ -662,7 +661,7 @@ data_carpincho ready_a_exec_HRRN(){ // De la lista de ready te da el que debe ej
        
 }
 
-// para SJF
+// para SJF y HRRN tambien (prox rafaga)??
 void calculo_estimacion_siguiente(data_carpincho *carpincho){
 
     calculo_rafaga_anterior(carpincho);
@@ -671,6 +670,7 @@ void calculo_estimacion_siguiente(data_carpincho *carpincho){
 
 }
 
+// para SJF
 void calculo_rafaga_anterior(data_carpincho *carpincho){
 
     //cuánto tiempo en milisegundos estuvo el carpincho en exec tomando la diferencia entre el timestamp al ingresar y al salir de exec.
@@ -685,16 +685,17 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){
 }
 
 
-
 // para HRRN
 void calculo_RR(data_carpincho *carpincho){
 
-   //float w = ahora - carpincho->llegada_a_ready // ahora = momento en el que se esta caulculando el RR
-   //float s =  prox rafaga
+    char ahora = temporal_get_string_time("%M %S %MS"); // ver si funciona asi, sino ("%H:%M:%S:%MS") => cambiar pasaje a int
+    int tiempo_ahora= atoi(*ahora);
 
-   //carpincho->RR = 1 + w/s 
+    float w = tiempo_ahora - carpincho->llegada_a_ready;
+    calculo_estimacion_siguiente(carpincho); //duda: prox rafaga = estimacion siguinete de SJF??
+    float s =  carpincho->estimacion_siguiente;
 
-    
+    carpincho->RR = 1 + w/s;
 }
 
 
@@ -791,3 +792,4 @@ data_carpincho encontrar_estructura_segun_RR(float ratio){
 
     return carpincho_encontrado;
 }
+
