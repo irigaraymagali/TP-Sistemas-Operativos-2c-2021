@@ -136,7 +136,7 @@ void clean_tlb(){
     log_info(logger, "Vaciando las entradas de la TLB...");
 
     pthread_mutex_lock(&tlb_mutex);
-    list_clean_and_destroy_elements(tlb_list, (void*)free);
+    list_clean_and_destroy_elements(tlb_list, free);
     pthread_mutex_unlock(&tlb_mutex);
 
     log_info(logger, "Entradas de la TLB vaciadas con exito");
@@ -220,7 +220,16 @@ void free_memory(){
     pthread_mutex_destroy(&tlb_mutex);
     pthread_mutex_destroy(&pid_global_mutex);
     pthread_mutex_destroy(&list_pages_mutex);
-    free_tlb();
+    pthread_mutex_destroy(&m_list_mutex);
 
+    free_tlb();
+    list_destroy_and_destroy_elements(todasLasTablasDePaginas, remove_paginas);
+    
+    free(memoria);
     exit(EXIT_SUCCESS);
+}
+
+void remove_paginas(void* elem){
+    TablaDePaginasxProceso* tabla = (TablaDePaginasxProceso*) elem;
+    list_destroy_and_destroy_elements(tabla->paginas, free);
 }
