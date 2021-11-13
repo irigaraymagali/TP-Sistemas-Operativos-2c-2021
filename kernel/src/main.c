@@ -876,6 +876,7 @@ void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
 
 void suspender(){
 
+// falta poner aca un while o semaforos para ver cuando es que va a hacer este analisis
     if(estan_las_condiciones_para_suspender()){
         int longitud;
         longitud = list_size(blocked);
@@ -895,8 +896,6 @@ void suspender(){
         _send_message(socket_memoria, ID_KERNEL, SUSPENDER, _serialize(sizeof(int), "%d", carpincho_a_suspender->id), sizeof(int), logger);  //avisar a mem para que libere
         
     }
-
-
 
 }
 
