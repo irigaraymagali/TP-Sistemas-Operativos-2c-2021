@@ -5,6 +5,8 @@ void initPaginacion(){
 
     pthread_mutex_init(&lru_mutex, NULL);
     pthread_mutex_init(&list_pages_mutex, NULL);
+    pthread_mutex_init(&max_hit_tlb_mutex, NULL);
+    pthread_mutex_init(&max_miss_tlb_mutex, NULL);
 
     pthread_mutex_init(&tlb_mutex, NULL);
     pthread_mutex_init(&tlb_lru_mutex, NULL);
@@ -538,9 +540,19 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         if(tempPagina->bitPresencia==0){
             utilizarAlgritmoDeAsignacion(processId);
             tempPagina->frame = getNewEmptyFrame(processId);
+            int pay_len = 2*sizeof(int);
+            void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina);       
+            send_message_swamp(RECV_PAGE, payload, pay_len);
+
             //pedirselo a gonza
         }
+        tempPagina->bitUso = 1;
         
+        pthread_mutex_lock(&lru_mutex);
+        lRUACTUAL++;
+        tempPagina->lRU = lRUACTUAL;
+        pthread_mutex_lock(&lru_mutex);
+
         return tempPagina->frame;
     }
 
@@ -1123,6 +1135,7 @@ void* get_minimum_lru_tlb(void* actual, void* next){
 }
 
 TLB* fetch_entrada_tlb(uint32_t pid, int dir_logica){
+    TLB* tlb;
     bool has_pid(void* elem){
         TLB* tlb = (TLB*) elem;
         return tlb->pid == pid;
@@ -1137,11 +1150,15 @@ TLB* fetch_entrada_tlb(uint32_t pid, int dir_logica){
         if (nro_page == -1){
             return NULL;
         }
-        return fetch_entrada_tlb_by_page(nro_page);
+        tlb = fetch_entrada_tlb_by_page(nro_page);
+    } else {
+        tlb = fetch_entrada_tlb_by_pid(pid);
     }
     
-    return fetch_entrada_tlb_by_pid(pid);
+    return tlb;
 }
+
+//void set_metric_tlb()
 
 TLB* fetch_entrada_tlb_by_pid(uint32_t pid){
     return get_entrada_tlb_by_condition(C_PID, pid);
@@ -1182,16 +1199,18 @@ TLB* get_entrada_tlb_by_condition(int condition, uint32_t value){
     return NULL;
 }
 
-void send_message_swamp(int command, void* payload, int pay_len){
-    if (_send_message(swamp_fd, MEM_ID, command, payload, pay_len, logger) < 0){
+void* send_message_swamp(int command, void* payload, int pay_len){
+    if (_send_message(swamp_fd, ID_MEMORIA, command, payload, pay_len, logger) < 0){
         log_error(logger, "Error al enviar mensaje a Swamp");
-        return;
+        return NULL;
     }
 
     if(command == RECV_PAGE){
         t_mensaje* msg = _receive_message(swamp_fd, logger);
-        deserealize_payload(msg->payload);
+        return msg->payload;
     }
+
+    return NULL;
 }
 
 void free_tlb(){

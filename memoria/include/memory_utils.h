@@ -12,6 +12,7 @@
 #include <commons/collections/list.h>
 #include "server.h"
 #include "serialization.h"
+#include "shared_utils.h"
 
 #define CONFIG_PATH "./cfg/memoria.conf"
 
@@ -30,8 +31,9 @@
 #define MATE_READ_FAULT  -6
 
 // SWAMP CONST
-#define MEM_ID    "MEM"
 #define RECV_PAGE 99
+#define SEND_PAGE 100
+
 int swamp_fd;
 
 typedef enum {
@@ -40,8 +42,7 @@ typedef enum {
     C_FRAME,
 } TLB_Condition;
 
-t_log* logger;
-pthread_mutex_t swamp_mutex, list_pages_mutex, lru_mutex, tlb_mutex, tlb_lru_mutex, entrada_fifo_mutex;
+pthread_mutex_t swamp_mutex, list_pages_mutex, lru_mutex, tlb_mutex, tlb_lru_mutex, entrada_fifo_mutex, max_hit_tlb_mutex, max_miss_tlb_mutex;
 
 int max_tlb_hit, max_tlb_miss, max_entradas_tlb, retardo_hit_tlb, retardo_miss_tlb, entrada_fifo, tlb_lru_global;
 typedef struct 
@@ -86,11 +87,6 @@ typedef struct
     int lastHeap;
 } TablaDePaginasxProceso;
 
-typedef struct 
-{
-    uint32_t id;
-    t_list paginas;
-} ubicacionDeHeap;
 
 t_log* logger;
 t_config* config;
@@ -115,7 +111,7 @@ int estaOcupadoUn(int emptyFrame, int idProcess);
 TablaDePaginasxProceso* get_pages_by(int processID);
 int getFrameDeUn(int processId, int mayorNroDePagina);
 void inicializarUnProceso(int idDelProceso);
-void send_message_swamp(int command, void* payload, int pay_len);
+void* send_message_swamp(int command, void* payload, int pay_len);
 void deserealize_payload(void* payload);
 int getframeNoAsignadoEnMemoria();
 int frameAsignado(int unFrame);
@@ -147,7 +143,5 @@ TLB* fetch_entrada_tlb_by_page(uint32_t page);
 TLB* fetch_entrada_tlb_by_frame(uint32_t frame);
 TLB* get_entrada_tlb_by_condition(int condition, uint32_t value);
 void free_tlb();
-
-void send_message_swamp(int command, void* payload, int pay_len);
 
 #endif

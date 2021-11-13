@@ -23,14 +23,18 @@ int main(int argc, char ** argv){
 }
 
 void print_metrics(){
+    pthread_mutex_lock(&tlb_mutex);
     log_info(logger, "Generando metricas de TLB");
 
+    pthread_mutex_lock(&max_hit_tlb_mutex);
     log_info(logger, "Cantidad de TLB Hit totales: %d", max_tlb_hit);
-    log_info(logger, "Cantidad de TLB Hit del carpincho %d: %d", 1, max_tlb_hit);
+    pthread_mutex_unlock(&max_hit_tlb_mutex);
 
-    log_info(logger, "Cantidad de TLB Miss totales: %d", max_tlb_hit);
-    log_info(logger, "Cantidad de TLB Miss del carpincho %d: %d", 1, max_tlb_hit);
-
+    pthread_mutex_lock(&max_miss_tlb_mutex);
+    log_info(logger, "Cantidad de TLB Miss totales: %d", max_tlb_miss);
+    pthread_mutex_unlock(&max_miss_tlb_mutex);
+  
+    print_carpinchos_metrics();
 
     /*
     Cantidad de TLB Hit totales
@@ -38,10 +42,20 @@ void print_metrics(){
     Cantidad de TLB Miss totales.
     Cantidad de TLB Miss por carpincho indicando carpincho y cantidad.
     */
-
-   free_memory();
+    pthread_mutex_unlock(&tlb_mutex);
+    free_memory();
 }
 
+void print_carpinchos_metrics(){
+    t_list_iterator* iterator = list_iterator_create(metrics_list);
+
+    while (list_iterator_has_next(iterator)){
+        Metric* actual = list_iterator_next(iterator);
+        log_info(logger, "Cantidad de TLB Hit del carpincho %d: %d", actual->pid, actual->hits);    
+        log_info(logger, "Cantidad de TLB Miss del carpincho %d: %d", actual->pid, actual->miss);
+    }
+    list_iterator_destroy(iterator);
+}
 void print_dump(){
     pthread_mutex_lock(&tlb_mutex);
     char* dump_timestamp;
@@ -135,7 +149,7 @@ void init_swamp_connection(){
 
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
     void* resp;
-    int pid, iresp, espacioAReservar = 10, dir_logica = 0;
+    int pid, size = 2, iresp, espacioAReservar = 10, dir_logica = 0;
     log_info(logger, "Deserializando los parametros recibidos...");
 
     switch(opcode){
@@ -154,7 +168,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             resp = memread(pid, dir_logica);
             break;
         case MATE_MEMWRITE:
-            iresp = memwrite(pid, dir_logica, payload); // PAYLOAD NO VA
+            iresp = memwrite(pid, dir_logica, payload, size);
             break;
         case MATE_CLOSE:
         case MATE_SEM_INIT:
@@ -172,7 +186,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
         resp = _serialize(sizeof(int), "%d", iresp);
     }
 
-    _send_message(fd, MEM_ID, opcode, resp, sizeof(resp), logger);
+    _send_message(fd, ID_MEMORIA, opcode, resp, sizeof(resp), logger);
 }
 
 int deserialize_init_process(char* id, void* payload){

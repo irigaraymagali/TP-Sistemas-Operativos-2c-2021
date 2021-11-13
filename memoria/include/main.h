@@ -42,6 +42,7 @@ void clean_tlb();
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger);
 int deserialize_init_process(char* id, void* payload);
 void deserialize_mem_alloc(int* pid, int* espacioAReservar, void* payload);
+void print_carpinchos_metrics();
 void init_swamp_connection();
 void free_memory();
 
