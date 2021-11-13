@@ -77,13 +77,12 @@ int mate_init(mate_instance *lib_ref, char *config)
     int socket;
 
     // para pruebas
-    socket =  _connect("127.0.0.1", "5001", logger);
+    //socket =  _connect("127.0.0.1", "5001", logger);
 
     printf("socket: %d\n", socket);
 
-    // socket = armar_socket_desde_binario(config,logger);
+    socket = armar_socket_desde_binario(config,logger);
 
-    //para pruebas
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
    
     conexion_con_backend = _send_message(socket, ID_MATE_LIB, MATE_INIT, armar_paquete(estructura_interna), sizeof(estructura_interna), logger); // envia la estructura al backend para que inicialice todo
@@ -149,8 +148,6 @@ int mate_call_io(mate_instance *lib_ref, mate_io_resource io, void *msg)
 }
 
 // Funciones módulo memoria ------------------------------------------------------------------
-
-// CAMBIAR TODAS LAS FUNCIONES DE MEMORIA PARA QUE LE PASEN SOLO LOS DATOS IMPORTANTES Y QUE SEA POLIMORFICO CON KERNEL Y MEMORIA
 
 mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 {

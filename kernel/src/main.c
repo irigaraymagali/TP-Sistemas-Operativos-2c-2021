@@ -4,6 +4,8 @@
 
 int main(int argc, char ** argv){
 
+    int* socket;
+    socket = malloc(sizeof(int));
     // leer archivo config
 
     config = config_create("../cfg/kernel.conf");
@@ -37,6 +39,7 @@ int main(int argc, char ** argv){
     crear_hilos_planificadores();
     
     _start_server(puerto_escucha, handler, logger);
+    _connect(ip_memoria, puerto_memoria, logger);
 
     // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
     free_memory();
@@ -148,6 +151,8 @@ void free_memory(){
         sem_destroy(&CPU_libre[i]);
         sem_destroy(&usar_CPU[i]);   
 	}
+
+    free(socket);
 
 }
 
@@ -535,28 +540,43 @@ int mate_memwrite(int id_carpincho, void origin, mate_pointer dest, int size, in
 void new_a_ready(){
 
     data_carpincho carpincho_a_mover;
+    int respuesta_memoria;
+    t_mensaje buffer;
 
     while(1){
         sem_wait(&hay_estructura_creada);
         sem_wait(&sem_grado_multiprogramacion_libre); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC!
 		
-        // saco de cola new y pongo en cola ready al primero (FIFO):
-        pthread_mutex_lock(&sem_cola_ready); 
-		pthread_mutex_lock(&sem_cola_new);
+        // tendria que chequear que se mande bien la conexión?
+        _send_message(socket, ID_KERNEL, MATE_INIT, _serialize(sizeof(int), "%d", estructura_interna->id), sizeof(int), logger); // envia la estructura al backend para que inicialice todo
 
-        carpincho_a_mover = queue_peek(new);
-        
-        carpincho_a_mover->estado = 'R';
-
-        //queue_push(ready, *queue_peek(new)); seria poner ese el la lista de ready
-        queue_pop(new);
-
-		pthread_mutex_unlock(&sem_cola_new);
-		pthread_mutex_unlock(&sem_cola_ready);
-
-		sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
-    }
+        buffer = _receive_message(socket, logger);
+        memcpy(&respuesta_memoria, buffer, sizeof(int));
     
+        if(respuesta_memoria === estructura_interna->id){  // si la memoria crea la estructura, le devuelve el id
+            
+            log_info(logger, "La estructura del carpincho se creó correctamente en memoria");
+
+            // saco de cola new y pongo en cola ready al primero (FIFO):
+            pthread_mutex_lock(&sem_cola_ready); 
+            pthread_mutex_lock(&sem_cola_new);
+
+            carpincho_a_mover = queue_peek(new);
+            
+            carpincho_a_mover->estado = 'R';
+
+            //queue_push(ready, *queue_peek(new)); seria poner ese el la lista de ready
+            queue_pop(new);
+
+            pthread_mutex_unlock(&sem_cola_new);
+            pthread_mutex_unlock(&sem_cola_ready);
+
+            sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
+        }
+        else{
+            log_info(logger, "El módulo memoria no pudo crear la estructura")
+        }
+    }
 }
 
 
