@@ -386,6 +386,9 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
         (list_find(semaforos_carpinchos, semaforoIgualA))->valor_semaforo --; 
 
+
+//no deberia ser semaforo = list_find ... para poner el semaforo en el if y a ese decrmentarle el valor ??
+
         if(semaforo->valor_semaforo<1){
             exec_a_block(id_carpincho); 
             queue_push(semaforo->en_espera, encontrar_estructura_segun_id(id_carpincho); //queda esperando para que lo desbloqueen, es el primero. conviene usar una que
@@ -471,40 +474,7 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     // si no => suspenderlo? a la espera de que se desocupe
 
 
-dispositivo_io dispositivoIgualANombre(mate_io_resource nombre_dispositivo, void *dispositivo){ 
-    return dispositivo->nombre === nombre_dispositivo;
-}
 
- bool IgualAl(void *dispositivo){
-        return esIgualAlDispositivo(dispositivo, nombre_dispositivo);
-    }
-
-    semaforo dispositivoIgualA(void *dispositivo){
-        return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
-    }
-
-
-
-
-
-    if(list_any_satisfy(dispositivos_carpinchos, IgualAl)){  
-
-        (list_find(dispositivos_carpinchos, dispositivoIgualA))->en_uso = true;  ///despues
-
-        if(dispositivo->en_uso === false){
-            dispositivo->en_uso = true; //volver a cambiar cuando sale de blocked io
-            exec_a_block(id_carpincho); //por io
-            //queue_push(semaforo->en_espera, encontrar_estructura_segun_id(id_carpincho); //queda esperando para que lo desbloqueen, es el primero. conviene usar una que
-        }
-        else
-        {
-            // acá no pasa nada, no? o sea si el semaforo de decrementa y sigue siendo mayor a 1, sigue todo como si nada, no?
-        }
-    }
-    else
-    {
-        log_info(logger, "se intento hacer wait de un semaforo no inicializado");
-    }
 
 
 
