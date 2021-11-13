@@ -18,6 +18,12 @@
 #define MATE_MEMREAD 10
 #define MATE_MEMWRITE 11
 
+// Constantes comunicacion Memoria Swap
+#define TIPO_ASIGNACION     20
+#define RECV_PAGE           21
+#define SEND_PAGE           22
+#define FINISH_PROCESS      23
+
 // constante para saber quién envia mensaje a memoria
 #define ID_MATE_LIB "MAT"
 #define ID_KERNEL   "KER"
