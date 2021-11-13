@@ -14,11 +14,6 @@
 #include "serialization.h"
 
 #define CONFIG_PATH "./cfg/memoria.conf"
-#define    MEM_INIT  100
-#define    MEM_ALLOC 1
-#define    MEM_FREE  2
-#define    MEM_READ  3
-#define    MEM_WRITE 4
 
 #define FREE 1
 #define BUSY 0
@@ -39,10 +34,16 @@
 #define RECV_PAGE 99
 int swamp_fd;
 
+typedef enum {
+    C_PID,
+    C_PAGE,
+    C_FRAME,
+} TLB_Condition;
+
 t_log* logger;
-pthread_mutex_t swamp_mutex, lru_mutex, tlb_mutex;
+pthread_mutex_t swamp_mutex, list_pages_mutex, lru_mutex, tlb_mutex, tlb_lru_mutex, entrada_fifo_mutex;
 
-
+int max_tlb_hit, max_tlb_miss, max_entradas_tlb, retardo_hit_tlb, retardo_miss_tlb, entrada_fifo, tlb_lru_global;
 typedef struct 
 {
     uint32_t prevAlloc;
@@ -61,14 +62,22 @@ typedef struct
     uint32_t lRU;
 } Pagina;
 
-typedef struct 
-{
-    int      pid;
+typedef struct {
+    uint32_t pid;
     uint32_t pagina;
     uint32_t frame;
+    uint32_t lru;
 } TLB;
 
+typedef struct {
+    int pid;
+    int hits;
+    int miss;
+} Metric;
+
 t_list* tlb_list;
+
+t_list* metrics_list;
 
 typedef struct 
 {
@@ -125,5 +134,20 @@ Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada);
 HeapMetaData* get_heap_metadata(int offset);
 HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset);
 void* memread(uint32_t pid, int dir_logica);
+
+int get_nro_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada);
+void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame);
+TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame);
+void* get_minimum_lru_tlb(void* actual, void* next);
+void replace_entrada(TLB* new_instance);
+TLB* fetch_entrada_tlb(uint32_t pid, int dir_logica);
+TLB* get_entrada_tlb_by_condition(int condition, uint32_t value);
+TLB* fetch_entrada_tlb_by_pid(uint32_t pid);
+TLB* fetch_entrada_tlb_by_page(uint32_t page);
+TLB* fetch_entrada_tlb_by_frame(uint32_t frame);
+TLB* get_entrada_tlb_by_condition(int condition, uint32_t value);
+void free_tlb();
+
+void send_message_swamp(int command, void* payload, int pay_len);
 
 #endif

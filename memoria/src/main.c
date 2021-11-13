@@ -5,11 +5,33 @@ int main(int argc, char ** argv){
     }
 
     logger = log_create(LOG_PATH, PROGRAM, true, LOG_LEVEL_INFO);
+
+    pthread_mutex_init(&pid_global_mutex, NULL);
+    pid_global = 0;
     initPaginacion();
 
     inicializarUnProceso(1);
     inicializarUnProceso(2);
     
+    memalloc(5, 1);
+    //int b = memalloc(3, 1);
+
+    void* algo = malloc(5); 
+
+    int b = 3;
+
+    memcpy(algo, &b, sizeof(int));
+
+    int a = memwrite(1, 0, algo); 
+
+    void* res1 = memread(1, 0);
+    void* res2 = memread(1, 10);
+    void* res3 = memread(1, 10);
+    int ires1,ires2,ires3;
+    memcpy(&ires1, res1, sizeof(int));
+    memcpy(&ires2, res2, sizeof(int));
+    memcpy(&ires3, res3, sizeof(int));
+
     init_swamp_connection();
 
     signal(SIGINT, print_metrics);
@@ -20,12 +42,23 @@ int main(int argc, char ** argv){
 }
 
 void print_metrics(){
+    log_info(logger, "Generando metricas de TLB");
+
+    log_info(logger, "Cantidad de TLB Hit totales: %d", max_tlb_hit);
+    log_info(logger, "Cantidad de TLB Hit del carpincho %d: %d", 1, max_tlb_hit);
+
+    log_info(logger, "Cantidad de TLB Miss totales: %d", max_tlb_hit);
+    log_info(logger, "Cantidad de TLB Miss del carpincho %d: %d", 1, max_tlb_hit);
+
+
     /*
     Cantidad de TLB Hit totales
     Cantidad de TLB Hit por carpincho indicando carpincho y cantidad.
     Cantidad de TLB Miss totales.
     Cantidad de TLB Miss por carpincho indicando carpincho y cantidad.
     */
+
+   free_memory();
 }
 
 void print_dump(){
@@ -125,36 +158,54 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
     log_info(logger, "Deserializando los parametros recibidos...");
 
     switch(opcode){
-        case MEM_INIT:
-            deserialize_init_process(&pid, payload);
+        case MATE_INIT:
+            pid = deserialize_init_process(id, payload);
             inicializarUnProceso(pid);      
             break;
-        case MEM_ALLOC:
+        case MATE_MEMALLOC:
             deserialize_mem_alloc(&pid, &espacioAReservar, payload);
             iresp = memalloc(pid, espacioAReservar);
             break;
-        case MEM_FREE:
+        case MATE_MEMFREE:
             iresp = memfree(pid, dir_logica);
             break;
-        case MEM_READ:
+        case MATE_MEMREAD:
             resp = memread(pid, dir_logica);
             break;
-        case MEM_WRITE:
+        case MATE_MEMWRITE:
             iresp = memwrite(pid, dir_logica, payload); // PAYLOAD NO VA
+            break;
+        case MATE_CLOSE:
+        case MATE_SEM_INIT:
+        case MATE_SEM_WAIT:
+        case MATE_SEM_POST:
+        case MATE_SEM_DESTROY:
+        case MATE_CALL_IO:
+            log_error(logger, "Comando sin validez");
             break;
         default:
             log_error(logger,"Comando incorrecto");
             //que hacemos en este caso? nada?
     }
-    if(opcode != MEM_READ){
+    if(opcode != MATE_MEMREAD){
         resp = _serialize(sizeof(int), "%d", iresp);
     }
 
     _send_message(fd, MEM_ID, opcode, resp, sizeof(resp), logger);
 }
 
-void deserialize_init_process(int* pid, void* payload){
-    memcpy(pid, payload, sizeof(int));
+int deserialize_init_process(char* id, void* payload){
+    int pid;
+    if (string_equals_ignore_case(id, ID_MATE_LIB)){
+        pthread_mutex_lock(&pid_global_mutex);
+        pid = pid_global;
+        pid_global += 2;
+        pthread_mutex_unlock(&pid_global_mutex);
+    } else {
+        memcpy(&pid, payload, sizeof(int));
+    }
+
+    return pid;
 }
 
 void deserialize_mem_alloc(int* pid, int* espacioAReservar, void* payload){
@@ -172,5 +223,9 @@ void free_memory(){
     pthread_mutex_destroy(&swamp_mutex);
     pthread_mutex_destroy(&lru_mutex);
     pthread_mutex_destroy(&tlb_mutex);
+    pthread_mutex_destroy(&pid_global_mutex);
+    pthread_mutex_destroy(&list_pages_mutex);
+    free_tlb();
 
+    exit(EXIT_SUCCESS);
 }

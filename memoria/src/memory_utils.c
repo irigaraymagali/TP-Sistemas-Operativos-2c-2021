@@ -4,7 +4,11 @@ void initPaginacion(){
     log_info(logger,"iniciando paginacion");
 
     pthread_mutex_init(&lru_mutex, NULL);
+    pthread_mutex_init(&list_pages_mutex, NULL);
+
     pthread_mutex_init(&tlb_mutex, NULL);
+    pthread_mutex_init(&tlb_lru_mutex, NULL);
+    pthread_mutex_init(&entrada_fifo_mutex, NULL);
 
     config = config_create(CONFIG_PATH);
 
@@ -21,7 +25,18 @@ void initPaginacion(){
     
     lRUACTUAL=0;
 
-    tamanioDeMemoria= config_get_int_value(config, "TAMANIO");
+
+    tamanioDeMemoria = config_get_int_value(config, "TAMANIO");
+
+    /* TLB */
+    max_entradas_tlb = config_get_int_value(config, "CANTIDAD_ENTRADAS_TLB");
+    retardo_hit_tlb = config_get_int_value(config, "RETARDO_ACIERTO_TLB");
+    retardo_miss_tlb = config_get_int_value(config, "RETARDO_FALLO_TLB");
+    max_tlb_hit = 0;
+    max_tlb_miss = 0;
+    tlb_list = list_create();
+    metrics_list = list_create();
+    tlb_lru_global = 0;
 
     memoria = malloc(tamanioDeMemoria);
 
@@ -30,7 +45,6 @@ void initPaginacion(){
     todasLasTablasDePaginas = list_create();
 
     punteroFrameClock =0;
-    tlb_list = list_create();
 }
 
 int memalloc(int processId, int espacioAReservar){
@@ -598,6 +612,30 @@ Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada){
     return NULL;
 }
 
+int get_nro_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada){
+    int paginaActual = 1;
+    int dirAllocFinal = tabla->lastHeap;
+    int dirAllocActual = 0, pid = tabla->id;
+    int frameBuscado;
+
+    while((dirAllocActual <= dir_buscada) && dirAllocFinal >= dir_buscada){
+        if (dirAllocActual == dir_buscada){
+            paginaActual = (dirAllocActual / tamanioDePagina) + 1;
+            return paginaActual;
+        } else {
+            paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
+            frameBuscado = getFrameDeUn(pid, paginaActual);
+
+            int posAllocDentroDelFrame = (dirAllocActual) - ((paginaActual-1) * tamanioDePagina);
+            int offset = (frameBuscado * tamanioDePagina) + posAllocDentroDelFrame;
+            
+            HeapMetaData* heap = get_heap_metadata(offset);
+            dirAllocActual = heap->nextAlloc;
+        }
+    }
+    return -1;
+}
+
 Pagina *getPageDe(int processId,int nroPagina){
 
     TablaDePaginasxProceso* temp = get_pages_by(processId);
@@ -1022,6 +1060,120 @@ HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset){
     return heap;
 }
 
+void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
+    TLB* new_instance = new_entrada_tlb(pid, page, frame);
+    if (list_size(tlb_list) < max_entradas_tlb) {
+       list_add(tlb_list, new_instance); 
+    } else {
+        replace_entrada(new_instance);
+    }
+}
+
+TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
+    TLB* new_instance = malloc(sizeof(TLB));
+    new_instance->pid = pid;
+    new_instance->pagina = page;
+    new_instance->frame = frame;
+    pthread_mutex_lock(&tlb_lru_mutex);
+    new_instance->lru = tlb_lru_global;
+    tlb_lru_global++;
+    pthread_mutex_unlock(&tlb_lru_mutex);
+
+    return new_instance;
+}
+
+void replace_entrada(TLB* new_instance){
+    if (string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_REEMPLAZO_TLB"), "FIFO")){
+        pthread_mutex_lock(&entrada_fifo_mutex);
+        list_replace_and_destroy_element(tlb_list, entrada_fifo, new_instance, (void*)free);
+        if (entrada_fifo < max_entradas_tlb){
+            entrada_fifo++;
+        } else {
+            entrada_fifo = 0;
+        }
+        pthread_mutex_unlock(&entrada_fifo_mutex);
+    } else {
+        /* TESTEAR. */
+        TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_lru_tlb);
+        tlb_to_replace->pid = new_instance->pid;
+        tlb_to_replace->pagina = new_instance->pagina;
+        tlb_to_replace->frame = new_instance->frame;
+        tlb_to_replace->lru = new_instance->lru;
+        free(new_instance);
+    }
+}
+
+void* get_minimum_lru_tlb(void* actual, void* next){
+    TLB* actual_tlb = (TLB*) actual;
+    TLB* next_tlb = (TLB*) next;
+
+    if (actual_tlb->lru < next_tlb->lru){
+        return actual;
+    }
+
+    return next;
+}
+
+TLB* fetch_entrada_tlb(uint32_t pid, int dir_logica){
+    bool has_pid(void* elem){
+        TLB* tlb = (TLB*) elem;
+        return tlb->pid == pid;
+    }
+
+    int count_pid = list_count_satisfying(tlb_list, has_pid);
+    if (count_pid > 1){
+        pthread_mutex_lock(&list_pages_mutex);
+        TablaDePaginasxProceso* tabla = get_pages_by(pid);
+        uint32_t nro_page = get_nro_page_by_dir_logica(tabla, dir_logica);
+        pthread_mutex_unlock(&list_pages_mutex);
+        if (nro_page == -1){
+            return NULL;
+        }
+        return fetch_entrada_tlb_by_page(nro_page);
+    }
+    
+    return fetch_entrada_tlb_by_pid(pid);
+}
+
+TLB* fetch_entrada_tlb_by_pid(uint32_t pid){
+    return get_entrada_tlb_by_condition(C_PID, pid);
+}
+
+TLB* fetch_entrada_tlb_by_page(uint32_t page){
+    return get_entrada_tlb_by_condition(C_PAGE, page);
+}
+
+TLB* fetch_entrada_tlb_by_frame(uint32_t frame){
+    return get_entrada_tlb_by_condition(C_FRAME, frame);
+}
+
+TLB* get_entrada_tlb_by_condition(int condition, uint32_t value){
+    uint32_t v_to_compare;
+    for (int i = 0; i < max_entradas_tlb; i++){
+        TLB* tlb = (TLB*) list_get(tlb_list, i);
+        switch (condition){
+            case C_PID:
+                v_to_compare = tlb->pid;              
+                break;
+            case C_PAGE:
+                v_to_compare = tlb->pagina;
+                break; 
+            case C_FRAME:
+                v_to_compare = tlb->frame;
+                break;            
+            default:
+                log_error(logger, "Condicion incorrecta.");
+                return NULL;
+                break;
+            }
+        if (v_to_compare == value){
+            return tlb;
+        }
+    }
+
+    return NULL;
+}
+
 void send_message_swamp(int command, void* payload, int pay_len){
     if (_send_message(swamp_fd, MEM_ID, command, payload, pay_len, logger) < 0){
         log_error(logger, "Error al enviar mensaje a Swamp");
@@ -1032,6 +1184,11 @@ void send_message_swamp(int command, void* payload, int pay_len){
         t_mensaje* msg = _receive_message(swamp_fd, logger);
         deserealize_payload(msg->payload);
     }
+}
+
+void free_tlb(){
+    list_destroy_and_destroy_elements(metrics_list, (void*)free);
+    list_destroy_and_destroy_elements(tlb_list, (void*)free);
 }
 
 void deserealize_payload(void* payload){
