@@ -164,7 +164,7 @@ int deserializar(buffer){
     int str_len;
     char* string;
     int offset = 0;
-    data_carpincho* estructura_interna = malloc(sizeof(data_carpincho));
+    data_carpincho* estructura_interna;
 
     // int id
     memcpy(&(estructura_interna)->id, buffer, sizeof(int));
@@ -210,7 +210,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     switch(opcode){
         case MATE_INIT:
             estructura_interna = deserializar(payload);
-            mate_init(estructura_interna->id, fd);
+            mate_init(fd);
             break;
         case MATE_CLOSE: 
             estructura_interna = deserializar(payload);
@@ -299,7 +299,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 
 //////////////// FUNCIONES GENERALES ///////////////////
 
-int mate_init(int id_carpincho, int fd){
+int mate_init(int fd){
     
     data_carpincho carpincho = malloc(size_of(data_carpincho);
     carpincho->id = id_carpincho;
@@ -310,9 +310,24 @@ int mate_init(int id_carpincho, int fd){
     // carpincho->RR no le pongo nada todavia
     carpincho->prioridad = false;
     carpincho->estado = NEW;
+    carpincho->fd = fd;
 
-    list_add(lista_carpinchos, carpincho);
-    sem_post(&hay_estructura_creada);
+    // tendria que chequear que se cree bien la conexión?
+    _send_message(socket, ID_KERNEL, MATE_INIT, _serialize(sizeof(int), "%d", estructura_interna->id), sizeof(int), logger); // envia la estructura al backend para que inicialice todo
+
+    buffer = _receive_message(socket, logger);
+    memcpy(&respuesta_memoria, buffer, sizeof(int));
+    
+    if(respuesta_memoria === estructura_interna->id){  // si la memoria crea la estructura, le devuelve el id
+            
+        log_info(logger, "La estructura del carpincho se creó correctamente en memoria");
+        list_add(lista_carpinchos, carpincho);
+        sem_post(&hay_estructura_creada);
+
+    }
+    else{
+        log_info(logger, "El módulo memoria no pudo crear la estructura")
+    }
 
     id_carpincho += 2; // incrementa carpinchos impares
 
@@ -333,8 +348,16 @@ while(true){
 
 
 int mate_close(int id_carpincho, int fd){
+    
+    data_carpincho carpincho_a_cerrar = encontrar_estructura_segun_id(id_carpincho);
 
-    list_remove_by_condition(lista_carpinchos, encontrar_estructura_segun_id);
+    carpincho_a_cerrar->fd = fd;
+
+    bool es_el_carpincho(void* carpincho){
+        return (data_carpincho *) carpincho === carpincho_a_cerrar
+    }
+
+    list_remove_by_condition(lista_carpinchos, es_el_carpincho);
 
     exec_a_exit(id_carpincho);
 
@@ -394,13 +417,18 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         semaforo semaforo = list_find(semaforos_carpinchos, semaforoIgualA);
         semaforo->valor_semaforo --; 
 
+        data_carpincho carpincho = encontrar_estructura_segun_id(id_carpincho);
+        carpincho->fd = fd;
+
         if(semaforo->valor_semaforo<1){
+            log_info(logger, "Se hizo un wait de un semaforo menor a 1, se bloquea el carpincho");
             exec_a_block(id_carpincho); 
-            queue_push(semaforo->en_espera, encontrar_estructura_segun_id(id_carpincho); //queda esperando para que lo desbloqueen, es el primero. conviene usar una que
+            queue_push(semaforo->en_espera, carpincho); //queda esperando para que lo desbloqueen, es el primero. 
         }
         else
         {
-            // retornar mensaje a la lib
+            log_info(logger, "Se hizo un wait de un semaforo mayor a 1, carpincho puede seguir");        
+            _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger);
         }
     }
     else
@@ -430,10 +458,11 @@ int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
         if(carpincho_a_desbloquear->estado === BLOCKED){
             carpincho_a_desbloquear->estado = READY;
-            block_a_ready(carpincho_a_desbloquear);
+            block_a_ready(carpincho_a_desbloquear, fd);
         }
         else{ // si no esta en blocked es porque estaba en suspended blocked, ahora lo cambio a suspended_ready
             carpincho_a_desbloquear->estado = SUSPENDED_READY;
+            // sem_post(&hay_estructura_creada);
             suspended_a_ready(carpincho_a_desbloquear);
         }
     }
@@ -556,15 +585,6 @@ void new_a_ready(){
         sem_wait(&hay_estructura_creada);
         sem_wait(&sem_grado_multiprogramacion_libre); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC!
 		
-        // tendria que chequear que se mande bien la conexión?
-        _send_message(socket, ID_KERNEL, MATE_INIT, _serialize(sizeof(int), "%d", estructura_interna->id), sizeof(int), logger); // envia la estructura al backend para que inicialice todo
-
-        buffer = _receive_message(socket, logger);
-        memcpy(&respuesta_memoria, buffer, sizeof(int));
-    
-        if(respuesta_memoria === estructura_interna->id){  // si la memoria crea la estructura, le devuelve el id
-            
-            log_info(logger, "La estructura del carpincho se creó correctamente en memoria");
 
             // saco de cola new y pongo en cola ready al primero (FIFO):
             pthread_mutex_lock(&sem_cola_ready); 
@@ -581,16 +601,16 @@ void new_a_ready(){
             pthread_mutex_unlock(&sem_cola_ready);
 
             sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
-        }
-        else{
-            log_info(logger, "El módulo memoria no pudo crear la estructura")
-        }
+
     }
 }
 
 void suspended_a_ready(){
     sem_wait(&sem_grado_multiprogramacion_libre);
+    //paso de la cola suspended a supended_ready
     //avisarle a mem que recupere las pags
+    // logica para que cuando se desbloquee un semaforo o se termina IO de un carpincho que se habia suspendido y ahora esta en suspendido ready, vea si lo quiere pasar a ready segun grado de multiprogramacion y eso
+    //carpincho->prioridad = true;
 }
 
 
@@ -626,6 +646,8 @@ void ready_a_exec(){
         asignarle_hilo_CPU(carpincho_a_mover);
 
         carpincho_a_mover->tiempo_entrada_a_exec = temporal_get_string_time("%H:%M:%S:%MS");
+
+        //mandar mensaje a la lib, con el fd que tiene en la estructura el carpincho
     }
 }
 
@@ -649,7 +671,7 @@ void exec_a_block(int id_carpincho){
 		pthread_mutex_unlock(&sem_cola_exec);
 
         // "libera" el hilo cpu en el que estaba:
-        sem_post(liberarCPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
+        sem_post(liberar_CPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
 
 }
 
@@ -678,26 +700,30 @@ void exec_a_exit(int id_carpincho){
 		pthread_mutex_unlock(&sem_cola_exec);
 
         // "libera" el hilo cpu en el que estaba:
-        sem_post(liberarCPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
+        sem_post(liberar_CPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
 
         //avisar a mem para que libere?
 }
 
 //FALTA
-void block_a_ready(data_carpincho *carpincho){
+void block_a_ready(data_carpincho *carpincho, int fd){ //la llaman cuando se hace post o cuando se termina IO
 
+    // sem_wait(&hay_bloqueados)
     // cuando se desbloquea un semaforo o termina IO pase a ready
-    //
+    // responde a la lib con el fd
 
 }
 
-//FALTA
-void suspended_a_ready(){
 
-    // logica para que cuando se desbloquee un semaforo o se termina IO de un carpincho que se habia suspendido y ahora esta en suspendido ready, vea si lo quiere pasar a ready segun grado de multiprogramacion y eso
-    //carpincho->prioridad = true;
+// falta
+void suspender(){
+
+    // revisa si el grado de multiprocesamiento está completo
+    // revisa si hay bloqueados y si hay news o suspendedready
+    // si sí, toma el ultimo elemento de la cola de bloqueados y lo pasa a suspendido_bloqueado
+    // cambia el estado a suspendido_bloqueado
+
 }
-
 
 
 
