@@ -481,24 +481,22 @@ int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
 
-        (list_find(semaforos_carpinchos, semaforoIgualA))->valor_semaforo ++; 
-        
-        _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger);
+        semaforo semaforo_post = list_find(semaforos_carpinchos, semaforoIgualA)
+        semaforo_post->valor_semaforo ++; 
         
         if(!queue_is_empty){
-            carpincho_a_desbloquear = queue_pop((list_find(semaforos_carpinchos, semaforoIgualA))->en_espera);
+            carpincho_a_desbloquear = queue_pop(semaforo_post->en_espera);
 
             if(carpincho_a_desbloquear->estado === BLOCKED){
                 carpincho_a_desbloquear->estado = READY;
-                block_a_ready(carpincho_a_desbloquear, fd);
+                block_a_ready(carpincho_a_desbloquear);
             }
             else{ // si no esta en blocked es porque estaba en suspended blocked, ahora lo cambio a suspended_ready
                 carpincho_a_desbloquear->estado = SUSPENDED_READY;
-                // sem_post(&hay_estructura_creada);
-                suspended_a_ready(carpincho_a_desbloquear);
+                // agregar a cola de suspended ready y sacar de la de suspended o post a sem de una funcion que sea suspended_block_a_suspended_ready
             }
         }
-        
+        _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger); //se hizo el post ok pero no habia nadie para desbloquear
     }
     else
     {
@@ -510,17 +508,13 @@ int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 }
 
 int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
-
     bool esIgualA(void *semaforo){
         return esIgualASemaforo(semaforo, nombre_semaforo);
     }
-
     semaforo semaforoIgualA(void *semaforo){
         return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
     }
-
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
-
         // if => qué pasa si tienen algun carpincho en wait? se puede eliminar el semaforo? que pasa con los que estan en espera?
         list_remove_by_condition(semaforos_carpinchos,esIgualA);
         _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger);
@@ -557,7 +551,6 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         return dispositivo_igual_a_nombre(nombre_io, dispositivo);
     }
 
-<<<<<<< HEAD
     bool igual_a(void *dispoitivo){
         return es_igual_dispositivo(dispositivo, nombre_dispositivo);
     }
@@ -569,14 +562,11 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     
 
     if(list_any_satisfy(dispositivos_io, igual_a)){  
-=======
-    if(list_any_satisfy(dispositivos_io, igual_a)){  //asi con la lista del config o con lista_dispositivos_io que es la que agregan al crearle la estructura al dispositivo
->>>>>>> a3cb2fad72c2e68fd592bdf4301e3469e33f73d7
 
         dispositivo_pedido = list_find(dispositivos_io, dispositivo_igual_a); 
         // o directamente bloquear al carpincho, y si lo puede usar lo usa y sino espera
 
-        if(dispositivo_pedido->en_uso === false){
+        if(!dispositivo_pedido->en_uso){
             exec_a_block_io(id,dispositivo_pedido); //ver, hace falta que sea otra distinta? lo puse para pasarle el dispositivo que pidio
             dispositivo_pedido->en_uso = true;        
         }
@@ -661,7 +651,8 @@ void new_a_ready(){
     }
 }
 
-void suspended_a_ready(){
+void suspended_a_ready(){ //la llamamos siempre que alguno salga de multiprogramacion => cuando uno va a exit o a suspendido. incluso puede ser la de new_A_ready que la llame
+    // if tiene elementos en la lista de suspended
     sem_wait(&sem_grado_multiprogramacion_libre);
     //paso de la cola suspended a supended_ready
     //avisarle a mem que recupere las pags
@@ -786,7 +777,7 @@ void exec_a_exit(int id_carpincho){
 }
 
 //FALTA
-void block_a_ready(data_carpincho *carpincho, int fd){ //la llaman cuando se hace post o cuando se termina IO
+void block_a_ready(data_carpincho *carpincho){ //la llaman cuando se hace post o cuando se termina IO
 
     // sem_wait(&hay_bloqueados)
     // cuando se desbloquea un semaforo o termina IO pase a ready
