@@ -14,8 +14,8 @@
 #include <errno.h>
 
 #define SWAP_FILES_PATH "./swapdir/"
-#define ASIGNACION_FIJA 10
-#define ASIGNACION_DINAMICA 20
+#define ASIGNACION_FIJA 0
+#define ASIGNACION_DINAMICA 1
 
 t_dictionary* swap_dict; // Diccionario donde la key representa a un proceso y el valor es un puntero a la tabla de paginas del archivo de swap que utiliza
 t_list* swap_list;       // Lista que contiene todas las listas que representan a las tablas de paginas de los diferentes archivos de swap

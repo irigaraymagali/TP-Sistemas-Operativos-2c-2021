@@ -59,6 +59,7 @@ int main(int argc, char ** argv) {
 
 void cerrar_swamp() {
     log_info(log_file, "Cerrando Swamp (∪︿∪)...");
+    free_t_mensaje(recibido);
     close(server_socket);
     dictionary_destroy(swap_dict);
     list_destroy_and_destroy_elements(swap_list, nodo_swap_list_destroy);
