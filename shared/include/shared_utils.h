@@ -18,8 +18,17 @@
 #define MATE_MEMREAD 10
 #define MATE_MEMWRITE 11
 
+// Constantes comunicacion Memoria Swap
+#define TIPO_ASIGNACION     20
+#define RECV_PAGE           21
+#define SEND_PAGE           22
+#define FINISH_PROCESS      23
+
 // constante para saber quién envia mensaje a memoria
-#define ID_MATE_LIB '1'
+#define ID_MATE_LIB "MAT"
+#define ID_KERNEL   "KER"
+#define ID_MEMORIA  "MEM"
+#define ID_SWAMP    "SWP"
 
 // valores que devuelve el backend
 #define KERNEL_BACKEND = 1 // cuando el kernel responda, va a deolver 1.
