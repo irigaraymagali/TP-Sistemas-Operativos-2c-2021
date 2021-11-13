@@ -5,11 +5,12 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
-            "name": "Proceso3",
+            "name": "Swamp",
             "type": "cppdbg",
             "request": "launch",
-            "preLaunchTask": "Make",
+            "preLaunchTask": "Swamp Make",
             "program": "${workspaceFolder}/swamp.out",
             "args": [],
             "stopAtEntry": false,
