@@ -58,9 +58,6 @@ void inicializar_colas(){ // Colas estados y sus mutex:
 	exec = list_create();
 	pthread_mutex_init(&sem_cola_exec, NULL);
 
-    exit_list = list_create();
-    pthread_mutex_init(&sem_cola_exit, NULL);
-
 	blocked = queue_create();
 	pthread_mutex_init(&sem_cola_blocked, NULL);
 
@@ -93,7 +90,7 @@ void inicializar_semaforos(){ // Inicializacion de semaforos:
 void crear_hilos_planificadores(){
 
     pthread_t planficador_largo_plazo;
-    pthread_create(&planficador_largo_plazo, NULL, (void*) new_a_ready, NULL);
+    pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
 
     pthread_t planficador_corto_plazo;
     pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
@@ -301,7 +298,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 offset += sizeof(int);
                 memcpy(&pointer, buffer + offset, ptr_len);
 
-                _send_message(socket, ID_KERNEL, MATE_INIT, _serialize(sizeof(int)*(ptr_len + 1), "%d%d", ptr_len, pointer), sizeof(int)*(ptr_len + 1, logger); 
+                _send_message(socket, ID_MATE_LIB, MATE_INIT, _serialize(sizeof(int)*(ptr_len + 1), "%d%d", ptr_len, pointer), sizeof(int)*(ptr_len + 1, logger); 
                 
             break;
             case MATE_MEMFREE:
@@ -351,7 +348,6 @@ int mate_init(int fd){
     carpincho->estimacion_siguiente = estimacion_inicial; // viene por config
     // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
     // carpincho->RR no le pongo nada todavia
-    carpincho->prioridad = false;
     carpincho->estado = NEW;
     carpincho->fd = fd;
 
@@ -388,9 +384,7 @@ int mate_close(int id_carpincho, int fd){
 
     list_remove_by_condition(lista_carpinchos, es_el_carpincho);
 
-    exec_a_exit(id_carpincho);
-
-    _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger); 
+    exec_a_exit(id_carpincho, fd);
 }
 
 
@@ -622,45 +616,48 @@ int mate_memwrite(int id_carpincho, void origin, mate_pointer dest, int size, in
 ///////////////////// PLANIFICACIÓN ////////////////////////
 
 
-void new_a_ready(){
+void entrantes_a_ready(){
 
-    data_carpincho carpincho_a_mover;
+    data_carpincho *carpincho_a_mover;
     int respuesta_memoria;
     t_mensaje buffer;
 
     while(1){
-        sem_wait(&hay_estructura_creada);
-        sem_wait(&sem_grado_multiprogramacion_libre); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC!
+        sem_wait(&hay_estructura_creada); // hacerle post en mate_init y cuando uno pasa a estar en suspended_ready
+        sem_wait(&sem_grado_multiprogramacion_libre); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC! o en suspender()
 		
+        if(!queue_is_empty(suspended_ready)) // se fija si hay elementos que hayan venido de suspended, y si hay lo saca de ahi
+        {
+            pthread_mutex_lock(&sem_cola_ready); 
+            pthread_mutex_lock(&sem_cola_suspended_ready); 
 
-            // saco de cola new y pongo en cola ready al primero (FIFO):
+            carpincho_a_mover = queue_peek(suspended_ready);
+
+            queue_push(ready, carpincho_a_mover);
+            queue_pop(suspended_ready)
+
+            pthread_mutex_unlock(&sem_cola_ready); 
+            pthread_mutex_unlock(&sem_cola_suspended_ready); 
+
+            // avisarle a memoria que recupere las paginas
+        }
+        else{ // si no habia venido ninguno de suspended, saco de cola new y pongo en cola ready al primero (FIFO):
             pthread_mutex_lock(&sem_cola_ready); 
             pthread_mutex_lock(&sem_cola_new);
 
             carpincho_a_mover = queue_peek(new);
-            
-            carpincho_a_mover->estado = READY;
 
-            //queue_push(ready, *queue_peek(new)); seria poner ese el la lista de ready
+            list_add(ready, carpincho_a_mover); 
             queue_pop(new);
 
             pthread_mutex_unlock(&sem_cola_new);
             pthread_mutex_unlock(&sem_cola_ready);
-
-            sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
-
+        }
+        
+        carpincho_a_mover->estado = READY;
+        sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
     }
 }
-
-void suspended_a_ready(){ //la llamamos siempre que alguno salga de multiprogramacion => cuando uno va a exit o a suspendido. incluso puede ser la de new_A_ready que la llame
-    // if tiene elementos en la lista de suspended
-    sem_wait(&sem_grado_multiprogramacion_libre);
-    //paso de la cola suspended a supended_ready
-    //avisarle a mem que recupere las pags
-    // logica para que cuando se desbloquee un semaforo o se termina IO de un carpincho que se habia suspendido y ahora esta en suspendido ready, vea si lo quiere pasar a ready segun grado de multiprogramacion y eso
-    //carpincho->prioridad = true;
-}
-
 
 void ready_a_exec(){  
 
@@ -750,31 +747,29 @@ void exec_a_block_io(int id_carpincho, char dispositivo){ //hace falta que sea u
 }
 
 
-void exec_a_exit(int id_carpincho){
+void exec_a_exit(int id_carpincho, int fd){
     
+    data_carpincho carpincho_que_termino;
     carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
 
-    // Sacar de la lista de exec --> hace falta ponerlo en la lista de exit?
-        pthread_mutex_lock(&sem_cola_exec); 
-		
-        //carpincho_que_termino->estado = EXIT;
+    bool es_el_mismo(void* carpincho){
+        return es_el_mismo_carpincho(carpincho,carpincho_que_termino);
+    }
 
-        list_remove_by_condition(exec, es_el_mismo);
-    
-		pthread_mutex_unlock(&sem_cola_exec);
+    bool es_el_mismo_carpincho(data_carpincho carpincho, data_carpincho carpincho_que_termino){
+        return carpincho->id === carpincho_que_termino->id;
+    }
 
-        // "libera" el hilo cpu en el que estaba:
-        sem_post(liberar_CPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
+    _send_message(socket, ID_KERNEL, MATE_CLOSE, _serialize(sizeof(int), "%d", id_carpincho), sizeof(int), logger);  //avisar a mem para que libere
 
-        //avisar a mem para que libere?
+    pthread_mutex_lock(&sem_cola_exec); 
+    list_remove_by_condition(exec, es_el_mismo);
+	pthread_mutex_unlock(&sem_cola_exec);
 
-        bool es_el_mismo(void* carpincho){
-            return es_el_mismo_carpincho(carpincho,carpincho_que_termino);
-            }
+    sem_post(liberar_CPU[carpincho_a_bloquear->hilo_CPU_usado->id]); // "libera" el hilo cpu en el que estaba:
+    sem_post(&sem_grado_multiprogramacion_libre);
 
-        bool es_el_mismo_carpincho(data_carpincho carpincho, data_carpincho carpincho_que_termino){
-            return carpincho->id === carpincho_que_termino->id;
-            }
+    _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger); 
 }
 
 //FALTA

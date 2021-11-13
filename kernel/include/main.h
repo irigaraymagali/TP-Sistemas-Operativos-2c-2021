@@ -29,7 +29,7 @@ typedef struct data_carpincho // la data que le importa tener al backend
     float estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
     float llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
     float RR; //para HRRN -> fijarnos si es necesario o no
-    bool prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
+    // bool prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready => no haria falta porque usamos colas
     char estado; // => ir cambiandole el estado
     hilo_CPU hilo_CPU_usado; // para saber en qué hilo cpu se esta ejecutando
     char tiempo_entrada_a_exec; // para calcular milisegundos en exec
