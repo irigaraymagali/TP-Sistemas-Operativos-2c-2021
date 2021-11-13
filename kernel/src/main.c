@@ -495,12 +495,12 @@ void ready_a_exec(){
 
     while(1){ 
 
-        sem_wait(&cola_ready_con_elementos); //espera aviso que hay en ready    
-        sem_wait(&sem_grado_multiprocesamiento_libre); // falta: post cuando sale de exec? 
+        sem_wait(&cola_ready_con_elementos);   
+        sem_wait(&sem_grado_multiprocesamiento_libre); // FALTA post: cuando sale de exec? 
 
     // Depende del algoritmo en el config:
         if(algoritmo_planificacion == "SJF"){
-            carpincho_a_mover = ready_a_exec_SJF(); //  ver
+            carpincho_a_mover = ready_a_exec_SJF();
         }
         else{
             carpincho_a_mover = ready_a_exec_HRRN();
@@ -510,46 +510,26 @@ void ready_a_exec(){
         pthread_mutex_lock(&sem_cola_ready); 
 		pthread_mutex_lock(&sem_cola_exec);
 
-        //elegido->estado = 'E';
+        carpincho_a_mover->estado = 'E';
 
-        list_add(lista_exec, *elegido);//elegido: proceso que va a ejecutar
-        //queue_pop(ready, *elegido);  sacar ese de la lista de ready
+        list_add(lista_exec, *carpincho_a_mover);
+        //queue_pop(ready, *carpincho_a_mover);  sacar ese de la lista de ready
     
 		pthread_mutex_unlock(&sem_cola_exec);
 		pthread_mutex_unlock(&sem_cola_ready);
 
         asignarle_hilo_CPU(carpincho_a_mover);
 
+        carpincho_a_mover->tiempo_entrada_a_exec = temporal_get_string_time("%H:%M:%S:%MS");
     }
 }
-
-void asignar_hilo_CPU(data_carpincho carpincho){
-
-    hilo_cpu hilo_cpu_disponible;
-
-    sem_wait(&grado_multiprocesamiento_libre);
-
-    bool buscar_disponible(void* hilo_cpu){
-        int *valor;
-        sem_getvalue(cpu->semaforo, valor);
-        return valor === 1;
-    }
-
-    hilo_CPU_disponible = list_find(hilos_CPU, buscar_disponible);
-
-    sem_post(&usar_CPU[hilo_CPU_disponible->id]);
-
-    carpicho->hilo_CPU_usado = hilo_CPU_disponible;
-
-}
-
 
 
 void exec_a_block(int id_carpincho){
+    // le pasan el id del carpincho y aca lo saca de la lista de exec, lo pone en block y le hace signal al cpu
     
-    carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
-
-    // le pasan el carpincho y aca lo saca de la lista de exec, lo pone en block y le hace signal al cpu
+    data_carpincho carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
+    calculo_rafaga_anterior(carpincho_a_bloquear); 
 
     // Sacar de la lista de exec y ponerlo en la la cola de blocked
         pthread_mutex_lock(&sem_cola_exec); 
@@ -587,54 +567,10 @@ void exec_a_exit(int id_carpincho){
 
 
 
-///////////////////////////////////////////////////////////////
-
-
-
-bool pertenece_al_carpincho(int ID, data_carpincho *carpincho){
-        return carpincho->id === ID;
-    }
-
-
-// encontrar el carpincho segun su id:
-data_carpincho encontrar_estructura_segun_id(int ID){
-
-    bool buscar_id(void *ID){
-        return pertenece_al_carpincho(ID, carpincho);
-    }
-
-    carpincho_encontrado = list_find(lista_carpinchos,buscar_id);
-
-    return carpincho_encontrado;
-}
-
-
-
-
-
-void ejecuta(int id){ 
-
-while(1){
-
-    //mutex
-    sem_wait(&usar_CPU[id]); // espera hasta que algun carpincho haga post para usar ese cpu
-    sem_wait(&CPU_libre[id]); // indica que ya no está más libre ese cpu
-    // mutex
-    
-    sem_wait(&liberar_CPU[id]); // espera a que algun carpincho indique que quiere liberar el cpu
-    
-    //
-    sem_post(&CPU_libre[id]); // indica que ya esta el cpu libre de nuevo
-    sem_post(&grado_multiprocesamiento_libre); // indica que ya hay algun cpu libre
-    //
-}
-}
 
 ///////////////// ALGORITMOS ////////////////////////
 
-
-
-data_carpincho ready_a_exec_SJF(){ // De la cola de ready te da el que debe ejecutar ahora según SJF
+data_carpincho ready_a_exec_SJF(){ // De la lista de ready te da el que debe ejecutar ahora según SJF
 
     float obtener_la_menor_estimacion(){
         for(int i= 0; i<list_size(ready); i++){
@@ -646,31 +582,63 @@ data_carpincho ready_a_exec_SJF(){ // De la cola de ready te da el que debe ejec
             if(estimacion_actual < min_hasta_el_momento){         //si esta es menor => pasa a ser la minima hasta el momento
                 min_hasta_el_momento = estimacion_actual;
             }
-
         }
-        return min_hasta_el_momento; // falta buscar el carpincho que tenga esa estimacion y ese es el que va a ejecutar (como la de buscar carpincho segun id)
+        return min_hasta_el_momento;
     }
 
-
-    // devuelve el carpincho que va a ejecutar --> con esa estimacion siguiente buscar al carpincho (ver caso en el que 2 tengan la misma estimacion)
+    // devuelve el carpincho que va a ejecutar (ver caso en el que 2 tengan la misma estimacion)
+    return encontrar_estructura_segun_estimacion(min_hasta_el_momento); 
         
 }
 
-void ready_a_exec_HRRN(){ // De la cola de ready te da el que debe ejecutar ahora según HRRN
+data_carpincho ready_a_exec_HRRN(){ // De la lista de ready te da el que debe ejecutar ahora según HRRN
+    
+    float obtener_el_mayor_RR(){
+        for(int i= 0; i<list_size(ready); i++){
 
+        float max_hasta_el_momento = 0;
+        data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
+        calculo_RR(carpincho_listo);                         // le calculo su RR
+        float RR_actual = carpincho_listo->RR;               //agarro su RR
+            if(RR_actual > max_hasta_el_momento){            //si este es mayor => pasa a ser el max hasta el momento
+                max_hasta_el_momento = RR_actual;
+            }
+        }
+        return max_hasta_el_momento;
+    }
+
+    // devuelve el carpincho que va a ejecutar (ver caso en el que 2 tengan el mismo RR)
+    return encontrar_estructura_segun_RR(max_hasta_el_momento);
     
        
 }
 
 // para SJF
-float calculo_estimacion_siguiente(data_carpincho *carpincho){
+void calculo_estimacion_siguiente(data_carpincho *carpincho){
+
+    calculo_rafaga_anterior(carpincho);
 
     carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa);
 
 }
 
+void calculo_rafaga_anterior(data_carpincho *carpincho){
+
+    //cuánto tiempo en milisegundos estuvo el carpincho en exec tomando la diferencia entre el timestamp al ingresar y al salir de exec.
+    char tiempo_al_salir = temporal_get_string_time("%M %S %MS"); // ver si funciona asi, sino ("%H:%M:%S:%MS") => cambiar pasaje a int
+    int tiempo_entrada = atoi(*carpincho->tiempo_entrada_a_exec);
+    int tiempo_salida = atoi(*tiempo_al_salir);
+    
+    int diferencia_milisegundos = tiempo_salida - tiempo_entrada;
+
+    carpincho->rafaga_anterior = diferencia_milisegundos;
+
+}
+
+
+
 // para HRRN
-float calculo_RR(data_carpincho *carpincho){
+void calculo_RR(data_carpincho *carpincho){
 
    //float w = ahora - carpincho->llegada_a_ready // ahora = momento en el que se esta caulculando el RR
    //float s =  prox rafaga
@@ -678,4 +646,99 @@ float calculo_RR(data_carpincho *carpincho){
    //carpincho->RR = 1 + w/s 
 
     
+}
+
+
+//////////////////////////// Funs para exec ///////////////////////////////////
+
+void asignar_hilo_CPU(data_carpincho carpincho){
+
+    hilo_cpu hilo_cpu_disponible;
+
+    sem_wait(&grado_multiprocesamiento_libre);
+
+    bool buscar_disponible(void* hilo_cpu){
+        int *valor;
+        sem_getvalue(cpu->semaforo, valor);
+        return valor === 1;
+    }
+
+    hilo_CPU_disponible = list_find(hilos_CPU, buscar_disponible);
+
+    sem_post(&usar_CPU[hilo_CPU_disponible->id]);
+
+    carpicho->hilo_CPU_usado = hilo_CPU_disponible;
+
+}
+
+
+
+void ejecuta(int id){ 
+
+    while(1){
+
+        //mutex
+        sem_wait(&usar_CPU[id]); // espera hasta que algun carpincho haga post para usar ese cpu
+        sem_wait(&CPU_libre[id]); // indica que ya no está más libre ese cpu
+        // mutex
+        
+        sem_wait(&liberar_CPU[id]); // espera a que algun carpincho indique que quiere liberar el cpu
+        
+        //
+        sem_post(&CPU_libre[id]); // indica que ya esta el cpu libre de nuevo
+        sem_post(&grado_multiprocesamiento_libre); // indica que ya hay algun cpu libre
+        //
+    }
+}
+
+
+
+
+/////////////////////////////// Busquedas //////////////////////////// --> simplificar en 1
+
+// segun su id:
+bool id_pertenece_al_carpincho(int ID, data_carpincho *carpincho){
+        return carpincho->id === ID;
+    }
+
+data_carpincho encontrar_estructura_segun_id(int ID){
+
+    bool buscar_id(void *ID){
+        return id_pertenece_al_carpincho(ID, carpincho);
+    }
+
+    carpincho_encontrado = list_find(lista_carpinchos,buscar_id);
+
+    return carpincho_encontrado;
+}
+
+// segun su estimacion siguiente:
+bool estimacion_pertenece_al_carpincho(float estimacion, data_carpincho *carpincho){
+        return carpincho->estimacion_siguiente === estimacion;
+    }
+
+data_carpincho encontrar_estructura_segun_estimacion(float estimacion){
+
+    bool buscar_estimacion(void *estimacion){
+        return estimacion_pertenece_al_carpincho(estimacion, carpincho);
+    }
+
+    carpincho_encontrado = list_find(lista_carpinchos,buscar_estimacion);
+
+    return carpincho_encontrado;
+}
+
+// segun su RR:
+bool RR_pertenece_al_carpincho(float ratio, data_carpincho *carpincho){
+        return carpincho->RR === ratio;
+    }
+data_carpincho encontrar_estructura_segun_RR(float ratio){
+
+    bool buscar_RR(void *ratio){
+        return RR_pertenece_al_carpincho(ratio, carpincho);
+    }
+
+    carpincho_encontrado = list_find(lista_carpinchos,buscar_RR;
+
+    return carpincho_encontrado;
 }
