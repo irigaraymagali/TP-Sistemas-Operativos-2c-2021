@@ -470,6 +470,46 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     // si nombre_io esta disponible => bloquear al carpincho
     // si no => suspenderlo? a la espera de que se desocupe
 
+
+dispositivo_io dispositivoIgualANombre(mate_io_resource nombre_dispositivo, void *dispositivo){ 
+    return dispositivo->nombre === nombre_dispositivo;
+}
+
+ bool IgualAl(void *dispositivo){
+        return esIgualAlDispositivo(dispositivo, nombre_dispositivo);
+    }
+
+    semaforo dispositivoIgualA(void *dispositivo){
+        return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
+    }
+
+
+
+
+
+    if(list_any_satisfy(dispositivos_carpinchos, IgualAl)){  
+
+        (list_find(dispositivos_carpinchos, dispositivoIgualA))->en_uso = true;  ///despues
+
+        if(dispositivo->en_uso === false){
+            dispositivo->en_uso = true; //volver a cambiar cuando sale de blocked io
+            exec_a_block(id_carpincho); //por io
+            //queue_push(semaforo->en_espera, encontrar_estructura_segun_id(id_carpincho); //queda esperando para que lo desbloqueen, es el primero. conviene usar una que
+        }
+        else
+        {
+            // acá no pasa nada, no? o sea si el semaforo de decrementa y sigue siendo mayor a 1, sigue todo como si nada, no?
+        }
+    }
+    else
+    {
+        log_info(logger, "se intento hacer wait de un semaforo no inicializado");
+    }
+
+
+
+
+
 }
 
 
@@ -489,7 +529,7 @@ int mate_memwrite(int id_carpincho, void origin, mate_pointer dest, int size, in
     
 
 
-///////////////// PLANIFICACIÓN ////////////////////////
+///////////////////// PLANIFICACIÓN ////////////////////////
 
 
 void new_a_ready(){
@@ -616,7 +656,7 @@ void suspended_a_ready(){
 
 
 
-///////////////// ALGORITMOS ////////////////////////
+////////////////////////// ALGORITMOS ////////////////////////
 
 data_carpincho ready_a_exec_SJF(){ // De la lista de ready te da el que debe ejecutar ahora según SJF
 
@@ -688,7 +728,7 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){
 // para HRRN
 void calculo_RR(data_carpincho *carpincho){
 
-    char ahora = temporal_get_string_time("%M %S %MS"); // ver si funciona asi, sino ("%H:%M:%S:%MS") => cambiar pasaje a int
+    char ahora = temporal_get_string_time("%M %S %MS"); // ver si funciona así, sino ("%H:%M:%S:%MS") => cambiar pasaje a int
     int tiempo_ahora= atoi(*ahora);
 
     float w = tiempo_ahora - carpincho->llegada_a_ready;
@@ -699,7 +739,7 @@ void calculo_RR(data_carpincho *carpincho){
 }
 
 
-//////////////////////////// Funs para exec ///////////////////////////////////
+//////////////////////////// Funciones para exec ///////////////////////////////////
 
 void asignar_hilo_CPU(data_carpincho carpincho){
 
@@ -744,7 +784,10 @@ void ejecuta(int id){
 
 
 
-/////////////////////////////// Busquedas //////////////////////////// --> simplificar en 1
+
+
+
+/////////////////////////////// Busquedas estructura carpincho //////////////////////////// --> quiza habria que simplificar en 1 sola
 
 // segun su id:
 bool id_pertenece_al_carpincho(int ID, data_carpincho *carpincho){

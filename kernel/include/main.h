@@ -36,7 +36,7 @@ typedef struct data_carpincho // la data que le importa tener al backend
 
     char *semaforo; //no seria tipo semaforo?
     int *valor_semaforo; //idem (por la estructura)
-    char *dispositivo_io; 
+    dispositivo_io *dispositivo_io; 
 
 } data_carpincho;
 
@@ -47,6 +47,13 @@ typedef struct semaforo
     int valor;
     t_queue en_espera; // cambiar a una cola
 } semaforo;
+
+typedef struct dispositivo_io
+{
+    char nombre;
+    float duracion;
+    bool en_uso;
+} dispositivo_io;
 
 typedef struct hilo_cpu
 {
