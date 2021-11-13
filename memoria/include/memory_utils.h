@@ -30,9 +30,9 @@
 #define MATE_FREE_FAULT  -5
 #define MATE_READ_FAULT  -6
 
-// SWAMP CONST
-#define RECV_PAGE 99
-#define SEND_PAGE 100
+
+#define TLB_MISS 0
+#define TLB_HIT  1
 
 int swamp_fd;
 
@@ -43,6 +43,8 @@ typedef enum {
 } TLB_Condition;
 
 pthread_mutex_t swamp_mutex, list_pages_mutex, lru_mutex, tlb_mutex, tlb_lru_mutex, entrada_fifo_mutex, max_hit_tlb_mutex, max_miss_tlb_mutex;
+
+pthread_mutex_t m_list_mutex;
 
 int max_tlb_hit, max_tlb_miss, max_entradas_tlb, retardo_hit_tlb, retardo_miss_tlb, entrada_fifo, tlb_lru_global;
 typedef struct 
@@ -129,7 +131,7 @@ int memwrite(int idProcess, int direccionLogica, void* loQueQuierasEscribir, int
 Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada);
 HeapMetaData* get_heap_metadata(int offset);
 HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset);
-void* memread(uint32_t pid, int dir_logica);
+void* memread(uint32_t pid, int dir_logica, int size);
 
 int get_nro_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada);
 void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame);
@@ -143,5 +145,8 @@ TLB* fetch_entrada_tlb_by_page(uint32_t page);
 TLB* fetch_entrada_tlb_by_frame(uint32_t frame);
 TLB* get_entrada_tlb_by_condition(int condition, uint32_t value);
 void free_tlb();
+void remove_paginas(void* elem);
+void set_pid_metric_if_missing(uint32_t pid); 
+void sum_metric(uint32_t pid, int isHit);
 
 #endif

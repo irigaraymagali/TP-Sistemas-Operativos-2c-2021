@@ -7,6 +7,7 @@
 #include <commons/temporal.h>
 #include <commons/txt.h>
 #include <stdbool.h>
+#include <sys/stat.h>
 #include <pthread.h>
 #include "server.h"
 #include "tests.h"

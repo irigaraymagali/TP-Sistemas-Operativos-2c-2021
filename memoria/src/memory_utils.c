@@ -11,8 +11,7 @@ void initPaginacion(){
     pthread_mutex_init(&tlb_mutex, NULL);
     pthread_mutex_init(&tlb_lru_mutex, NULL);
     pthread_mutex_init(&entrada_fifo_mutex, NULL);
-
-    config = config_create(CONFIG_PATH);
+    pthread_mutex_init(&m_list_mutex, NULL);
 
     tamanioDePagina = config_get_int_value(config, "TAMANIO_PAGINA");
 
@@ -25,8 +24,11 @@ void initPaginacion(){
         tipoDeAsignacionDinamica= 1;
     }
     
-    lRUACTUAL=0;
 
+    void* payload = _serialize(sizeof(int), "%d", tipoDeAsignacionDinamica);
+    send_message_swamp(TIPO_ASIGNACION, payload, sizeof(int));
+    free(payload);
+    lRUACTUAL=0;
 
     tamanioDeMemoria = config_get_int_value(config, "TAMANIO");
 
@@ -181,7 +183,7 @@ int memalloc(int processId, int espacioAReservar){
 
 }
 
-void* memread(uint32_t pid, int dir_logica){
+void* memread(uint32_t pid, int dir_logica, int size){
     void* read;
     int size_to_read, offset_to_read;
 
@@ -1087,6 +1089,8 @@ void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
     } else {
         replace_entrada(new_instance);
     }
+
+    set_pid_metric_if_missing(pid);
 }
 
 TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
@@ -1148,6 +1152,7 @@ TLB* fetch_entrada_tlb(uint32_t pid, int dir_logica){
         uint32_t nro_page = get_nro_page_by_dir_logica(tabla, dir_logica);
         pthread_mutex_unlock(&list_pages_mutex);
         if (nro_page == -1){
+            sum_metric(pid, TLB_MISS);
             return NULL;
         }
         tlb = fetch_entrada_tlb_by_page(nro_page);
@@ -1155,10 +1160,52 @@ TLB* fetch_entrada_tlb(uint32_t pid, int dir_logica){
         tlb = fetch_entrada_tlb_by_pid(pid);
     }
     
+    if(tlb != NULL){
+        sum_metric(pid, TLB_HIT);
+    } else {
+        sum_metric(pid, TLB_MISS);
+    }
+
     return tlb;
 }
 
-//void set_metric_tlb()
+void set_pid_metric_if_missing(uint32_t pid){
+    pthread_mutex_lock(&m_list_mutex);
+    bool has_pid(void* elem){
+        TLB* tlb = (TLB*) elem;
+        return tlb->pid == pid;
+    }
+
+    if (!list_any_satisfy(metrics_list, has_pid)){
+        Metric* m = malloc(sizeof(Metric)); 
+        m->pid = pid;
+        m->hits = 0;
+        m->miss = 0;
+        list_add(metrics_list, m);
+    }
+
+    pthread_mutex_unlock(&m_list_mutex);
+}
+
+void sum_metric(uint32_t pid, int isHit){
+    pthread_mutex_lock(&m_list_mutex);
+
+    t_list_iterator* iterator = list_iterator_create(metrics_list);
+    while (list_iterator_has_next(iterator)){
+        Metric* metric = (Metric*) list_iterator_next(iterator);
+        if (metric->pid == pid){
+            if(isHit == 1){
+                metric->hits++;
+                sleep(retardo_hit_tlb);
+            } else {
+                metric->miss++;
+                sleep(retardo_miss_tlb);
+            }
+        }
+    }
+    list_iterator_destroy(iterator);
+    pthread_mutex_unlock(&m_list_mutex);
+}
 
 TLB* fetch_entrada_tlb_by_pid(uint32_t pid){
     return get_entrada_tlb_by_condition(C_PID, pid);
@@ -1214,10 +1261,15 @@ void* send_message_swamp(int command, void* payload, int pay_len){
 }
 
 void free_tlb(){
-    list_destroy_and_destroy_elements(metrics_list, (void*)free);
-    list_destroy_and_destroy_elements(tlb_list, (void*)free);
-}
+    if (list_is_empty(metrics_list)){
+        list_destroy(metrics_list);
+    } else {
+        list_destroy_and_destroy_elements(metrics_list, free);
+    } 
 
-void deserealize_payload(void* payload){
-    log_info(logger, "Deserealizo el payload");
+    if (list_is_empty(tlb_list)){
+        list_destroy(tlb_list);
+    } else {
+        list_destroy_and_destroy_elements(metrics_list, free);
+    } 
 }

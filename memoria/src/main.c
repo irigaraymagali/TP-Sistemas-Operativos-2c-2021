@@ -5,15 +5,16 @@ int main(int argc, char ** argv){
     }
 
     logger = log_create(LOG_PATH, PROGRAM, true, LOG_LEVEL_INFO);
+    config = config_create(CONFIG_PATH);
 
     pthread_mutex_init(&pid_global_mutex, NULL);
     pid_global = 0;
+    init_swamp_connection();
+
     initPaginacion();
 
     inicializarUnProceso(1);
     inicializarUnProceso(2);
-
-    init_swamp_connection();
 
     signal(SIGINT, print_metrics);
     signal(SIGUSR1, print_dump);
@@ -165,7 +166,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             iresp = memfree(pid, dir_logica);
             break;
         case MATE_MEMREAD:
-            resp = memread(pid, dir_logica);
+            resp = memread(pid, dir_logica, size);
             break;
         case MATE_MEMWRITE:
             iresp = memwrite(pid, dir_logica, payload, size);
@@ -224,7 +225,7 @@ void free_memory(){
 
     free_tlb();
     list_destroy_and_destroy_elements(todasLasTablasDePaginas, remove_paginas);
-    
+
     free(memoria);
     exit(EXIT_SUCCESS);
 }
