@@ -304,7 +304,7 @@ int mate_init(int id_carpincho, int fd){
     // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
     // carpincho->RR no le pongo nada todavia
     carpincho->prioridad = false;
-    carpincho->estado = 'N';
+    carpincho->estado = NEW;
 
     list_add(lista_carpinchos, carpincho);
     sem_post(&hay_estructura_creada);
@@ -318,7 +318,7 @@ int mate_init(int id_carpincho, int fd){
 
 void esperando_estar_en_exec(carpincho,fd){
 while(true){
-    if(carpincho->estado === 'E'){
+    if(carpincho->estado === EXEC){
         _send_message(fd, ID_MATE_LIB, 1, carpincho->id, sizeof(int), logger); // va así?
     }
 }
@@ -387,7 +387,7 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         (list_find(semaforos_carpinchos, semaforoIgualA))->valor_semaforo --; 
 
 
-//no deberia ser semaforo = list_find ... para poner el semaforo en el if y a ese decrmentarle el valor ??
+// ¿no deberia ser semaforo = list_find ... para poner el semaforo en el if y a ese decrmentarle el valor ??
 
         if(semaforo->valor_semaforo<1){
             exec_a_block(id_carpincho); 
@@ -468,10 +468,53 @@ int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
 
 //////////////// FUNCIONES IO ///////////////////
 
+
+    //para el find:
+        bool igual_a(void *dispoitivo){
+            return es_igual_dispositivo(dispositivo, nombre_dispositivo);
+        }
+
+        bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
+                return dispositivo->nombre === nombre_dispositivo;
+            }
+
+    //para el any satisfy:
+        dispositivo_io dispositivo_igual_a(void *dispositivo){
+                return dispositivo_igual_a_nombre(nombre_dispositivo, dispositivo);
+            }
+
+        dispositivo_io dispositivo_igual_a_nombre(mate_io_resource nombre_dispositivo, void *dispositivo){
+                return dispositivo->nombre === nombre_dispositivo;
+            }
+
+        bool esIgualDispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
+                return dispositivo->nombre === nombre_dispositivo;
+            }
+
+
 int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
-    // si nombre_io esta disponible => bloquear al carpincho
-    // si no => suspenderlo? a la espera de que se desocupe
+    // si nombre_io esta disponible => bloquear al carpincho por io
+    // si no => bloquearlo? a la espera de que se desocupe
+
+    // lista dispositivos_io y duraciones_io por config
+
+    if(list_any_satisfy(dispositivos_io, igual_a)){  
+
+        dispositivo_pedido = list_find(dispositivos_io, dispositivo_igual_a); 
+
+        if(dispositivo_pedido->en_uso === false){
+            exec_a_block_io(id,dispositivo); //hacer
+            dispositivo_pedido->en_uso = true;
+        }
+        else{ // si esta en uso => 
+            
+        }
+    }
+    else
+    {
+        log_info(logger, "se intento hacer post de un semaforo no inicializado");
+    }
 
 
 
@@ -516,7 +559,7 @@ void new_a_ready(){
 
         carpincho_a_mover = queue_peek(new);
         
-        carpincho_a_mover->estado = 'R';
+        carpincho_a_mover->estado = READY;
 
         //queue_push(ready, *queue_peek(new)); seria poner ese el la lista de ready
         queue_pop(new);
@@ -551,7 +594,7 @@ void ready_a_exec(){
         pthread_mutex_lock(&sem_cola_ready); 
 		pthread_mutex_lock(&sem_cola_exec);
 
-        carpincho_a_mover->estado = 'E';
+        carpincho_a_mover->estado = EXEC;
 
         list_add(lista_exec, *carpincho_a_mover);
         //queue_pop(ready, *carpincho_a_mover);  sacar ese de la lista de ready
@@ -576,7 +619,7 @@ void exec_a_block(int id_carpincho){
         pthread_mutex_lock(&sem_cola_exec); 
 		pthread_mutex_lock(&sem_cola_blocked);
 
-        carpincho_a_bloquear->estado = 'B';
+        carpincho_a_bloquear->estado = BLOCKED;
 
         queue_push(blocked, *carpincho_a_bloquear); 
         //list_(lista_exec, *carpincho_a_bloquear);
@@ -590,6 +633,19 @@ void exec_a_block(int id_carpincho){
 }
 
 
+void exec_a_block_io(int id_carpincho, char dispositivo){
+    
+    exec_a_block(id_carpincho);
+
+    // ver lo de las duraciones
+
+
+}
+
+
+
+
+
 void exec_a_exit(int id_carpincho){
     
     carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
@@ -597,7 +653,7 @@ void exec_a_exit(int id_carpincho){
     // Sacar de la lista de exec --> hace falta ponerlo en la lista de exit?
         pthread_mutex_lock(&sem_cola_exec); 
 		
-        //carpincho_que_termino->estado = '';
+        //carpincho_que_termino->estado = EXIT;
 
         //list_(lista_exec, *carpincho_que_termino); 
     
@@ -606,13 +662,14 @@ void exec_a_exit(int id_carpincho){
         // "libera" el hilo cpu en el que estaba:
         sem_post(liberarCPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
 
-        //avisar a mem?
+        //avisar a mem para que libere?
 }
 
 //FALTA
-void block_a_ready(){
+void block_a_ready(data_carpincho *carpincho){
 
-    // logica para que cuando se desbloquea un semaforo o termina IO pase a ready
+    // cuando se desbloquea un semaforo o termina IO pase a ready
+    //
 
 }
 
@@ -620,7 +677,7 @@ void block_a_ready(){
 void suspended_a_ready(){
 
     // logica para que cuando se desbloquee un semaforo o se termina IO de un carpincho que se habia suspendido y ahora esta en suspendido ready, vea si lo quiere pasar a ready segun grado de multiprogramacion y eso
-
+    //carpincho->prioridad = true;
 }
 
 
