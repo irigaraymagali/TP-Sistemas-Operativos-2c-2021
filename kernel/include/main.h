@@ -45,7 +45,7 @@ typedef struct semaforo
 {
     char nombre;
     int valor;
-    t_list en_espera; // cambiar a una cola
+    t_queue en_espera; // cambiar a una cola
 } semaforo;
 
 typedef struct hilo_cpu

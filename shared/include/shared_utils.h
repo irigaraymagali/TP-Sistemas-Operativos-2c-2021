@@ -25,6 +25,19 @@
 #define KERNEL_BACKEND = 1 // cuando el kernel responda, va a deolver 1.
 #define MEMORIA_BACKEND = 2 // cuando la memoria responda, va a responder 2
 
+//estados
+#define NEW = 'N'
+#define READY = 'R'
+#define EXEC = 'E'
+#define BLOCKED = 'B'
+#define SUSPENDED_BLOCKED = 'S'
+#define SUSPENDED_READY = 'Y'
+#define EXIT = 'X'
+
+
+
+
+
 typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
 {
     int id;
