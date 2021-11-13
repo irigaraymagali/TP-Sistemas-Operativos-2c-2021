@@ -58,10 +58,10 @@ void inicializar_colas(){ // Colas estados y sus mutex:
 	exec = list_create();
 	pthread_mutex_init(&sem_cola_exec, NULL);
 
-	blocked = queue_create();
+	blocked = list_create();
 	pthread_mutex_init(&sem_cola_blocked, NULL);
 
-    suspended_blocked = queue_create();
+    suspended_blocked = list_create();
 	pthread_mutex_init(&sem_cola_suspended_blocked, NULL);
 
     suspended_ready = queue_create();
@@ -487,10 +487,10 @@ int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
             }
             else{ // si no esta en blocked es porque estaba en suspended blocked, ahora lo cambio a suspended_ready
                 carpincho_a_desbloquear->estado = SUSPENDED_READY;
-                // agregar a cola de suspended ready y sacar de la de suspended o post a sem de una funcion que sea suspended_block_a_suspended_ready
+                suspended_blocked_a_suspended_ready(carpincho_a_desbloquear);
             }
         }
-        _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger); //se hizo el post ok pero no habia nadie para desbloquear
+        _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger); // se avisa que se hizo el post que pidio
     }
     else
     {
@@ -719,7 +719,7 @@ void exec_a_block(int id_carpincho){
 
         carpincho_a_bloquear->estado = BLOCKED;
 
-        queue_push(blocked, *carpincho_a_bloquear); 
+        list_add(blocked, *carpincho_a_bloquear); 
         list_remove_by_condition(exec, es_el_mismo);
     
 		pthread_mutex_unlock(&sem_cola_blocked);
@@ -772,12 +772,40 @@ void exec_a_exit(int id_carpincho, int fd){
     _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger); 
 }
 
-//FALTA
 void block_a_ready(data_carpincho *carpincho){ //la llaman cuando se hace post o cuando se termina IO
+   
+   void* esIgualACarpincho (void* carpincho_lista){
+       return (data_carpincho *) carpincho_lista === carpincho;
+   }
 
-    // sem_wait(&hay_bloqueados)
-    // cuando se desbloquea un semaforo o termina IO pase a ready
-    // responde a la lib con el fd
+    pthread_mutex_lock(&sem_cola_ready); 
+    pthread_mutex_lock(&sem_cola_blocked;
+
+    list_add(ready, carpincho);
+    list_remove_by_condition(blocked, esIgualACarpincho);
+
+    pthread_mutex_unlock(&sem_cola_blocked);
+    pthread_mutex_unlock(&sem_cola_ready);
+
+
+    // no tiene que evaluar ni grado de multiprogramacion ni de multiproc porque ya estaba considerado.
+    // no responde nada a la lib porque todavia no esta en exec, solo paso a ready
+}
+
+void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
+    // agregar a cola de suspended ready y sacar de la de suspended o post a sem de una funcion que sea suspended_block_a_suspended_ready
+    void* esIgualACarpincho (void* carpincho_lista){
+       return (data_carpincho *) carpincho_lista === carpincho;
+    }    
+
+    pthread_mutex_lock(&sem_cola_ready); 
+    pthread_mutex_lock(&sem_cola_blocked;
+
+    queue_pop(suspended_ready, carpincho);
+    list_remove_by_condition(suspended_blocked, esIgualACarpincho);
+
+    pthread_mutex_unlock(&sem_cola_blocked);
+    pthread_mutex_unlock(&sem_cola_ready);
 
 }
 
