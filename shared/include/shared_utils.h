@@ -17,6 +17,7 @@
 #define MATE_MEMFREE 9
 #define MATE_MEMREAD 10
 #define MATE_MEMWRITE 11
+#define SUSPENDER 12
 
 // Constantes comunicacion Memoria Swap
 #define TIPO_ASIGNACION     20

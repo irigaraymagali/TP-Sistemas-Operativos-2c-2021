@@ -190,8 +190,8 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
                                             socket, 
                                             ID_MATE_LIB, 
                                             MATE_MEMFREE, 
-                                            _serialize(sizeof(int) * 2, "%d%d", estructura_interna->id, addr ), 
-                                            sizeof(int)*2, 
+                                            _serialize(sizeof(int) + sizeof(mate_pointer), "%d%d", estructura_interna->id, addr ), 
+                                            sizeof(int) + sizeof(mate_pointer), 
                                             logger); 
 
     if(conexion_con_backend < 0 ){ 
