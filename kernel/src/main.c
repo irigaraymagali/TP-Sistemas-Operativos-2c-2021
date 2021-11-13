@@ -309,7 +309,7 @@ int mate_init(int id_carpincho, int fd){
     // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
     // carpincho->RR no le pongo nada todavia
     carpincho->prioridad = false;
-    carpincho->estado = 'N';
+    carpincho->estado = NEW;
 
     list_add(lista_carpinchos, carpincho);
     sem_post(&hay_estructura_creada);
@@ -323,8 +323,10 @@ int mate_init(int id_carpincho, int fd){
 
 void esperando_estar_en_exec(carpincho,fd){
 while(true){
-    if(carpincho->estado === 'E'){
+    // ver si es necesario que haya un wait
+    if(carpincho->estado === EXEC){
         _send_message(fd, ID_MATE_LIB, 1, carpincho->id, sizeof(int), logger); // va así?
+        return 0;
     }
 }
 }
@@ -384,12 +386,13 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     }
 
     semaforo semaforoIgualA(void *semaforo){
-        return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
+        return semaforoIgualANombreSemaforo(nombre_semaforo, semaforo);
     }
 
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
 
-        (list_find(semaforos_carpinchos, semaforoIgualA))->valor_semaforo --; 
+        semaforo semaforo = list_find(semaforos_carpinchos, semaforoIgualA);
+        semaforo->valor_semaforo --; 
 
         if(semaforo->valor_semaforo<1){
             exec_a_block(id_carpincho); 
@@ -397,7 +400,7 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         }
         else
         {
-            // acá no pasa nada, no? o sea si el semaforo de decrementa y sigue siendo mayor a 1, sigue todo como si nada, no?
+            // retornar mensaje a la lib
         }
     }
     else
@@ -470,47 +473,53 @@ int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
 
 //////////////// FUNCIONES IO ///////////////////
 
+
+    //para el find:
+        bool igual_a(void *dispoitivo){
+            return es_igual_dispositivo(dispositivo, nombre_dispositivo);
+        }
+
+        bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
+                return dispositivo->nombre === nombre_dispositivo;
+            }
+
+    //para el any satisfy:
+        dispositivo_io dispositivo_igual_a(void *dispositivo){
+                return dispositivo_igual_a_nombre(nombre_dispositivo, dispositivo);
+            }
+
+        dispositivo_io dispositivo_igual_a_nombre(mate_io_resource nombre_dispositivo, void *dispositivo){
+                return dispositivo->nombre === nombre_dispositivo;
+            }
+
+        bool esIgualDispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
+                return dispositivo->nombre === nombre_dispositivo;
+            }
+
+
 int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
-    // si nombre_io esta disponible => bloquear al carpincho
-    // si no => suspenderlo? a la espera de que se desocupe
+    // si nombre_io esta disponible => bloquear al carpincho por io
+    // si no => bloquearlo? a la espera de que se desocupe
 
+    // lista dispositivos_io y duraciones_io por config
 
-dispositivo_io dispositivoIgualANombre(mate_io_resource nombre_dispositivo, void *dispositivo){ 
-    return dispositivo->nombre === nombre_dispositivo;
-}
+    if(list_any_satisfy(dispositivos_io, igual_a)){  
 
- bool IgualAl(void *dispositivo){
-        return esIgualAlDispositivo(dispositivo, nombre_dispositivo);
-    }
+        dispositivo_pedido = list_find(dispositivos_io, dispositivo_igual_a); 
 
-    semaforo dispositivoIgualA(void *dispositivo){
-        return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
-    }
-
-
-
-
-
-    if(list_any_satisfy(dispositivos_carpinchos, IgualAl)){  
-
-        (list_find(dispositivos_carpinchos, dispositivoIgualA))->en_uso = true;  ///despues
-
-        if(dispositivo->en_uso === false){
-            dispositivo->en_uso = true; //volver a cambiar cuando sale de blocked io
-            exec_a_block(id_carpincho); //por io
-            //queue_push(semaforo->en_espera, encontrar_estructura_segun_id(id_carpincho); //queda esperando para que lo desbloqueen, es el primero. conviene usar una que
+        if(dispositivo_pedido->en_uso === false){
+            exec_a_block_io(id,dispositivo); //ver
+            dispositivo_pedido->en_uso = true;
         }
-        else
-        {
-            // acá no pasa nada, no? o sea si el semaforo de decrementa y sigue siendo mayor a 1, sigue todo como si nada, no?
+        else{ // si esta en uso => ?
+            
         }
     }
     else
     {
-        log_info(logger, "se intento hacer wait de un semaforo no inicializado");
+        log_info(logger, "Se pidio un dispositivo IO que no existe");
     }
-
 
 
 
@@ -563,7 +572,7 @@ void new_a_ready(){
 
             carpincho_a_mover = queue_peek(new);
             
-            carpincho_a_mover->estado = 'R';
+            carpincho_a_mover->estado = READY;
 
             //queue_push(ready, *queue_peek(new)); seria poner ese el la lista de ready
             queue_pop(new);
@@ -579,6 +588,11 @@ void new_a_ready(){
     }
 }
 
+void suspended_a_ready(){
+    sem_wait(&sem_grado_multiprogramacion_libre);
+    //avisarle a mem que recupere las pags
+}
+
 
 void ready_a_exec(){  
 
@@ -587,7 +601,7 @@ void ready_a_exec(){
     while(1){ 
 
         sem_wait(&cola_ready_con_elementos);   
-        sem_wait(&sem_grado_multiprocesamiento_libre); // FALTA post: cuando sale de exec? 
+        sem_wait(&sem_grado_multiprocesamiento_libre);
 
     // Depende del algoritmo en el config:
         if(algoritmo_planificacion == "SJF"){
@@ -601,7 +615,7 @@ void ready_a_exec(){
         pthread_mutex_lock(&sem_cola_ready); 
 		pthread_mutex_lock(&sem_cola_exec);
 
-        carpincho_a_mover->estado = 'E';
+        carpincho_a_mover->estado = EXEC;
 
         list_add(lista_exec, *carpincho_a_mover);
         //queue_pop(ready, *carpincho_a_mover);  sacar ese de la lista de ready
@@ -626,7 +640,7 @@ void exec_a_block(int id_carpincho){
         pthread_mutex_lock(&sem_cola_exec); 
 		pthread_mutex_lock(&sem_cola_blocked);
 
-        carpincho_a_bloquear->estado = 'B';
+        carpincho_a_bloquear->estado = BLOCKED;
 
         queue_push(blocked, *carpincho_a_bloquear); 
         //list_(lista_exec, *carpincho_a_bloquear);
@@ -640,6 +654,16 @@ void exec_a_block(int id_carpincho){
 }
 
 
+void exec_a_block_io(int id_carpincho, char dispositivo){
+    
+    exec_a_block(id_carpincho);
+
+    // ver lo de las duraciones
+
+
+}
+
+
 void exec_a_exit(int id_carpincho){
     
     carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
@@ -647,7 +671,7 @@ void exec_a_exit(int id_carpincho){
     // Sacar de la lista de exec --> hace falta ponerlo en la lista de exit?
         pthread_mutex_lock(&sem_cola_exec); 
 		
-        //carpincho_que_termino->estado = '';
+        //carpincho_que_termino->estado = EXIT;
 
         //list_(lista_exec, *carpincho_que_termino); 
     
@@ -656,13 +680,14 @@ void exec_a_exit(int id_carpincho){
         // "libera" el hilo cpu en el que estaba:
         sem_post(liberarCPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
 
-        //avisar a mem?
+        //avisar a mem para que libere?
 }
 
 //FALTA
-void block_a_ready(){
+void block_a_ready(data_carpincho *carpincho){
 
-    // logica para que cuando se desbloquea un semaforo o termina IO pase a ready
+    // cuando se desbloquea un semaforo o termina IO pase a ready
+    //
 
 }
 
@@ -670,7 +695,7 @@ void block_a_ready(){
 void suspended_a_ready(){
 
     // logica para que cuando se desbloquee un semaforo o se termina IO de un carpincho que se habia suspendido y ahora esta en suspendido ready, vea si lo quiere pasar a ready segun grado de multiprogramacion y eso
-
+    //carpincho->prioridad = true;
 }
 
 
@@ -678,50 +703,43 @@ void suspended_a_ready(){
 
 ////////////////////////// ALGORITMOS ////////////////////////
 
-data_carpincho ready_a_exec_SJF(){ // De la lista de ready te da el que debe ejecutar ahora según SJF
+data_carpincho ready_a_exec_SJF(){
 
-    float obtener_la_menor_estimacion(){
         for(int i= 0; i<list_size(ready); i++){
 
-        float min_hasta_el_momento = 0;
-        data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
-        calculo_estimacion_siguiente(carpincho_listo);       // le calculo su estimacion
-        float estimacion_actual = carpincho_listo->estimacion_siguiente; //agarro su estimacion
-            if(estimacion_actual < min_hasta_el_momento){    // si esta es menor => pasa a ser la minima hasta el momento
-                min_hasta_el_momento = estimacion_actual;
-            }
+            float min_hasta_el_momento = 0;
+            data_carpincho carpincho_sig;
+            data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
+            calculo_estimacion_siguiente(carpincho_listo);       // le calculo su estimacion
+            float estimacion_actual = carpincho_listo->estimacion_siguiente; //agarro su estimacion
+                if(estimacion_actual < min_hasta_el_momento){    // si esta es menor => pasa a ser la minima hasta el momento
+                    carpincho_sig = carpincho_listo;
+                    min_hasta_el_momento = estimacion_actual;
+                }
         }
-        return min_hasta_el_momento;
-    }
-
-    // devuelve el carpincho que va a ejecutar (ver caso en el que 2 tengan la misma estimacion)
-    return encontrar_estructura_segun_estimacion(min_hasta_el_momento); 
         
+    return carpincho_sig;        
 }
 
-data_carpincho ready_a_exec_HRRN(){ // De la lista de ready te da el que debe ejecutar ahora según HRRN
+data_carpincho ready_a_exec_HRRN(){ 
     
-    float obtener_el_mayor_RR(){
         for(int i= 0; i<list_size(ready); i++){
 
-        float max_hasta_el_momento = 0;
-        data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
-        calculo_RR(carpincho_listo);                         // le calculo su RR
-        float RR_actual = carpincho_listo->RR;               // agarro su RR
-            if(RR_actual > max_hasta_el_momento){            // si este es mayor => pasa a ser el max hasta el momento
-                max_hasta_el_momento = RR_actual;
-            }
+            float max_hasta_el_momento = 0;
+            data_carpincho carpincho_sig;
+            data_carpincho carpincho_listo = list_get(ready, i); 
+            calculo_RR(carpincho_listo);                         
+            float RR_actual = carpincho_listo->RR;               
+                if(RR_actual > max_hasta_el_momento){            
+                    max_hasta_el_momento = RR_actual;
+                    carpincho_sig = carpincho_listo;
+                }
         }
-        return max_hasta_el_momento;
-    }
 
-    // devuelve el carpincho que va a ejecutar (ver caso en el que 2 tengan el mismo RR)
-    return encontrar_estructura_segun_RR(max_hasta_el_momento);
-    
-       
+    return carpincho_sig;     
 }
 
-// para SJF y HRRN tambien (prox rafaga)??
+
 void calculo_estimacion_siguiente(data_carpincho *carpincho){
 
     calculo_rafaga_anterior(carpincho);
@@ -737,6 +755,8 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){
     char tiempo_al_salir = temporal_get_string_time("%M %S %MS"); // ver si funciona asi, sino ("%H:%M:%S:%MS") => cambiar pasaje a int
     int tiempo_entrada = atoi(*carpincho->tiempo_entrada_a_exec);
     int tiempo_salida = atoi(*tiempo_al_salir);
+
+    //pasar a milisegundos
     
     int diferencia_milisegundos = tiempo_salida - tiempo_entrada;
 
@@ -764,8 +784,6 @@ void calculo_RR(data_carpincho *carpincho){
 void asignar_hilo_CPU(data_carpincho carpincho){
 
     hilo_cpu hilo_cpu_disponible;
-
-    sem_wait(&grado_multiprocesamiento_libre);
 
     bool buscar_disponible(void* hilo_cpu){
         int *valor;
@@ -807,7 +825,7 @@ void ejecuta(int id){
 
 
 
-/////////////////////////////// Busquedas estructura carpincho //////////////////////////// --> quiza habria que simplificar en 1 sola
+/////////////////////////////// Busquedas estructura carpincho ////////////////////////////
 
 // segun su id:
 bool id_pertenece_al_carpincho(int ID, data_carpincho *carpincho){
@@ -825,34 +843,4 @@ data_carpincho encontrar_estructura_segun_id(int ID){
     return carpincho_encontrado;
 }
 
-// segun su estimacion siguiente:
-bool estimacion_pertenece_al_carpincho(float estimacion, data_carpincho *carpincho){
-        return carpincho->estimacion_siguiente === estimacion;
-    }
-
-data_carpincho encontrar_estructura_segun_estimacion(float estimacion){
-
-    bool buscar_estimacion(void *estimacion){
-        return estimacion_pertenece_al_carpincho(estimacion, carpincho);
-    }
-
-    carpincho_encontrado = list_find(lista_carpinchos,buscar_estimacion);
-
-    return carpincho_encontrado;
-}
-
-// segun su RR:
-bool RR_pertenece_al_carpincho(float ratio, data_carpincho *carpincho){
-        return carpincho->RR === ratio;
-    }
-data_carpincho encontrar_estructura_segun_RR(float ratio){
-
-    bool buscar_RR(void *ratio){
-        return RR_pertenece_al_carpincho(ratio, carpincho);
-    }
-
-    carpincho_encontrado = list_find(lista_carpinchos,buscar_RR;
-
-    return carpincho_encontrado;
-}
 
