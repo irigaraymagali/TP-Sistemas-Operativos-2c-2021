@@ -573,7 +573,7 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         else{ 
             exec_a_block_io(id,dispositivo_pedido); //pero no lo usa, queda a la espera --> agregarselo a la estructura del carpincho?
             // por ej en carpincho: a_la_espera_de = dispositivo => ahi sabemos que pidio y que esta esperando cuando este bloqueado 
-            
+            // podríamos hacer como los semaforos, que cada dispositivo en la estructura tenga su cola en espera. Porque si no despues va a ser un lio saber qui{en lo pidió primero
         }
     }
     else
