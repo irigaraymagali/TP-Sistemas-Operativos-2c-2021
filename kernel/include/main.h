@@ -35,12 +35,6 @@ typedef struct data_carpincho // la data que le importa tener al backend
     char *semaforo; 
     int *valor_semaforo; 
     char *dispositivo_io; 
-    int *size_memoria;
-    int *addr_memfree;
-    int *origin_memread;
-    int *dest_memread;
-    int *origin_memwrite;
-    int *dest_memwrite;
 
 } data_carpincho;
 

@@ -27,18 +27,11 @@
 
 typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
 {
-    int *id;
-    char *semaforo; 
-    int *valor_semaforo; 
-    char *dispositivo_io; 
-    int *size_memoria;
-    int *addr_memfree;
-    int *origin_memread;
-    int *dest_memread;
-    int *origin_memwrite;
-    int *dest_memwrite;
+    int id;
+    char semaforo; 
+    int valor_semaforo; 
+    char dispositivo_io; 
 } mate_inner_structure;
-
 
 
 char* mi_funcion_compartida();

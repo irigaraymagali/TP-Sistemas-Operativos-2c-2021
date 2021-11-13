@@ -37,9 +37,6 @@ int main(int argc, char ** argv){
     crear_hilos_planificadores();
     
     _start_server(puerto_escucha, handler, logger);
-    
-    t_mensaje* buffer = _recive_message(buffer, logger); // recibir mensajes de la lib
-    deserializar(buffer);
 
     // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
     free_memory();
@@ -183,69 +180,118 @@ int deserializar(buffer){
     offset += sizeof(int);
     estructura_interna->dispositivo_io = malloc(str_len + 1);
     memcpy(&estructura_interna)->dispositivo_io, buffer + offset, str_len);
- 
-    // int size_memoria
-    memcpy(&(estructura_interna)->size_memoria, buffer, sizeof(int));
-    offset += sizeof(int); 
 
-    // int addr_memfree
-    memcpy(&(estructura_interna)->addr_memfree, buffer, sizeof(int));
-    offset += sizeof(int); 
-
-    // int origin_memread
-    memcpy(&(estructura_interna)->origin_memread, buffer, sizeof(int));
-    offset += sizeof(int); 
-
-    // int dest_memread
-    memcpy(&(estructura_interna)->dest_memread, buffer, sizeof(int));
-    offset += sizeof(int); 
-
-    // int origin_memwrite
-    memcpy(&(estructura_interna)->origin_memwrite, buffer, sizeof(int));
-    offset += sizeof(int); 
-
-    // int dest_memwrite
-    memcpy(&(estructura_interna)->dest_memwrite, buffer, sizeof(int));
-    offset += sizeof(int); 
-
-    handler(buffer->opcode, estructura_interna);
-    free(estructura_interna);
 }
 
 
-void handler( int opcode, data_carpincho estructura_interna){
+void handler( int fd, char* id, int opcode, void* payload, t_log* loggera){
     
     log_info(logger, "Recibí un mensaje");
+    data_carpincho estructura_interna;
+    int id_carpincho;
+    int size_memoria;
+    int addr_memfree;
+    int origin_memread;
+    void *dest_memread;
+    void *origin_memwrite;
+    int dest_memwrite;
+    int offset = 0;
+    int ptr_len = 0;
+    
 
     // fijarme cómo acá tengo que mandarle tambien a las funciones el socket para que despues puedan responderle
 
     switch(opcode){
         case MATE_INIT:
+            estructura_interna = deserializar(payload);
             mate_init(estructura_interna->id);
+            break;
         case MATE_CLOSE: 
+            estructura_interna = deserializar(payload);
             mate_close(estructura_interna->id);
+            break;
         case MATE_SEM_INIT: 
+            estructura_interna = deserializar(payload);
             mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo);            
+            break;
         case MATE_SEM_WAIT: 
+            estructura_interna = deserializar(payload);
             mate_sem_wait(estructura_interna->id, estructura_interna->semaforo);            
+            break;
         case MATE_SEM_POST: 
+            estructura_interna = deserializar(payload);
             mate_sem_post(estructura_interna->id, estructura_interna->semaforo);            
+            break;
         case MATE_SEM_DESTROY:
+            estructura_interna = deserializar(payload);
             mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo);            
+            break;
         case MATE_CALL_IO:
-            mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io);            
+            estructura_interna = deserializar(payload);
+            mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io);  
+            break;
+        // ver qué tengo que pasar acá          
         case MATE_MEMALLOC: 
-            mate_memalloc(estructura_interna->id, estructura_interna->size_memoria);            
+            // id_carpincho
+            memcpy(&id_carpincho, payload, sizeof(int));
+            offset += sizeof(int);
+            // size_memoria
+            memcpy(&size_memoria, payload, sizeof(int);
+            offset += sizeof(int);
+
+            mate_memalloc(id_carpincho, size_memoria);      
+            break;      
         case MATE_MEMFREE:
-            mate_memfree(estructura_interna->id, estructura_interna->addr_memfree);            
+            // id_carpincho
+            memcpy(&id_carpincho, payload, sizeof(int));
+            offset += sizeof(int);
+            // addr_memfree
+            memcpy(&addr_memfree, payload, sizeof(int);
+            offset += sizeof(int);
+
+            mate_memfree(id_carpincho, addr_memfree);      
+            break;      
         case MATE_MEMREAD:
-            mate_memread(estructura_interna->id, estructura_interna->origin_memread, estructura_interna->dest_memread, estructura_interna->size_memoria);            
+            // id_carpincho
+            memcpy(&id_carpincho, payload, sizeof(int));
+            offset += sizeof(int);
+            // origin_memread
+            memcpy(&origin_memread, payload, sizeof(int);
+            offset += sizeof(int);
+            // dest_memread
+            memcpy(&ptr_len, payload + offset, sizeof(int));
+            offset += sizeof(int);
+            memcpy(&dest_memread, payload + offset, ptr_len);
+            // size_memoria
+            memcpy(&size_memoria, payload, sizeof(int);
+            offset += sizeof(int);
+
+            mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria);            
+            break;
         case MATE_MEMWRITE: 
-            mate_memwrite(estructura_interna->id, estructura_interna->origin_memwrite, estructura_interna->dest_memwrite, estructura_interna->size_memoria);      
+            // id_carpincho
+            memcpy(&id_carpincho, payload, sizeof(int));
+            offset += sizeof(int);
+            // origin_memwrite
+            memcpy(&ptr_len, payload + offset, sizeof(int));
+            offset += sizeof(int);
+            memcpy(&origin_memwrite, payload + offset, ptr_len);
+            // dest_memwrite
+            memcpy(&dest_memwrite, payload, sizeof(int);
+            offset += sizeof(int);
+            // size_memoria
+            memcpy(&size_memoria, payload, sizeof(int);
+            offset += sizeof(int);
+
+            mate_memwrite(id, origin_memwrite, dest_memwrite, size_memoria);     
+            break; 
         break;  
 
     }
 }
+
+
+   
 
 
 
@@ -273,7 +319,7 @@ int mate_init(int id_carpincho){
     pthread_t esperando_estar_en_exec;
     pthread_create(&esperando_estar_en_exec, NULL, (void*) esperando_estar_en_exec(carpincho), NULL);
     // 
-    //sem_wait(retornar_init); --> ver
+    // sem_wait(retornar_init); --> ver
     // responder al carpincho que todo ok
     
 
