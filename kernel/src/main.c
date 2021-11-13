@@ -308,6 +308,9 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 responder_a_lib(id_carpincho, fd);
             break;
             case MATE_MEMREAD:
+
+                //nos va a mandar un void pointer y se lo tengo que devolver
+
                 // id_carpincho
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
