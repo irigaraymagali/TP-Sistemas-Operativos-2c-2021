@@ -156,7 +156,11 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 {
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    conexion_con_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMALLOC, _serialize(sizeof(int) * 2, "%d%d", estructura_interna->id, size ), sizeof(estructura_interna), logger); 
+    conexion_con_backend = _send_message(   socket, 
+                                            ID_MATE_LIB, MATE_MEMALLOC, 
+                                            _serialize(sizeof(int) * 2, "%d%d", estructura_interna->id, size ),
+                                            sizeof(int)*2, 
+                                            logger); 
 
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
@@ -185,7 +189,13 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
 
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    conexion_con_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMFREE, _serialize(sizeof(int) * 2, "%d%d", estructura_interna->id, addr ), sizeof(estructura_interna), logger); 
+    conexion_con_backend = _send_message(
+                                            socket, 
+                                            ID_MATE_LIB, 
+                                            MATE_MEMFREE, 
+                                            _serialize(sizeof(int) * 2, "%d%d", estructura_interna->id, addr ), 
+                                            sizeof(int)*2, 
+                                            logger); 
 
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
@@ -209,22 +219,37 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
 {
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    conexion_con_backend = _send_message(socket, ID_MATE_LIB, MATE_MEMREAD, _serialize(
-        sizeof(int) * 3 + + sizeof(int)
-        , "%d%d%d%v%d",
-        estructura_interna->id, 
-        origin,
-        sizeof(dest),
-        dest,
-        size
-        ), sizeof(estructura_interna), logger); 
+    conexion_con_backend = _send_message(
+                                            socket, 
+                                            ID_MATE_LIB, 
+                                            MATE_MEMREAD, 
+                                            _serialize(
+                                                sizeof(int) * 3 + sizeof(int) * sizeof(dest) + sizeof(int), 
+                                                "%d%d%d%v%d",
+                                                estructura_interna->id, 
+                                                origin,
+                                                sizeof(dest),
+                                                dest,
+                                                size), 
+                                            sizeof(sizeof(int) * 3 + sizeof(int) * sizeof(dest) + sizeof(int)), 
+                                            logger); 
 
-    return conexion_con_backend(MATE_MEMREAD, estructura_interna);    
+    if(conexion_con_backend < 0 ){ 
+        log_info(logger, "no se pudo crear la conexión");
+        return conexion_con_backend;  
+    }
+    else{
 
+        int resultado; 
+        t_mensaje buffer;
 
+        buffer = _receive_message(socket, logger);
 
+        memcpy(&resultado, buffer, sizeof(int));
 
-
+        return 0; // o tengo que devolver resultado?  
+        
+    }   
 
 }
 
@@ -232,12 +257,37 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
 {
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    estructura_interna->origin_memwrite = origin; 
-    estructura_interna->dest_memwrite = dest;  
-    estructura_interna->size_memoria = size; 
+    conexion_con_backend = _send_message(
+                                            socket, 
+                                            ID_MATE_LIB, 
+                                            MATE_MEMWRITE, 
+                                            _serialize(
+                                                sizeof(int) * 2 + sizeof(int) * sizeof(origin) + sizeof(int) +  sizeof(int), 
+                                                "%d%d%v%d%d",
+                                                estructura_interna->id, 
+                                                sizeof(origin),
+                                                origin,
+                                                dest,
+                                                size), 
+                                            sizeof(sizeof(int) * 2 + sizeof(int) * sizeof(origin) + sizeof(int) +  sizeof(int)), 
+                                            logger); 
 
-    return conexion_con_backend(MATE_MEMWRITE, estructura_interna);    
+    if(conexion_con_backend < 0 ){ 
+        log_info(logger, "no se pudo crear la conexión");
+        return conexion_con_backend;  
+    }
+    else{
 
+        int resultado; 
+        t_mensaje buffer;
+
+        buffer = _receive_message(socket, logger);
+
+        memcpy(&resultado, buffer, sizeof(int));
+
+        return 0; // o tengo que devolver resultado?  
+        
+    }   
 }
 
 
