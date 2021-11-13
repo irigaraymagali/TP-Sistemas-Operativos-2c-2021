@@ -594,6 +594,7 @@ void crear_estructura_dispositivo(){ //deberia crearse al principio, no cuando l
             dispositivo->nombre = list_get(dispositivos_io, i);
             dispositivo->duracion = list_get(duraciones_io, i);
             dispositivo->en_uso = false;
+            // dispositivo->en_espera = queue_create();  para crear la cola de espera y ahi ir guardando los carpinchos
 
             list_add(lista_dispositivos_io, *dispositivo);
 
