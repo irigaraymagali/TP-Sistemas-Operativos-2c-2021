@@ -14,6 +14,7 @@
 #include <commons/string.h>
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
+#include <commons/temporal.h>
 #include "socket.h"
 #include "shared_utils.h"
 #include "serialization.h"
@@ -23,24 +24,19 @@
 typedef struct data_carpincho // la data que le importa tener al backend
 {
     int id;
-    float *rafaga_anterior; // para despues poder calcular la estimación siguiente
-    float *estimacion_anterior; // idem
+    float *rafaga_anterior; // para despues poder calcular la estimación siguiente --> inicializar en 0
+    float *estimacion_anterior; // idem --> inicializar segun config
     float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
     float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
     float *RR; //para HRRN -> fijarnos si es necesario o no
     bool *prioridad; // 1 si tiene prioridad para pasar a ready -> es para los que vienen de suspended_ready a ready
     char *estado; // => ir cambiandole el estado
     hilo_CPU hilo_CPU_usado; // para saber en qué hilo cpu se esta ejecutando
+    char *tiempo_entrada_a_exec; // para calcular milisegundos en exec
 
-    char *semaforo; 
-    int *valor_semaforo; 
-    char *dispositivo_io; 
-    int *size_memoria;
-    int *addr_memfree;
-    int *origin_memread;
-    int *dest_memread;
-    int *origin_memwrite;
-    int *dest_memwrite;
+    char *semaforo; //no seria tipo semaforo?
+    int *valor_semaforo; //idem (por la estructura)
+    dispositivo_io *dispositivo_io; 
 
 } data_carpincho;
 
@@ -49,8 +45,15 @@ typedef struct semaforo
 {
     char nombre;
     int valor;
-    t_list en_espera; // cambiar a una cola
+    t_queue en_espera; // cambiar a una cola
 } semaforo;
+
+typedef struct dispositivo_io
+{
+    char nombre;
+    float duracion;
+    bool en_uso;
+} dispositivo_io;
 
 typedef struct hilo_cpu
 {
@@ -65,7 +68,7 @@ t_list* lista_carpinchos;
 
 /* Estados:*/
     t_queue* new;
-    t_queue* ready;
+    t_list* ready;
     t_list*  exec;
     t_list*  exit_list;
     t_queue* blocked;

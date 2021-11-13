@@ -3,5 +3,6 @@
         "list.h": "c",
         "type_traits": "c",
         "semaphore.h": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }

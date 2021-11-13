@@ -19,26 +19,35 @@
 #define MATE_MEMWRITE 11
 
 // constante para saber quién envia mensaje a memoria
-#define ID_MATE_LIB '1'
+#define ID_MATE_LIB "MAT"
+#define ID_KERNEL   "KER"
+#define ID_MEMORIA  "MEM"
+#define ID_SWAMP    "SWP"
 
 // valores que devuelve el backend
 #define KERNEL_BACKEND = 1 // cuando el kernel responda, va a deolver 1.
 #define MEMORIA_BACKEND = 2 // cuando la memoria responda, va a responder 2
 
+//estados
+#define NEW = 'N'
+#define READY = 'R'
+#define EXEC = 'E'
+#define BLOCKED = 'B'
+#define SUSPENDED_BLOCKED = 'S'
+#define SUSPENDED_READY = 'Y'
+#define EXIT = 'X'
+
+
+
+
+
 typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
 {
-    int *id;
-    char *semaforo; 
-    int *valor_semaforo; 
-    char *dispositivo_io; 
-    int *size_memoria;
-    int *addr_memfree;
-    int *origin_memread;
-    int *dest_memread;
-    int *origin_memwrite;
-    int *dest_memwrite;
+    int id;
+    char semaforo; 
+    int valor_semaforo; 
+    char dispositivo_io; 
 } mate_inner_structure;
-
 
 
 char* mi_funcion_compartida();
