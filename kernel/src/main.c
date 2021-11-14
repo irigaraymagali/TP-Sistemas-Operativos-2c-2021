@@ -666,10 +666,18 @@ void ready_a_exec(){
         carpincho_a_mover->estado = EXEC;
 
         list_add(exec, *carpincho_a_mover);
-        list_remove_by_condition(ready, es_el_mismo_carpincho);
+        list_remove_by_condition(ready, es_el_mismo);
     
 		pthread_mutex_unlock(&sem_cola_exec);
 		pthread_mutex_unlock(&sem_cola_ready);
+
+        bool es_el_mismo(void* carpincho){
+            return es_el_mismo_carpincho(carpincho,carpincho_a_mover);
+            }
+
+        bool es_el_mismo_carpincho(data_carpincho carpincho, data_carpincho carpincho_a_mover){
+            return carpincho->id === carpincho_a_mover->id;
+            }
 
         asignarle_hilo_CPU(carpincho_a_mover);
 
@@ -680,9 +688,7 @@ void ready_a_exec(){
     }
 }
 
-//bool es_el_mismo_carpincho(data_carpincho carpincho, data_carpincho carpincho_a_mover){
-  //  return carpincho->id === carpincho_a_mover->id;
-// }
+
 
 void exec_a_block(int id_carpincho){
     // le pasan el id del carpincho y lo saca de la lista de exec, lo pone en block y le hace signal al cpu
@@ -697,10 +703,18 @@ void exec_a_block(int id_carpincho){
         carpincho_a_bloquear->estado = BLOCKED;
 
         queue_push(blocked, *carpincho_a_bloquear); 
-        //list_(lista_exec, *carpincho_a_bloquear);
+        list_remove_by_condition(exec, es_el_mismo);
     
 		pthread_mutex_unlock(&sem_cola_blocked);
 		pthread_mutex_unlock(&sem_cola_exec);
+
+        bool es_el_mismo(void* carpincho){
+            return es_el_mismo_carpincho(carpincho,carpincho_a_bloquear);
+            }
+
+        bool es_el_mismo_carpincho(data_carpincho carpincho, data_carpincho carpincho_a_bloquear){
+            return carpincho->id === carpincho_a_bloquear->id;
+            }
 
         // "libera" el hilo cpu en el que estaba:
         sem_post(liberar_CPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
@@ -708,7 +722,7 @@ void exec_a_block(int id_carpincho){
 }
 
 
-void exec_a_block_io(int id_carpincho, char dispositivo){
+void exec_a_block_io(int id_carpincho, char dispositivo){ //hace falta que sea una distinta?
     
     // ver lo de las duraciones
     exec_a_block(id_carpincho);
@@ -725,7 +739,7 @@ void exec_a_exit(int id_carpincho){
 		
         //carpincho_que_termino->estado = EXIT;
 
-        //list_(lista_exec, *carpincho_que_termino); 
+        list_remove_by_condition(exec, es_el_mismo);
     
 		pthread_mutex_unlock(&sem_cola_exec);
 
@@ -733,6 +747,14 @@ void exec_a_exit(int id_carpincho){
         sem_post(liberar_CPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
 
         //avisar a mem para que libere?
+
+        bool es_el_mismo(void* carpincho){
+            return es_el_mismo_carpincho(carpincho,carpincho_que_termino);
+            }
+
+        bool es_el_mismo_carpincho(data_carpincho carpincho, data_carpincho carpincho_que_termino){
+            return carpincho->id === carpincho_que_termino->id;
+            }
 }
 
 //FALTA
