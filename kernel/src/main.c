@@ -1,7 +1,5 @@
 #include "main.h"
 
-
-
 int main(int argc, char ** argv){
 
     int* socket;
@@ -43,7 +41,6 @@ int main(int argc, char ** argv){
     free_memory();
 
 } 
-
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
 
@@ -550,16 +547,11 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         return es_igual_dispositivo(dispositivo, nombre_dispositivo);
     }
 
-    // si nombre_io esta disponible => bloquear al carpincho por io
-    // si no => bloquearlo? a la espera de que se desocupe
-
-    // lista dispositivos_io y duraciones_io por config
-    
-
     if(list_any_satisfy(dispositivos_io, igual_a)){  
-
+        
+        exec_a_block(id_carpincho);
         dispositivo_pedido = list_find(dispositivos_io, dispositivo_igual_a); 
-        // o directamente bloquear al carpincho, y si lo puede usar lo usa y sino espera
+
 
         if(!dispositivo_pedido->en_uso){
             exec_a_block_io(id,dispositivo_pedido); //ver, hace falta que sea otra distinta? lo puse para pasarle el dispositivo que pidio
