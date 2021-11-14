@@ -204,98 +204,130 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     int offset = 0;
     int ptr_len = 0;
     
+    if(id === ID_MATE_LIB){
+        switch(opcode){
+            case MATE_INIT:
+                estructura_interna = deserializar(payload);
+                mate_init(fd);
+            break;
+            case MATE_CLOSE: 
+                estructura_interna = deserializar(payload);
+                mate_close(estructura_interna->id,fd);
+            break;
+            case MATE_SEM_INIT: 
+                estructura_interna = deserializar(payload);
+                mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
+            break;
+            case MATE_SEM_WAIT: 
+                estructura_interna = deserializar(payload);
+                mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
+            break;
+            case MATE_SEM_POST: 
+                estructura_interna = deserializar(payload);
+                mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
+            break;
+            case MATE_SEM_DESTROY:
+                estructura_interna = deserializar(payload);
+                mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
+            break;
+            case MATE_CALL_IO:
+                estructura_interna = deserializar(payload);
+                mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
+            break;
+            // ver qué tengo que pasar acá          
+            case MATE_MEMALLOC: 
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // size_memoria
+                memcpy(&size_memoria, payload, sizeof(int);
+                offset += sizeof(int);
 
-    // fijarme cómo acá tengo que mandarle tambien a las funciones el socket para que despues puedan responderle
-
-    switch(opcode){
-        case MATE_INIT:
-            estructura_interna = deserializar(payload);
-            mate_init(fd);
-            break;
-        case MATE_CLOSE: 
-            estructura_interna = deserializar(payload);
-            mate_close(estructura_interna->id,fd);
-            break;
-        case MATE_SEM_INIT: 
-            estructura_interna = deserializar(payload);
-            mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
-            break;
-        case MATE_SEM_WAIT: 
-            estructura_interna = deserializar(payload);
-            mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
-            break;
-        case MATE_SEM_POST: 
-            estructura_interna = deserializar(payload);
-            mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
-            break;
-        case MATE_SEM_DESTROY:
-            estructura_interna = deserializar(payload);
-            mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
-            break;
-        case MATE_CALL_IO:
-            estructura_interna = deserializar(payload);
-            mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
-            break;
-        // ver qué tengo que pasar acá          
-        case MATE_MEMALLOC: 
-            // id_carpincho
-            memcpy(&id_carpincho, payload, sizeof(int));
-            offset += sizeof(int);
-            // size_memoria
-            memcpy(&size_memoria, payload, sizeof(int);
-            offset += sizeof(int);
-
-            mate_memalloc(id_carpincho, size_memoria, fd);      
+                mate_memalloc(id_carpincho, size_memoria, fd);      
             break;      
-        case MATE_MEMFREE:
-            // id_carpincho
-            memcpy(&id_carpincho, payload, sizeof(int));
-            offset += sizeof(int);
-            // addr_memfree
-            memcpy(&addr_memfree, payload, sizeof(int);
-            offset += sizeof(int);
+            case MATE_MEMFREE:
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // addr_memfree
+                memcpy(&addr_memfree, payload, sizeof(int);
+                offset += sizeof(int);
 
-            mate_memfree(id_carpincho, addr_memfree, fd);      
+                mate_memfree(id_carpincho, addr_memfree, fd);      
             break;      
-        case MATE_MEMREAD:
-            // id_carpincho
-            memcpy(&id_carpincho, payload, sizeof(int));
-            offset += sizeof(int);
-            // origin_memread
-            memcpy(&origin_memread, payload, sizeof(int);
-            offset += sizeof(int);
-            // dest_memread
-            memcpy(&ptr_len, payload + offset, sizeof(int));
-            offset += sizeof(int);
-            memcpy(&dest_memread, payload + offset, sizeof(int)* ptr_len);
-            // size_memoria
-            memcpy(&size_memoria, payload, sizeof(int);
-            offset += sizeof(int);
+            case MATE_MEMREAD: 
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // origin_memread
+                memcpy(&origin_memread, payload, sizeof(int);
+                offset += sizeof(int);
+                // dest_memread
+                memcpy(&ptr_len, payload + offset, sizeof(int));
+                offset += sizeof(int);
+                memcpy(&dest_memread, payload + offset, sizeof(int)* ptr_len);
+                // size_memoria
+                memcpy(&size_memoria, payload, sizeof(int);
+                offset += sizeof(int);
 
-            mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria), fd;            
+                mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria), fd;            
             break;
-        case MATE_MEMWRITE: 
-            // id_carpincho
-            memcpy(&id_carpincho, payload, sizeof(int));
-            offset += sizeof(int);
-            // origin_memwrite
-            memcpy(&ptr_len, payload + offset, sizeof(int));
-            offset += sizeof(int);
-            memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
-            // dest_memwrite
-            memcpy(&dest_memwrite, payload, sizeof(int);
-            offset += sizeof(int);
-            // size_memoria
-            memcpy(&size_memoria, payload, sizeof(int);
-            offset += sizeof(int);
+            case MATE_MEMWRITE:  
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // origin_memwrite
+                memcpy(&ptr_len, payload + offset, sizeof(int));
+                offset += sizeof(int);
+                memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
+                // dest_memwrite
+                memcpy(&dest_memwrite, payload, sizeof(int);
+                offset += sizeof(int);
+                // size_memoria
+                memcpy(&size_memoria, payload, sizeof(int);
+                offset += sizeof(int);
 
-            mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);     
-            break; 
-        break;  
+                mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);     
+            break;  
+        }
+    }
+    else{
+        switch(opcode){
+            case MATE_MEMALLOC:
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
 
+                responder_a_lib(id_carpincho, fd);
+            break;
+            case MATE_MEMFREE:
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+
+                responder_a_lib(id_carpincho, fd);
+            break;
+            case MATE_MEMREAD:
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+
+                responder_a_lib(id_carpincho, fd);
+            break;  
+            case MATE_MEMWRITE:
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+
+                responder_a_lib(id_carpincho, fd);
+            break;
     }
 }
 
+responder_a_lib(int id_carpincho, int fd){
+    //preguntarles que me van a devolver si esta todo mal asi devuelvo ese error
+    _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger);
+}
 
 //////////////// FUNCIONES GENERALES ///////////////////
 
@@ -331,21 +363,7 @@ int mate_init(int fd){
 
     id_carpincho += 2; // incrementa carpinchos impares
 
-    pthread_t esperando_estar_en_exec;   //sacar el hilo o lo dejamos así?
-    pthread_create(&esperando_estar_en_exec, NULL, (void*) esperando_estar_en_exec, (carpincho,fd)); // estan bien pasados los dos argumentos?
-    
 }
-
-void esperando_estar_en_exec(carpincho,fd){
-while(true){
-    // ver si es necesario que haya un wait
-    if(carpincho->estado === EXEC){
-        _send_message(fd, ID_MATE_LIB, 1, carpincho->id, sizeof(int), logger); // va así?
-        return 0;
-    }
-}
-}
-
 
 int mate_close(int id_carpincho, int fd){
     
@@ -453,22 +471,28 @@ int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
 
         (list_find(semaforos_carpinchos, semaforoIgualA))->valor_semaforo ++; 
+        
+        _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger);
+        
+        if(!queue_is_empty){
+            carpincho_a_desbloquear = queue_pop((list_find(semaforos_carpinchos, semaforoIgualA))->en_espera);
 
-        carpincho_a_desbloquear = queue_pop((list_find(semaforos_carpinchos, semaforoIgualA))->en_espera);
-
-        if(carpincho_a_desbloquear->estado === BLOCKED){
-            carpincho_a_desbloquear->estado = READY;
-            block_a_ready(carpincho_a_desbloquear, fd);
+            if(carpincho_a_desbloquear->estado === BLOCKED){
+                carpincho_a_desbloquear->estado = READY;
+                block_a_ready(carpincho_a_desbloquear, fd);
+            }
+            else{ // si no esta en blocked es porque estaba en suspended blocked, ahora lo cambio a suspended_ready
+                carpincho_a_desbloquear->estado = SUSPENDED_READY;
+                // sem_post(&hay_estructura_creada);
+                suspended_a_ready(carpincho_a_desbloquear);
+            }
         }
-        else{ // si no esta en blocked es porque estaba en suspended blocked, ahora lo cambio a suspended_ready
-            carpincho_a_desbloquear->estado = SUSPENDED_READY;
-            // sem_post(&hay_estructura_creada);
-            suspended_a_ready(carpincho_a_desbloquear);
-        }
+        
     }
     else
     {
         log_info(logger, "se intento hacer post de un semaforo no inicializado");
+        _send_message(fd, ID_MATE_LIB, 1, -1, sizeof(int), logger);
     }
 
 
@@ -487,11 +511,13 @@ int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
 
         // if => qué pasa si tienen algun carpincho en wait? se puede eliminar el semaforo? que pasa con los que estan en espera?
-            list_remove_by_condition(semaforos_carpinchos,esIgualA);
+        list_remove_by_condition(semaforos_carpinchos,esIgualA);
+        _send_message(fd, ID_MATE_LIB, 1, 0, sizeof(int), logger);
     }
     else
     {
         log_info(logger, "se intento borrar un semaforo no inicializado");
+        _send_message(fd, ID_MATE_LIB, 1, -1, sizeof(int), logger);
     }
 
 
@@ -513,9 +539,7 @@ int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
             }
 
     //para el any satisfy:
-        dispositivo_io dispositivo_igual_a(void *dispositivo){
-                return dispositivo_igual_a_nombre(nombre_dispositivo, dispositivo);
-            }
+
 
         dispositivo_io dispositivo_igual_a_nombre(mate_io_resource nombre_dispositivo, void *dispositivo){
                 return dispositivo->nombre === nombre_dispositivo;
@@ -528,10 +552,15 @@ int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
 
 int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
+    dispositivo_io dispositivo_igual_a(void *dispositivo){
+        return dispositivo_igual_a_nombre(nombre_io, dispositivo);
+    }
+
     // si nombre_io esta disponible => bloquear al carpincho por io
     // si no => bloquearlo? a la espera de que se desocupe
 
     // lista dispositivos_io y duraciones_io por config
+    
 
     if(list_any_satisfy(dispositivos_io, igual_a)){  
 
@@ -539,7 +568,7 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
         if(dispositivo_pedido->en_uso === false){
             exec_a_block_io(id,dispositivo); //ver
-            dispositivo_pedido->en_uso = true;
+            dispositivo_pedido->en_uso = true;        
         }
         else{ // si esta en uso => ?
             
@@ -548,6 +577,8 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     else
     {
         log_info(logger, "Se pidio un dispositivo IO que no existe");
+        _send_message(fd, ID_MATE_LIB, 1, -1, sizeof(int), logger);
+        
     }
 
 }
@@ -645,6 +676,7 @@ void ready_a_exec(){
         carpincho_a_mover->tiempo_entrada_a_exec = temporal_get_string_time("%H:%M:%S:%MS");
 
         //mandar mensaje a la lib, con el fd que tiene en la estructura el carpincho
+        _send_message(carpincho->fd, ID_MATE_LIB, 1, carpincho->id, sizeof(int), logger); // va así?
     }
 }
 
@@ -678,10 +710,8 @@ void exec_a_block(int id_carpincho){
 
 void exec_a_block_io(int id_carpincho, char dispositivo){
     
-    exec_a_block(id_carpincho);
-
     // ver lo de las duraciones
-
+    exec_a_block(id_carpincho);
 
 }
 
