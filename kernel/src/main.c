@@ -504,21 +504,17 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         dispositivo_pedido = list_find(dispositivos_io, dispositivo_igual_a); 
 
         if(dispositivo_pedido->en_uso === false){
-            exec_a_block_io(id,dispositivo); //hacer
+            exec_a_block_io(id,dispositivo); //ver
             dispositivo_pedido->en_uso = true;
         }
-        else{ // si esta en uso => 
+        else{ // si esta en uso => ?
             
         }
     }
     else
     {
-        log_info(logger, "se intento hacer post de un semaforo no inicializado");
+        log_info(logger, "Se pidio un dispositivo IO que no existe");
     }
-
-
-
-
 
 
 
@@ -643,9 +639,6 @@ void exec_a_block_io(int id_carpincho, char dispositivo){
 }
 
 
-
-
-
 void exec_a_exit(int id_carpincho){
     
     carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
@@ -685,34 +678,34 @@ void suspended_a_ready(){
 
 ////////////////////////// ALGORITMOS ////////////////////////
 
-data_carpincho ready_a_exec_SJF(){ // De la lista de ready te da el que debe ejecutar ahora según SJF
+data_carpincho ready_a_exec_SJF(){
 
         for(int i= 0; i<list_size(ready); i++){
 
-        float min_hasta_el_momento = 0;
-        data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
-        calculo_estimacion_siguiente(carpincho_listo);       // le calculo su estimacion
-        float estimacion_actual = carpincho_listo->estimacion_siguiente; //agarro su estimacion
-            if(estimacion_actual < min_hasta_el_momento){    // si esta es menor => pasa a ser la minima hasta el momento
-                min_hasta_el_momento = estimacion_actual;
-            }
+            float min_hasta_el_momento = 0;
+            data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
+            calculo_estimacion_siguiente(carpincho_listo);       // le calculo su estimacion
+            float estimacion_actual = carpincho_listo->estimacion_siguiente; //agarro su estimacion
+                if(estimacion_actual < min_hasta_el_momento){    // si esta es menor => pasa a ser la minima hasta el momento
+                    min_hasta_el_momento = estimacion_actual;
+                }
         }
         
-    // devuelve el carpincho que va a ejecutar --> (ver caso en el que 2 tengan la misma estimacion)
+    // devuelve el carpincho que va a ejecutar --> (VER caso en el que 2 tengan la misma estimacion)
     return encontrar_estructura_segun_estimacion(min_hasta_el_momento);        
 }
 
-data_carpincho ready_a_exec_HRRN(){ // De la lista de ready te da el que debe ejecutar ahora según HRRN
+data_carpincho ready_a_exec_HRRN(){ 
     
         for(int i= 0; i<list_size(ready); i++){
 
-        float max_hasta_el_momento = 0;
-        data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
-        calculo_RR(carpincho_listo);                         // le calculo su RR
-        float RR_actual = carpincho_listo->RR;               // agarro su RR
-            if(RR_actual > max_hasta_el_momento){            // si este es mayor => pasa a ser el max hasta el momento
-                max_hasta_el_momento = RR_actual;
-            }
+            float max_hasta_el_momento = 0;
+            data_carpincho carpincho_listo = list_get(ready, i); 
+            calculo_RR(carpincho_listo);                         
+            float RR_actual = carpincho_listo->RR;               
+                if(RR_actual > max_hasta_el_momento){            
+                    max_hasta_el_momento = RR_actual;
+                }
         }
 
     // devuelve el carpincho que va a ejecutar (ver caso en el que 2 tengan el mismo RR)
