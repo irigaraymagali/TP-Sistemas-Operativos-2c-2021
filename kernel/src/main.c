@@ -90,13 +90,13 @@ void inicializar_semaforos(){ // Inicializacion de semaforos:
 void crear_hilos_planificadores(){
 
     pthread_t planficador_largo_plazo;
-    pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
+    pthread_create(&planficador_largo_plazo, NULL, entrantes_a_ready, NULL);
 
     pthread_t planficador_corto_plazo;
-    pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
+    pthread_create(&planficador_corto_plazo, NULL, ready_a_exec, NULL);
 
     pthread_t planficador_mediano_plazo;
-    pthread_create(&planficador_mediano_plazo, NULL, (void*) x, NULL); //FALTA función "x"
+    pthread_create(&planficador_mediano_plazo, NULL, suspender, NULL); //FALTA función "x"
 }
 
 void crear_hilos_CPU(){ // creación de los hilos CPU
@@ -717,6 +717,10 @@ void entrantes_a_ready(){
         
         carpincho_a_mover->estado = READY;
         sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
+
+        if(sem_getvalue(&sem_grado_multiprogramacion_libre) === 0){ // si con este se llena el grado de multiprocesamiento, podria necesitarse suspender 
+            sem_post(&sem_programacion_lleno);
+        }
     }
 }
 
@@ -763,6 +767,11 @@ void ready_a_exec(){
 
         //mandar mensaje a la lib, con el fd que tiene en la estructura el carpincho
         _send_message(carpincho->fd, ID_KERNEL, 1, carpincho->id, sizeof(int), logger); // va así?
+
+        if(sem_getvalue(&sem_grado_multiprocesamiento_libre) === 0){ // si con este se llena el grado de multiprocesamiento, podria necesitarse suspender 
+            sem_post(&sem_procesamiento_lleno);
+        }
+
     }
 }
 
@@ -792,7 +801,9 @@ void exec_a_block(int id_carpincho){
 	pthread_mutex_unlock(&sem_cola_blocked);
 	pthread_mutex_unlock(&sem_cola_exec);
 
-    carpincho_a_bloquear->estado = BLOCKED;
+    carpincho_a_bloquear->estado = BLOCKED; 
+
+    sem_post(&sem_hay_bloqueados);
 
     sem_post(liberar_CPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
 
@@ -850,6 +861,8 @@ void block_a_ready(data_carpincho *carpincho){ //la llaman cuando se hace post o
     carpincho->estado = READY;
     sem_post(&cola_ready_con_elementos);
 
+    sem_wait(&sem_hay_bloqueados);
+
     // no tiene que evaluar ni grado de multiprogramacion ni de multiproc porque ya estaba considerado.
     // no responde nada a la lib porque todavia no esta en exec, solo paso a ready
 }
@@ -876,8 +889,14 @@ void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
 
 void suspender(){
 
-// falta poner aca un while o semaforos para ver cuando es que va a hacer este analisis
+while(1){
+
+    sem_wait(&sem_procesamiento_lleno);
+    sem_wait(&sem_programacion_lleno);
+    sem_wait(&sem_hay_bloqueados);
+
     if(estan_las_condiciones_para_suspender()){
+
         int longitud;
         longitud = list_size(blocked);
 
@@ -896,7 +915,7 @@ void suspender(){
         _send_message(socket_memoria, ID_KERNEL, SUSPENDER, _serialize(sizeof(int), "%d", carpincho_a_suspender->id), sizeof(int), logger);  //avisar a mem para que libere
         
     }
-
+}
 }
 
 bool estan_las_condiciones_para_suspender(){
