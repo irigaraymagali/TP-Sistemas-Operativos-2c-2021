@@ -476,8 +476,9 @@ int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         semaforo semaforo_post = list_find(semaforos_carpinchos, semaforoIgualA)
         semaforo_post->valor_semaforo ++; 
         
-        if(!queue_is_empty){
-            carpincho_a_desbloquear = queue_pop(semaforo_post->en_espera);
+        if(!queue_is_empty(semaforo_post->en_espera)){
+            carpincho_a_desbloquear = queue_peek(semaforo_post->en_espera);
+            queue_pop(semaforo_post->en_espera);
 
             if(carpincho_a_desbloquear->estado === BLOCKED){
                 carpincho_a_desbloquear->estado = READY;
@@ -506,10 +507,18 @@ int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
     semaforo semaforoIgualA(void *semaforo){
         return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
     }
-    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
-        // if => qué pasa si tienen algun carpincho en wait? se puede eliminar el semaforo? que pasa con los que estan en espera?
-        list_remove_by_condition(semaforos_carpinchos,esIgualA);
-        _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger);
+    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
+        
+        semaforo semaforo_destroy = list_find(semaforos_carpinchos,esIgualA);
+       
+       if(!queue_is_empty(semaforo_post->en_espera)){ // solo puede destruirlo si está inicializado y no tiene carpinchos en la lista de espera
+            list_remove_by_condition(semaforos_carpinchos,esIgualA);
+            _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger);
+       }
+       else{
+            log_info(logger, "no se puede destruir un semáforo que tenga carpinchos en wait");
+            _send_message(fd, ID_KERNEL, 1, -2, sizeof(int), logger);
+       }
     }
     else
     {
@@ -517,7 +526,6 @@ int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
         _send_message(fd, ID_KERNEL, 1, -1, sizeof(int), logger);
     }
 }
-
 
 //////////////// FUNCIONES IO ///////////////////
 
@@ -550,24 +558,30 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     if(list_any_satisfy(dispositivos_io, igual_a)){  
         
         exec_a_block(id_carpincho);
+        data_carpincho carpnicho = encontrar_estructura_segun_id(id_carpincho);
+        carpincho->estado = BLOCKED;
         dispositivo_pedido = list_find(dispositivos_io, dispositivo_igual_a); 
 
-
-        if(!dispositivo_pedido->en_uso){
-            exec_a_block_io(id,dispositivo_pedido); //ver, hace falta que sea otra distinta? lo puse para pasarle el dispositivo que pidio
-            dispositivo_pedido->en_uso = true;        
+        if(dispositivo_pedido->en_uso){
+           queue_push(dispositivo_pedido->en_espera, carpincho);       
         }
         else{ 
-            exec_a_block_io(id,dispositivo_pedido); //pero no lo usa, queda a la espera --> agregarselo a la estructura del carpincho?
-            // por ej en carpincho: a_la_espera_de = dispositivo => ahi sabemos que pidio y que esta esperando cuando este bloqueado 
-            // podríamos hacer como los semaforos, que cada dispositivo en la estructura tenga su cola en espera. Porque si no despues va a ser un lio saber qui{en lo pidió primero
+            dispositivo_pedido->en_uso = true;
+            usleep(dispositivo_pedido->duracion);
+            block_a_ready(carpincho);
+            while(!queue_is_empty(dispositivo_pedido->en_espera)){
+                data_carpincho carpincho_siguiente;
+                carpincho_siguiente = queue_peek(dispositivo_pedido->en_espera);
+                queue_pop(dispositivo_pedido->en_espera);
+                usleep(dispositivo_pedido->duracion);
+                block_a_ready(carpincho_siguiente);
+            }
         }
     }
     else
     {
         log_info(logger, "Se pidio un dispositivo IO que no existe");
         _send_message(fd, ID_KERNEL, 1, -1, sizeof(int), logger);
-        
     }
 
 }
