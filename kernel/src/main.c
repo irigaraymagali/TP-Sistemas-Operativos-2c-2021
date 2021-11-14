@@ -318,8 +318,10 @@ int mate_init(int id_carpincho, int fd){
 
 void esperando_estar_en_exec(carpincho,fd){
 while(true){
+    // ver si es necesario que haya un wait
     if(carpincho->estado === EXEC){
         _send_message(fd, ID_MATE_LIB, 1, carpincho->id, sizeof(int), logger); // va así?
+        return 0;
     }
 }
 }
@@ -379,15 +381,13 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     }
 
     semaforo semaforoIgualA(void *semaforo){
-        return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
+        return semaforoIgualANombreSemaforo(nombre_semaforo, semaforo);
     }
 
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
 
-        (list_find(semaforos_carpinchos, semaforoIgualA))->valor_semaforo --; 
-
-
-// ¿no deberia ser semaforo = list_find ... para poner el semaforo en el if y a ese decrmentarle el valor ??
+        semaforo semaforo = list_find(semaforos_carpinchos, semaforoIgualA);
+        semaforo->valor_semaforo --; 
 
         if(semaforo->valor_semaforo<1){
             exec_a_block(id_carpincho); 
@@ -395,7 +395,7 @@ int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         }
         else
         {
-            // acá no pasa nada, no? o sea si el semaforo de decrementa y sigue siendo mayor a 1, sigue todo como si nada, no?
+            // retornar mensaje a la lib
         }
     }
     else
@@ -568,6 +568,11 @@ void new_a_ready(){
     
 }
 
+void suspended_a_ready(){
+    sem_wait(&sem_grado_multiprogramacion_libre);
+    //avisarle a mem que recupere las pags
+}
+
 
 void ready_a_exec(){  
 
@@ -576,7 +581,7 @@ void ready_a_exec(){
     while(1){ 
 
         sem_wait(&cola_ready_con_elementos);   
-        sem_wait(&sem_grado_multiprocesamiento_libre); // FALTA post: cuando sale de exec? 
+        sem_wait(&sem_grado_multiprocesamiento_libre);
 
     // Depende del algoritmo en el config:
         if(algoritmo_planificacion == "SJF"){
@@ -683,16 +688,17 @@ data_carpincho ready_a_exec_SJF(){
         for(int i= 0; i<list_size(ready); i++){
 
             float min_hasta_el_momento = 0;
+            data_carpincho carpincho_sig;
             data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
             calculo_estimacion_siguiente(carpincho_listo);       // le calculo su estimacion
             float estimacion_actual = carpincho_listo->estimacion_siguiente; //agarro su estimacion
                 if(estimacion_actual < min_hasta_el_momento){    // si esta es menor => pasa a ser la minima hasta el momento
+                    carpincho_sig = carpincho_listo;
                     min_hasta_el_momento = estimacion_actual;
                 }
         }
         
-    // devuelve el carpincho que va a ejecutar --> (VER caso en el que 2 tengan la misma estimacion)
-    return encontrar_estructura_segun_estimacion(min_hasta_el_momento);        
+    return carpincho_sig;        
 }
 
 data_carpincho ready_a_exec_HRRN(){ 
@@ -700,19 +706,20 @@ data_carpincho ready_a_exec_HRRN(){
         for(int i= 0; i<list_size(ready); i++){
 
             float max_hasta_el_momento = 0;
+            data_carpincho carpincho_sig;
             data_carpincho carpincho_listo = list_get(ready, i); 
             calculo_RR(carpincho_listo);                         
             float RR_actual = carpincho_listo->RR;               
                 if(RR_actual > max_hasta_el_momento){            
                     max_hasta_el_momento = RR_actual;
+                    carpincho_sig = carpincho_listo;
                 }
         }
 
-    // devuelve el carpincho que va a ejecutar (ver caso en el que 2 tengan el mismo RR)
-    return encontrar_estructura_segun_RR(max_hasta_el_momento);     
+    return carpincho_sig;     
 }
 
-// para SJF y HRRN tambien (prox rafaga)??
+
 void calculo_estimacion_siguiente(data_carpincho *carpincho){
 
     calculo_rafaga_anterior(carpincho);
@@ -728,6 +735,8 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){
     char tiempo_al_salir = temporal_get_string_time("%M %S %MS"); // ver si funciona asi, sino ("%H:%M:%S:%MS") => cambiar pasaje a int
     int tiempo_entrada = atoi(*carpincho->tiempo_entrada_a_exec);
     int tiempo_salida = atoi(*tiempo_al_salir);
+
+    //pasar a milisegundos
     
     int diferencia_milisegundos = tiempo_salida - tiempo_entrada;
 
@@ -755,8 +764,6 @@ void calculo_RR(data_carpincho *carpincho){
 void asignar_hilo_CPU(data_carpincho carpincho){
 
     hilo_cpu hilo_cpu_disponible;
-
-    sem_wait(&grado_multiprocesamiento_libre);
 
     bool buscar_disponible(void* hilo_cpu){
         int *valor;
@@ -798,7 +805,7 @@ void ejecuta(int id){
 
 
 
-/////////////////////////////// Busquedas estructura carpincho //////////////////////////// --> quiza habria que simplificar en 1 sola
+/////////////////////////////// Busquedas estructura carpincho ////////////////////////////
 
 // segun su id:
 bool id_pertenece_al_carpincho(int ID, data_carpincho *carpincho){
@@ -816,34 +823,4 @@ data_carpincho encontrar_estructura_segun_id(int ID){
     return carpincho_encontrado;
 }
 
-// segun su estimacion siguiente:
-bool estimacion_pertenece_al_carpincho(float estimacion, data_carpincho *carpincho){
-        return carpincho->estimacion_siguiente === estimacion;
-    }
-
-data_carpincho encontrar_estructura_segun_estimacion(float estimacion){
-
-    bool buscar_estimacion(void *estimacion){
-        return estimacion_pertenece_al_carpincho(estimacion, carpincho);
-    }
-
-    carpincho_encontrado = list_find(lista_carpinchos,buscar_estimacion);
-
-    return carpincho_encontrado;
-}
-
-// segun su RR:
-bool RR_pertenece_al_carpincho(float ratio, data_carpincho *carpincho){
-        return carpincho->RR === ratio;
-    }
-data_carpincho encontrar_estructura_segun_RR(float ratio){
-
-    bool buscar_RR(void *ratio){
-        return RR_pertenece_al_carpincho(ratio, carpincho);
-    }
-
-    carpincho_encontrado = list_find(lista_carpinchos,buscar_RR;
-
-    return carpincho_encontrado;
-}
 
