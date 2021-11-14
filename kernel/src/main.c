@@ -1,6 +1,15 @@
 #include "main.h"
 
 int main(int argc, char ** argv){
+    
+    // para pruebas
+    /*  logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
+    socket_memoria = malloc(sizeof(int));
+
+    id_carpincho = 1;
+    ptr_id_carpincho = &id_carpincho;
+    */
+
 
     int* socket;
     socket_memoria = malloc(sizeof(int));
@@ -63,82 +72,105 @@ void inicializar_colas(){ // Colas estados y sus mutex:
 
     suspended_ready = queue_create();
 	pthread_mutex_init(&sem_cola_suspended_ready, NULL);
+
+    hilos_CPU = list_create();    
 	
-    pthread_mutex_init(&socket_memoria, NULL); //falta declarar socket_memoria => para que este mutex?
+    //pthread_mutex_init(&socket_memoria, NULL); //falta declarar socket_memoria => para que este mutex?
 }
 
 void inicializar_semaforos(){ // Inicializacion de semaforos:
-
-    // (tener en cuenta: el segundo parámetro deberia ser 1 si es compartido entre carpinchos)
-
     sem_init(&sem_grado_multiprogramacion_libre,0,grado_multiprogramacion);  
 	sem_init(&sem_grado_multiprocesamiento_libre, 0,grado_multiprocesamiento); 
-
     sem_init(&hay_estructura_creada,0,0);
     sem_init(&cola_ready_con_elementos,0,0);
     sem_init(&cola_exec_con_elementos,0,0);
     sem_init(&cola_blocked_con_elementos,0,0);
     sem_init(&cola_suspended_blocked_con_elementos,0,0);
     sem_init(&cola_suspended_ready_con_elementos,0,0); 
-
-    // hacer sem_destroy al final
 }
+// para compilar
+void entrantes_a_ready(){}
+void ready_a_exec(){}
+void suspender(){}
+void ejecuta(){}
+
 
 void crear_hilos_planificadores(){
-
     pthread_t planficador_largo_plazo;
-    pthread_create(&planficador_largo_plazo, NULL, entrantes_a_ready, NULL);
+    pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
 
     pthread_t planficador_corto_plazo;
-    pthread_create(&planficador_corto_plazo, NULL, ready_a_exec, NULL);
-
+    pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
+    
     pthread_t planficador_mediano_plazo;
-    pthread_create(&planficador_mediano_plazo, NULL, suspender, NULL); //FALTA función "x"
+    pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); //FALTA función "x"
 }
 
 void crear_hilos_CPU(){ // creación de los hilos CPU
 
-    pthread_t hilo_cpu[grado_multiprocesamiento];
+   
 	for(int i= 0; i< grado_multiprocesamiento; i++){
+        
+        sem_t liberar_CPU[i];
+        sem_t CPU_libre[i];
+        sem_t usar_CPU[i];
 
         sem_init(&liberar_CPU[i], 0, 0);
-        sem_init(&CPU_libre[i], 0, 1; // ver si es 0 o 1 en el segundo argumento
+        sem_init(&CPU_libre[i], 0, 1); // ver si es 0 o 1 en el segundo argumento
         sem_init(&usar_CPU[i], 0, 0);        
         
-        (pthread_create(&hilo_cpu[i], NULL, (void*)ejecuta, i); 
+        pthread_t hilo_CPU[i];
+        pthread_create(&hilo_CPU[i], NULL, (void*) ejecuta, &i); 
         
-        hilo_cpu *nuevo_cpu;
-        nuevo_cpu = malloc(sizeof(hilo_cpu)); //es necsario? esta bien?
-        nuevo_cpu->id = i;
-        nuevo_cpu->semaforo = &CPU_libre[i]; //esto funciona asi?
+        CPU *nuevo_CPU;
+        nuevo_CPU = malloc(sizeof(hilo_CPU)); //es necsario? esta bien?
+        nuevo_CPU->id = i;
+        nuevo_CPU->semaforo = CPU_libre[i]; //esto funciona asi?
         
-        list_add(hilos_CPU, nuevo_cpu);
-
+        list_add(hilos_CPU, nuevo_CPU);
 	}
 }
 
 void free_memory(){
-
-    config_destroy(config);
-    list_clean_and_destroy_elements(lista_carpinchos,/*void(*element_destroyer)(void*))*/);
-    list_clean_and_destroy_elements(semaforos_carpinchos,/*void(*element_destroyer)(void*))*/);   
-    list_clean_and_destroy_elements(hilos_CPU,/*void(*element_destroyer)(void*))*/);    
-     
+    
+    void remove_semaforos_carpinchos(void* elem){
+        semaforo *semaforo_borrar = (semaforo *) elem;
+        free(semaforo_borrar->nombre);
+        free(semaforo_borrar->valor);
+        queue_destroy_and_destroy_elements(semaforo_borrar->en_espera, free);
+    }
+    
+    config_destroy(config);     
     log_destroy(logger);
 
-    // pthread_mutex_destroy
+	list_destroy_and_destroy_elements(lista_carpinchos, free); // podría poner free en vez de esta funcion?
+
+    list_destroy_and_destroy_elements(hilos_CPU, free);
+
+    list_destroy_and_destroy_elements(semaforos_carpinchos, remove_semaforos_carpinchos);
 
     sem_destroy(&sem_grado_multiprogramacion_libre);  
 	sem_destroy(&sem_grado_multiprocesamiento_libre); 
 
+    sem_destroy(&hay_estructura_creada);
     sem_destroy(&cola_ready_con_elementos);
     sem_destroy(&cola_exec_con_elementos);
     sem_destroy(&cola_blocked_con_elementos);
     sem_destroy(&cola_suspended_blocked_con_elementos);
     sem_destroy(&cola_suspended_ready_con_elementos); 
 
+    //mutex
+    pthread_mutex_destroy(&sem_cola_new);
+    pthread_mutex_destroy(&sem_cola_ready);
+    pthread_mutex_destroy(&sem_cola_exec);
+    pthread_mutex_destroy(&sem_cola_blocked);
+    pthread_mutex_destroy(&sem_cola_suspended_blocked);
+    pthread_mutex_destroy(&sem_cola_suspended_ready);
+
 	for(int i= 0; i< grado_multiprocesamiento; i++){
-        pthread_destroy(&hilo_cpu[i]);
+        sem_t liberar_CPU[i];
+        sem_t CPU_libre[i];
+        sem_t usar_CPU[i];        
         sem_destroy(&liberar_CPU[i]);
         sem_destroy(&CPU_libre[i]);
         sem_destroy(&usar_CPU[i]);   
@@ -148,38 +180,88 @@ void free_memory(){
 
 }
 
+///////////////// FUNCIONES ÚTILES ////////////////////////
+
+data_carpincho* encontrar_estructura_segun_id(int id){
+    
+    bool id_pertenece_al_carpincho(int id, data_carpincho *carpincho){
+        return carpincho->id == id;
+    }
+
+    bool buscar_id(void * carpincho){
+        return id_pertenece_al_carpincho(id, (data_carpincho * ) carpincho);
+    }
+
+    data_carpincho *carpincho_encontrado;
+    carpincho_encontrado = (data_carpincho *) list_find(lista_carpinchos,buscar_id);
+
+    return carpincho_encontrado;
+}
 
 ///////////////// RECIBIR MENSAJES //////////////////////// 
 
-int deserializar(buffer){
+void deserializar(void* buffer){
 
     int str_len;
-    char* string;
     int offset = 0;
     data_carpincho* estructura_interna;
+    estructura_interna = malloc(sizeof(estructura_interna));
 
     // int id
-    memcpy(&(estructura_interna)->id, buffer, sizeof(int));
+    memcpy(&estructura_interna->id, buffer, sizeof(int));
     offset += sizeof(int); 
 
     // char semaforo
     memcpy(&str_len, buffer + offset, sizeof(int));
     offset += sizeof(int);
-    estructura_interna->semaforo = malloc(str_len + 1);
-    memcpy(&estructura_interna)->semaforo, buffer + offset, str_len);
+    memcpy(&estructura_interna->semaforo, buffer + offset, str_len);
 
     // int valor_semaforo
-    memcpy(&(estructura_interna)->valor_semaforo, buffer, sizeof(int));
+    memcpy(&estructura_interna->valor_semaforo, buffer, sizeof(int));
     offset += sizeof(int);
 
     // char dispositivo_io
     memcpy(&str_len, buffer + offset, sizeof(int));
     offset += sizeof(int);
-    estructura_interna->dispositivo_io = malloc(str_len + 1);
-    memcpy(&estructura_interna)->dispositivo_io, buffer + offset, str_len);
+    memcpy(&estructura_interna->dispositivo_io, buffer + offset, str_len);
 
 }
 
+//////////////// FUNCIONES GENERALES /////////////////// hasta acá llegué compilando
+
+int mate_init(int fd){
+    
+    data_carpincho *carpincho;
+    carpincho = malloc(sizeof(data_carpincho));
+    carpincho->id = ptr_id_carpincho;
+    carpincho->rafaga_anterior = 0;
+    carpincho->estimacion_anterior = 0;
+    carpincho->estimacion_siguiente = estimacion_inicial; // viene por config
+    // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
+    // carpincho->RR no le pongo nada todavia
+    carpincho->estado = NEW;
+    carpincho->fd = fd;
+
+    // tendria que chequear que se cree bien la conexión?
+    _send_message(socket_memoria, ID_KERNEL, MATE_INIT, _serialize(sizeof(int), "%d", estructura_interna->id), sizeof(int), logger); // envia la estructura al backend para que inicialice todo
+
+    buffer = _receive_message(socket_memoria, logger);
+    memcpy(&respuesta_memoria, buffer, sizeof(int));
+    
+    if(respuesta_memoria === estructura_interna->id){  // si la memoria crea la estructura, le devuelve el id
+            
+        log_info(logger, "La estructura del carpincho se creó correctamente en memoria");
+        list_add(lista_carpinchos, carpincho);
+        sem_post(&hay_estructura_creada);
+
+    }
+    else{
+        log_info(logger, "El módulo memoria no pudo crear la estructura")
+    }
+
+    id_carpincho += 2; // incrementa carpinchos impares
+
+}
 
 void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     
@@ -286,6 +368,14 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
             break;  
         }
     }
+
+}
+
+
+
+
+////////////////////////////////////////////////////////////// pasar a las funciones de memoria 
+/*
     else{
         switch(opcode){
             case MATE_MEMALLOC:
@@ -319,56 +409,27 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 responder_a_lib(id_carpincho);
             break;
     }
-}
 
-
-responder_a_lib(int id_carpincho){
-    data_carpincho carpincho = encontrar_estructura_segun_id(id_carpincho); 
+void responder_a_lib(int id_carpincho){
+    data_carpincho *carpincho;
+    carpincho = encontrar_estructura_segun_id(id_carpincho); 
     int fd = carpincho->fd;
     
     if(id_carpincho < 0){
-        log_info("no se pudo realizar la operación de memoria");
+        log_info(logger, "no se pudo realizar la operación de memoria");
         _send_message(fd, ID_KERNEL, 1, -1, sizeof(int), logger);
     }
     else{
         _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger);
     }
 }
+*/
+////////////////////////////////////////////////////////////// pasar a las funciones de memoria 
+
 
 //////////////// FUNCIONES GENERALES ///////////////////
 
-int mate_init(int fd){
-    
-    data_carpincho carpincho = malloc(size_of(data_carpincho);
-    carpincho->id = id_carpincho;
-    carpincho->rafaga_anterior = 0;
-    carpincho->estimacion_anterior = 0;
-    carpincho->estimacion_siguiente = estimacion_inicial; // viene por config
-    // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
-    // carpincho->RR no le pongo nada todavia
-    carpincho->estado = NEW;
-    carpincho->fd = fd;
 
-    // tendria que chequear que se cree bien la conexión?
-    _send_message(socket_memoria, ID_KERNEL, MATE_INIT, _serialize(sizeof(int), "%d", estructura_interna->id), sizeof(int), logger); // envia la estructura al backend para que inicialice todo
-
-    buffer = _receive_message(socket_memoria, logger);
-    memcpy(&respuesta_memoria, buffer, sizeof(int));
-    
-    if(respuesta_memoria === estructura_interna->id){  // si la memoria crea la estructura, le devuelve el id
-            
-        log_info(logger, "La estructura del carpincho se creó correctamente en memoria");
-        list_add(lista_carpinchos, carpincho);
-        sem_post(&hay_estructura_creada);
-
-    }
-    else{
-        log_info(logger, "El módulo memoria no pudo crear la estructura")
-    }
-
-    id_carpincho += 2; // incrementa carpinchos impares
-
-}
 
 int mate_close(int id_carpincho, int fd){
     
@@ -1051,25 +1112,6 @@ void ejecuta(int id){
         sem_post(&grado_multiprocesamiento_libre); // indica que ya hay algun cpu libre
         //
     }
-}
-
-
-/////////////////////////////// Busqueda estructura carpincho ////////////////////////////
-
-// segun su id:
-bool id_pertenece_al_carpincho(int ID, data_carpincho *carpincho){
-        return carpincho->id === ID;
-    }
-
-data_carpincho encontrar_estructura_segun_id(int ID){
-
-    bool buscar_id(void *ID){
-        return id_pertenece_al_carpincho(ID, carpincho);
-    }
-
-    carpincho_encontrado = list_find(lista_carpinchos,buscar_id);
-
-    return carpincho_encontrado;
 }
 
 
