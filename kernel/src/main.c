@@ -550,9 +550,6 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         log_info(logger, "Se pidio un dispositivo IO que no existe");
     }
 
-
-
-
 }
 
 
@@ -637,8 +634,8 @@ void ready_a_exec(){
 
         carpincho_a_mover->estado = EXEC;
 
-        list_add(lista_exec, *carpincho_a_mover);
-        //queue_pop(ready, *carpincho_a_mover);  sacar ese de la lista de ready
+        list_add(exec, *carpincho_a_mover);
+        list_remove_by_condition(ready, es_el_mismo_carpincho);
     
 		pthread_mutex_unlock(&sem_cola_exec);
 		pthread_mutex_unlock(&sem_cola_ready);
@@ -651,6 +648,9 @@ void ready_a_exec(){
     }
 }
 
+//bool es_el_mismo_carpincho(data_carpincho carpincho, data_carpincho carpincho_a_mover){
+  //  return carpincho->id === carpincho_a_mover->id;
+// }
 
 void exec_a_block(int id_carpincho){
     // le pasan el id del carpincho y lo saca de la lista de exec, lo pone en block y le hace signal al cpu
