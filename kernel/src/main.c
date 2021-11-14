@@ -687,7 +687,6 @@ void suspended_a_ready(){
 
 data_carpincho ready_a_exec_SJF(){ // De la lista de ready te da el que debe ejecutar ahora según SJF
 
-    float obtener_la_menor_estimacion(){
         for(int i= 0; i<list_size(ready); i++){
 
         float min_hasta_el_momento = 0;
@@ -698,17 +697,13 @@ data_carpincho ready_a_exec_SJF(){ // De la lista de ready te da el que debe eje
                 min_hasta_el_momento = estimacion_actual;
             }
         }
-        return min_hasta_el_momento;
-    }
-
-    // devuelve el carpincho que va a ejecutar (ver caso en el que 2 tengan la misma estimacion)
-    return encontrar_estructura_segun_estimacion(min_hasta_el_momento); 
         
+    // devuelve el carpincho que va a ejecutar --> (ver caso en el que 2 tengan la misma estimacion)
+    return encontrar_estructura_segun_estimacion(min_hasta_el_momento);        
 }
 
 data_carpincho ready_a_exec_HRRN(){ // De la lista de ready te da el que debe ejecutar ahora según HRRN
     
-    float obtener_el_mayor_RR(){
         for(int i= 0; i<list_size(ready); i++){
 
         float max_hasta_el_momento = 0;
@@ -719,13 +714,9 @@ data_carpincho ready_a_exec_HRRN(){ // De la lista de ready te da el que debe ej
                 max_hasta_el_momento = RR_actual;
             }
         }
-        return max_hasta_el_momento;
-    }
 
     // devuelve el carpincho que va a ejecutar (ver caso en el que 2 tengan el mismo RR)
-    return encontrar_estructura_segun_RR(max_hasta_el_momento);
-    
-       
+    return encontrar_estructura_segun_RR(max_hasta_el_momento);     
 }
 
 // para SJF y HRRN tambien (prox rafaga)??
