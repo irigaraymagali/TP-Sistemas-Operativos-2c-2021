@@ -571,6 +571,8 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 
     int dirAllocFinal = tablaDelProceso->lastHeap;
     int dirAllocActual=0;
+    int offsetNextAllocAnterior;
+    uint8_t estadoAllocAnterior;
 
 
     while((dirAllocActual <= direccionLogicaBuscada) && dirAllocFinal>=direccionLogicaBuscada){
@@ -588,6 +590,24 @@ int memfree(int idProcess, int direccionLogicaBuscada){
             int libre= FREE;
             memcpy(memoria + offset,&libre, sizeof(uint8_t));
 
+            int nextAllocActual;
+            memcpy(&nextAllocActual ,memoria + offset-sizeof(uint32_t), sizeof(uint32_t));
+
+
+            if(estadoAllocAnterior == FREE){
+                memcpy(memoria + offsetNextAllocAnterior,&nextAllocActual, sizeof(uint32_t));
+
+                int paginaNextAlloc = (nextAllocActual/ tamanioDePagina) + 1;
+
+                int frameNextAlloc = getFrameDeUn(idProcess, paginaNextAlloc);
+
+                int posicionNextAllocNextAllocDentroDelFrame = (nextAllocActual) - ((paginaNextAlloc-1) * tamanioDePagina);
+
+                offset= (frameNextAlloc*tamanioDePagina) + posicionNextAllocNextAllocDentroDelFrame;
+
+                memcpy(memoria + offset ,&dirAllocActual, sizeof(uint32_t));
+            }
+
             return 1;
         }
         else
@@ -600,7 +620,11 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 
             int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
 
+            offsetNextAllocAnterior = offset;
+
             memcpy(&dirAllocActual, memoria + offset, sizeof(uint32_t));
+
+            memcpy(&estadoAllocAnterior, memoria + offset + sizeof(uint32_t), sizeof(uint8_t));
         }
         
     }
