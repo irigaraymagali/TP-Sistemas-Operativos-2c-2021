@@ -36,13 +36,13 @@
 #define MEMORIA_BACKEND = 2 // cuando la memoria responda, va a responder 2
 
 //estados
-#define NEW = 'N'
-#define READY = 'R'
-#define EXEC = 'E'
-#define BLOCKED = 'B'
-#define SUSPENDED_BLOCKED = 'S'
-#define SUSPENDED_READY = 'Y'
-#define EXIT = 'X'
+#define NEW 'N'
+#define READY 'R'
+#define EXEC 'E'
+#define BLOCKED 'B'
+#define SUSPENDED_BLOCKED 'S'
+#define SUSPENDED_READY 'Y'
+#define EXIT 'X'
 
 
 
@@ -55,6 +55,12 @@ typedef struct mate_inner_structure // datos para poder saber qué está pidiend
     int valor_semaforo; 
     char dispositivo_io; 
 } mate_inner_structure;
+
+typedef char *mate_io_resource;
+
+typedef char *mate_sem_name;
+
+typedef int32_t mate_pointer;
 
 
 char* mi_funcion_compartida();

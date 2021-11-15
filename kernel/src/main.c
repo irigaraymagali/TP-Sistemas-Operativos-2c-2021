@@ -1,16 +1,16 @@
 #include "main.h"
 
+
+
 int main(int argc, char ** argv){
+   /* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
+    socket_memoria = (int *)malloc(sizeof(int));
     
-    // para pruebas
-    /*  logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
-    socket_memoria = malloc(sizeof(int));
+    inicializar_colas();
 
-    id_carpincho = 1;
-    ptr_id_carpincho = &id_carpincho;
-    */
-
-
+    id_carpincho = malloc(sizeof(int));
+    *id_carpincho = 1;*/ para pruebas
+    
     int* socket;
     socket_memoria = malloc(sizeof(int));
 
@@ -48,220 +48,7 @@ int main(int argc, char ** argv){
 
     // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
     free_memory();
-
 } 
-
-///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
-
-void inicializar_colas(){ // Colas estados y sus mutex:
-    
-    new = queue_create();
-	pthread_mutex_init(&sem_cola_new, NULL);
-
-	ready = list_create();
-	pthread_mutex_init(&sem_cola_ready, NULL);
-
-	exec = list_create();
-	pthread_mutex_init(&sem_cola_exec, NULL);
-
-	blocked = list_create();
-	pthread_mutex_init(&sem_cola_blocked, NULL);
-
-    suspended_blocked = list_create();
-	pthread_mutex_init(&sem_cola_suspended_blocked, NULL);
-
-    suspended_ready = queue_create();
-	pthread_mutex_init(&sem_cola_suspended_ready, NULL);
-
-    hilos_CPU = list_create();    
-	
-    //pthread_mutex_init(&socket_memoria, NULL); //falta declarar socket_memoria => para que este mutex?
-}
-
-void inicializar_semaforos(){ // Inicializacion de semaforos:
-    sem_init(&sem_grado_multiprogramacion_libre,0,grado_multiprogramacion);  
-	sem_init(&sem_grado_multiprocesamiento_libre, 0,grado_multiprocesamiento); 
-    sem_init(&hay_estructura_creada,0,0);
-    sem_init(&cola_ready_con_elementos,0,0);
-    sem_init(&cola_exec_con_elementos,0,0);
-    sem_init(&cola_blocked_con_elementos,0,0);
-    sem_init(&cola_suspended_blocked_con_elementos,0,0);
-    sem_init(&cola_suspended_ready_con_elementos,0,0); 
-}
-// para compilar
-void entrantes_a_ready(){}
-void ready_a_exec(){}
-void suspender(){}
-void ejecuta(){}
-
-
-void crear_hilos_planificadores(){
-    pthread_t planficador_largo_plazo;
-    pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
-
-    pthread_t planficador_corto_plazo;
-    pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
-    
-    pthread_t planficador_mediano_plazo;
-    pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); //FALTA función "x"
-}
-
-void crear_hilos_CPU(){ // creación de los hilos CPU
-
-   
-	for(int i= 0; i< grado_multiprocesamiento; i++){
-        
-        sem_t liberar_CPU[i];
-        sem_t CPU_libre[i];
-        sem_t usar_CPU[i];
-
-        sem_init(&liberar_CPU[i], 0, 0);
-        sem_init(&CPU_libre[i], 0, 1); // ver si es 0 o 1 en el segundo argumento
-        sem_init(&usar_CPU[i], 0, 0);        
-        
-        pthread_t hilo_CPU[i];
-        pthread_create(&hilo_CPU[i], NULL, (void*) ejecuta, &i); 
-        
-        CPU *nuevo_CPU;
-        nuevo_CPU = malloc(sizeof(hilo_CPU)); //es necsario? esta bien?
-        nuevo_CPU->id = i;
-        nuevo_CPU->semaforo = CPU_libre[i]; //esto funciona asi?
-        
-        list_add(hilos_CPU, nuevo_CPU);
-	}
-}
-
-void free_memory(){
-    
-    void remove_semaforos_carpinchos(void* elem){
-        semaforo *semaforo_borrar = (semaforo *) elem;
-        free(semaforo_borrar->nombre);
-        free(semaforo_borrar->valor);
-        queue_destroy_and_destroy_elements(semaforo_borrar->en_espera, free);
-    }
-    
-    config_destroy(config);     
-    log_destroy(logger);
-
-	list_destroy_and_destroy_elements(lista_carpinchos, free); // podría poner free en vez de esta funcion?
-
-    list_destroy_and_destroy_elements(hilos_CPU, free);
-
-    list_destroy_and_destroy_elements(semaforos_carpinchos, remove_semaforos_carpinchos);
-
-    sem_destroy(&sem_grado_multiprogramacion_libre);  
-	sem_destroy(&sem_grado_multiprocesamiento_libre); 
-
-    sem_destroy(&hay_estructura_creada);
-    sem_destroy(&cola_ready_con_elementos);
-    sem_destroy(&cola_exec_con_elementos);
-    sem_destroy(&cola_blocked_con_elementos);
-    sem_destroy(&cola_suspended_blocked_con_elementos);
-    sem_destroy(&cola_suspended_ready_con_elementos); 
-
-    //mutex
-    pthread_mutex_destroy(&sem_cola_new);
-    pthread_mutex_destroy(&sem_cola_ready);
-    pthread_mutex_destroy(&sem_cola_exec);
-    pthread_mutex_destroy(&sem_cola_blocked);
-    pthread_mutex_destroy(&sem_cola_suspended_blocked);
-    pthread_mutex_destroy(&sem_cola_suspended_ready);
-
-	for(int i= 0; i< grado_multiprocesamiento; i++){
-        sem_t liberar_CPU[i];
-        sem_t CPU_libre[i];
-        sem_t usar_CPU[i];        
-        sem_destroy(&liberar_CPU[i]);
-        sem_destroy(&CPU_libre[i]);
-        sem_destroy(&usar_CPU[i]);   
-	}
-
-    free(socket_memoria);
-
-}
-
-///////////////// FUNCIONES ÚTILES ////////////////////////
-
-data_carpincho* encontrar_estructura_segun_id(int id){
-    
-    bool id_pertenece_al_carpincho(int id, data_carpincho *carpincho){
-        return carpincho->id == id;
-    }
-
-    bool buscar_id(void * carpincho){
-        return id_pertenece_al_carpincho(id, (data_carpincho * ) carpincho);
-    }
-
-    data_carpincho *carpincho_encontrado;
-    carpincho_encontrado = (data_carpincho *) list_find(lista_carpinchos,buscar_id);
-
-    return carpincho_encontrado;
-}
-
-///////////////// RECIBIR MENSAJES //////////////////////// 
-
-void deserializar(void* buffer){
-
-    int str_len;
-    int offset = 0;
-    data_carpincho* estructura_interna;
-    estructura_interna = malloc(sizeof(estructura_interna));
-
-    // int id
-    memcpy(&estructura_interna->id, buffer, sizeof(int));
-    offset += sizeof(int); 
-
-    // char semaforo
-    memcpy(&str_len, buffer + offset, sizeof(int));
-    offset += sizeof(int);
-    memcpy(&estructura_interna->semaforo, buffer + offset, str_len);
-
-    // int valor_semaforo
-    memcpy(&estructura_interna->valor_semaforo, buffer, sizeof(int));
-    offset += sizeof(int);
-
-    // char dispositivo_io
-    memcpy(&str_len, buffer + offset, sizeof(int));
-    offset += sizeof(int);
-    memcpy(&estructura_interna->dispositivo_io, buffer + offset, str_len);
-
-}
-
-//////////////// FUNCIONES GENERALES /////////////////// hasta acá llegué compilando
-
-int mate_init(int fd){
-    
-    data_carpincho *carpincho;
-    carpincho = malloc(sizeof(data_carpincho));
-    carpincho->id = ptr_id_carpincho;
-    carpincho->rafaga_anterior = 0;
-    carpincho->estimacion_anterior = 0;
-    carpincho->estimacion_siguiente = estimacion_inicial; // viene por config
-    // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
-    // carpincho->RR no le pongo nada todavia
-    carpincho->estado = NEW;
-    carpincho->fd = fd;
-
-    // tendria que chequear que se cree bien la conexión?
-    _send_message(socket_memoria, ID_KERNEL, MATE_INIT, _serialize(sizeof(int), "%d", estructura_interna->id), sizeof(int), logger); // envia la estructura al backend para que inicialice todo
-
-    buffer = _receive_message(socket_memoria, logger);
-    memcpy(&respuesta_memoria, buffer, sizeof(int));
-    
-    if(respuesta_memoria === estructura_interna->id){  // si la memoria crea la estructura, le devuelve el id
-            
-        log_info(logger, "La estructura del carpincho se creó correctamente en memoria");
-        list_add(lista_carpinchos, carpincho);
-        sem_post(&hay_estructura_creada);
-
-    }
-    else{
-        log_info(logger, "El módulo memoria no pudo crear la estructura")
-    }
-
-    id_carpincho += 2; // incrementa carpinchos impares
-
-}
 
 void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     
@@ -375,7 +162,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 
 
 ////////////////////////////////////////////////////////////// pasar a las funciones de memoria 
-/*
+
     else{
         switch(opcode){
             case MATE_MEMALLOC:
@@ -423,170 +210,383 @@ void responder_a_lib(int id_carpincho){
         _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger);
     }
 }
-*/
+
 ////////////////////////////////////////////////////////////// pasar a las funciones de memoria 
 
 
+
+///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
+
+void inicializar_colas(){ // Colas estados y sus mutex:
+    
+    new = queue_create();
+	pthread_mutex_init(&sem_cola_new, NULL);
+
+	ready = list_create();
+	pthread_mutex_init(&sem_cola_ready, NULL);
+
+	exec = list_create();
+	pthread_mutex_init(&sem_cola_exec, NULL);
+
+	blocked = list_create();
+	pthread_mutex_init(&sem_cola_blocked, NULL);
+
+    suspended_blocked = list_create();
+	pthread_mutex_init(&sem_cola_suspended_blocked, NULL);
+
+    suspended_ready = queue_create();
+	pthread_mutex_init(&sem_cola_suspended_ready, NULL);
+
+    hilos_CPU = list_create();   
+
+    semaforos_carpinchos = list_create(); 
+	
+    //pthread_mutex_init(&socket_memoria, NULL); //falta declarar socket_memoria => para que este mutex?
+}
+
+void inicializar_semaforos(){ // Inicializacion de semaforos:
+    sem_init(&sem_grado_multiprogramacion_libre,0,grado_multiprogramacion);  
+	sem_init(&sem_grado_multiprocesamiento_libre, 0,grado_multiprocesamiento); 
+    sem_init(&hay_estructura_creada,0,0);
+    sem_init(&cola_ready_con_elementos,0,0);
+    sem_init(&cola_exec_con_elementos,0,0);
+    sem_init(&cola_blocked_con_elementos,0,0);
+    sem_init(&cola_suspended_blocked_con_elementos,0,0);
+    sem_init(&cola_suspended_ready_con_elementos,0,0); 
+}
+// para compilar
+void entrantes_a_ready(){}
+void ready_a_exec(){}
+void suspender(){}
+void ejecuta(){}
+
+
+void crear_hilos_planificadores(){
+    pthread_t planficador_largo_plazo;
+    pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
+
+    pthread_t planficador_corto_plazo;
+    pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
+    
+    pthread_t planficador_mediano_plazo;
+    pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); //FALTA función "x"
+}
+
+void crear_hilos_CPU(){ // creación de los hilos CPU
+
+   
+	for(int i= 0; i< grado_multiprocesamiento; i++){
+        
+        sem_t liberar_CPU[i];
+        sem_t CPU_libre[i];
+        sem_t usar_CPU[i];
+
+        sem_init(&liberar_CPU[i], 0, 0);
+        sem_init(&CPU_libre[i], 0, 1); // ver si es 0 o 1 en el segundo argumento
+        sem_init(&usar_CPU[i], 0, 0);        
+        
+        pthread_t hilo_CPU[i];
+        pthread_create(&hilo_CPU[i], NULL, (void*) ejecuta, &i); 
+        
+        CPU *nuevo_CPU;
+        nuevo_CPU = malloc(sizeof(hilo_CPU)); //es necsario? esta bien?
+        nuevo_CPU->id = i;
+        nuevo_CPU->semaforo = CPU_libre[i]; //esto funciona asi?
+        
+        list_add(hilos_CPU, nuevo_CPU);
+	}
+}
+
+void free_memory(){
+    
+    void remove_semaforos_carpinchos(void* elem){
+        semaforo *semaforo_borrar = (semaforo *) elem;
+        queue_destroy_and_destroy_elements(semaforo_borrar->en_espera, free);
+    }
+    
+    config_destroy(config);     
+    log_destroy(logger);
+
+	list_destroy_and_destroy_elements(lista_carpinchos, free); // podría poner free en vez de esta funcion?
+
+    list_destroy_and_destroy_elements(hilos_CPU, free);
+
+    list_destroy_and_destroy_elements(semaforos_carpinchos, remove_semaforos_carpinchos);
+    list_destroy_and_destroy_elements(semaforos_carpinchos, free);
+    
+
+    sem_destroy(&sem_grado_multiprogramacion_libre);  
+	sem_destroy(&sem_grado_multiprocesamiento_libre); 
+
+    sem_destroy(&hay_estructura_creada);
+    sem_destroy(&cola_ready_con_elementos);
+    sem_destroy(&cola_exec_con_elementos);
+    sem_destroy(&cola_blocked_con_elementos);
+    sem_destroy(&cola_suspended_blocked_con_elementos);
+    sem_destroy(&cola_suspended_ready_con_elementos); 
+
+    //mutex
+    pthread_mutex_destroy(&sem_cola_new);
+    pthread_mutex_destroy(&sem_cola_ready);
+    pthread_mutex_destroy(&sem_cola_exec);
+    pthread_mutex_destroy(&sem_cola_blocked);
+    pthread_mutex_destroy(&sem_cola_suspended_blocked);
+    pthread_mutex_destroy(&sem_cola_suspended_ready);
+
+	for(int i= 0; i< grado_multiprocesamiento; i++){
+        sem_t liberar_CPU[i];
+        sem_t CPU_libre[i];
+        sem_t usar_CPU[i];        
+        sem_destroy(&liberar_CPU[i]);
+        sem_destroy(&CPU_libre[i]);
+        sem_destroy(&usar_CPU[i]);   
+	}
+
+    free(socket_memoria);
+
+}
+
+///////////////// FUNCIONES ÚTILES ////////////////////////
+
+data_carpincho* encontrar_estructura_segun_id(int id){
+    
+    bool id_pertenece_al_carpincho(int id, data_carpincho *carpincho){
+        return carpincho->id == id;
+    }
+
+    bool buscar_id(void * carpincho){
+        return id_pertenece_al_carpincho(id, (data_carpincho * ) carpincho);
+    }
+
+    data_carpincho *carpincho_encontrado;
+    carpincho_encontrado = (data_carpincho *) list_find(lista_carpinchos,buscar_id);
+
+    return carpincho_encontrado;
+}
+
+///////////////// RECIBIR MENSAJES //////////////////////// 
+
+void deserializar(void* buffer){
+
+    int str_len;
+    int offset = 0;
+    data_carpincho* estructura_interna;
+    estructura_interna = malloc(sizeof(estructura_interna));
+
+    // int id
+    memcpy(&estructura_interna->id, buffer, sizeof(int));
+    offset += sizeof(int); 
+
+    // char semaforo
+    memcpy(&str_len, buffer + offset, sizeof(int));
+    offset += sizeof(int);
+    memcpy(&estructura_interna->semaforo, buffer + offset, str_len);
+
+    // int valor_semaforo
+    memcpy(&estructura_interna->valor_semaforo, buffer, sizeof(int));
+    offset += sizeof(int);
+
+    // char dispositivo_io
+    memcpy(&str_len, buffer + offset, sizeof(int));
+    offset += sizeof(int);
+    memcpy(&estructura_interna->dispositivo_io, buffer + offset, str_len);
+
+}
+
 //////////////// FUNCIONES GENERALES ///////////////////
 
-
-
-int mate_close(int id_carpincho, int fd){
+void mate_init(int fd){
     
-    data_carpincho carpincho_a_cerrar = encontrar_estructura_segun_id(id_carpincho);
+    data_carpincho carpincho;
+    data_carpincho *ptr_carpincho;
+    ptr_carpincho = (data_carpincho *) malloc(sizeof(data_carpincho));
+    ptr_carpincho = &carpincho;
+    carpincho.id = (int)id_carpincho;
+    carpincho.rafaga_anterior = 0;
+    carpincho.estimacion_anterior = 0;
+    carpincho.estimacion_siguiente = estimacion_inicial; // viene por config
+    // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
+    // carpincho->RR no le pongo nada todavia
+    carpincho.estado = NEW;
+    carpincho.fd = fd;
+
+    // tendria que chequear que se cree bien la conexión?
+    _send_message(*socket_memoria, ID_KERNEL, MATE_INIT, _serialize(sizeof(int), "%d", ptr_carpincho->id), sizeof(int), logger); // envia la estructura al backend para que inicialice todo
+
+    void *buffer;
+    int respuesta_memoria;
+    respuesta_memoria = -1;
+    buffer = _receive_message(*socket_memoria, logger);
+    memcpy((void*)respuesta_memoria, buffer, sizeof(int));
+    
+    if(respuesta_memoria >= 0){  // si la memoria crea la estructura, le devuelve el id
+            
+        log_info(logger, "La estructura del carpincho %d se creó correctamente en memoria", *id_carpincho);
+        list_add(lista_carpinchos, ptr_carpincho);
+        sem_post(&hay_estructura_creada);
+        _send_message(fd, ID_KERNEL, MATE_INIT, _serialize(sizeof(int), "%d", ptr_carpincho->id), sizeof(int), logger);
+    }
+    else{
+        log_info(logger, "El módulo memoria no pudo crear la estructura");
+    }
+    *id_carpincho += 2; // incrementa carpinchos impares
+}
+
+void mate_close(int id_carpincho, int fd){
+    
+    data_carpincho *carpincho_a_cerrar;
+    carpincho_a_cerrar = encontrar_estructura_segun_id(id_carpincho);
 
     carpincho_a_cerrar->fd = fd;
 
     bool es_el_carpincho(void* carpincho){
-        return (data_carpincho *) carpincho === carpincho_a_cerrar
+        return (data_carpincho *) carpincho == carpincho_a_cerrar;
     }
 
     list_remove_by_condition(lista_carpinchos, es_el_carpincho);
 
-    exec_a_exit(id_carpincho, fd);
-}
+   // exec_a_exit(id_carpincho, fd); // acá se encarga de avisar a memoria y responder al fd
 
+}
 
 //////////////// FUNCIONES SEMAFOROS ///////////////////
 
 // para las funciones de orden superior
 
-bool esIgualASemaforo(mate_sem_name nombre_semaforo, void *semaforo){
-    return semaforo->nombre === nombre_semaforo;
+bool esIgualASemaforo(char* nombre_semaforo, void *semaforo_igual){
+    return ((semaforo *) semaforo_igual)->nombre == nombre_semaforo;
 }
 
-semaforo semaforoIgualANombreSemaforo(mate_sem_name nombre_semaforo, void *semaforo){
-    return semaforo->nombre === nombre_semaforo;
-}
+void mate_sem_init(int id_carpincho, char* nombre_semaforo, int valor_semaforo, int fd){  
 
-int mate_sem_init(int id_carpincho, mate_sem_name nombre_semaforo, int valor_semaforo, int fd){  
-    
-    bool esIgualA(void *semaforo){
-        return esIgualASemaforo(semaforo, nombre_semaforo);
+    bool esIgualA(void *semaforo_igual){
+        return esIgualASemaforo(nombre_semaforo, semaforo_igual);
     }
 
-    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
+    if(list_any_satisfy(semaforos_carpinchos, (void *)esIgualA)){  
         log_info(logger, "El semaforo ya estaba incializado");
-        _send_message(fd, ID_KERNEL, 1, -1, sizeof(int), logger); // le manda que esta mal, va así? 
+        _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", -1), sizeof(int), logger); 
     }
     else 
     {
-        semaforo semaforo = malloc(size_of(semaforo));
-        semaforo->nombre = nombre_semaforo;
-        semaforo->valor = valor_semaforo;
-        semaforo->en_espera = queue_create();
+        semaforo semaforo_nuevo;
+        void *ptr_semaforo;    
+        ptr_semaforo = (semaforo *) malloc(sizeof(semaforo));     
+        ptr_semaforo = &semaforo_nuevo;  
 
-        list_add(semaforos_carpinchos,semaforo);
+        semaforo_nuevo.nombre = nombre_semaforo;
+        semaforo_nuevo.valor = valor_semaforo;
+        semaforo_nuevo.en_espera = queue_create();
 
-        log_info(logger, "Se inicializó el semáforo");        
-        _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger); // va así? 
-    
+        list_add(semaforos_carpinchos, ptr_semaforo);
+
+        // esto está quedando mal no se por que
+        log_info(logger, "Se inicializó el semáforo %d   ", *semaforo_nuevo.nombre  );        
+        _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", 0), sizeof(int), logger);         
     }
 }
 
 
-int mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
+void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
     bool esIgualA(void *semaforo){
         return esIgualASemaforo(semaforo, nombre_semaforo);
     }
 
-    semaforo semaforoIgualA(void *semaforo){
-        return semaforoIgualANombreSemaforo(nombre_semaforo, semaforo);
-    }
+    if(list_any_satisfy(semaforos_carpinchos, (void *)esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
 
-    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
+        semaforo *semaforo_wait;
+        semaforo_wait = (semaforo *)list_find(semaforos_carpinchos, (void *)esIgualA);
+        semaforo_wait->valor --; 
 
-        semaforo semaforo = list_find(semaforos_carpinchos, semaforoIgualA);
-        semaforo->valor_semaforo --; 
-
-        data_carpincho carpincho = encontrar_estructura_segun_id(id_carpincho);
+        data_carpincho *carpincho;
+        carpincho = encontrar_estructura_segun_id(id_carpincho);
         carpincho->fd = fd;
 
-        if(semaforo->valor_semaforo<1){
+        if(semaforo_wait->valor<1){
             log_info(logger, "Se hizo un wait de un semaforo menor a 1, se bloquea el carpincho");
-            exec_a_block(id_carpincho); 
-            queue_push(semaforo->en_espera, carpincho); //queda esperando para que lo desbloqueen, es el primero. 
+            //exec_a_block(id_carpincho); 
+            queue_push(semaforo_wait->en_espera, carpincho); //queda esperando para que lo desbloqueen, es el primero. 
         }
         else
         {
             log_info(logger, "Se hizo un wait de un semaforo mayor a 1, carpincho puede seguir");        
-            _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger);
+        _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", 0), sizeof(int), logger); 
         }
     }
     else
     {
         log_info(logger, "se intento hacer wait de un semaforo no inicializado");
-        _send_message(fd, ID_KERNEL, 1, -1, sizeof(int), logger);
+        _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", -1), sizeof(int), logger); 
     }
 
 }
 
-int mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
+
+void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
     bool esIgualA(void *semaforo){
         return esIgualASemaforo(semaforo, nombre_semaforo);
-    }
-
-    semaforo semaforoIgualA(void *semaforo){
-        return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
     }
 
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
 
-        semaforo semaforo_post = list_find(semaforos_carpinchos, semaforoIgualA)
-        semaforo_post->valor_semaforo ++; 
+        semaforo *semaforo_post;
+        semaforo_post = list_find(semaforos_carpinchos, (void *) esIgualA);
+        semaforo_post->valor ++; 
         
         if(!queue_is_empty(semaforo_post->en_espera)){
+            data_carpincho *carpincho_a_desbloquear;
             carpincho_a_desbloquear = queue_peek(semaforo_post->en_espera);
             queue_pop(semaforo_post->en_espera);
 
-            if(carpincho_a_desbloquear->estado === BLOCKED){
+            if(carpincho_a_desbloquear->estado == BLOCKED){
                 carpincho_a_desbloquear->estado = READY;
-                block_a_ready(carpincho_a_desbloquear);
+                //block_a_ready(carpincho_a_desbloquear);
             }
             else{ // si no esta en blocked es porque estaba en suspended blocked, ahora lo cambio a suspended_ready
                 carpincho_a_desbloquear->estado = SUSPENDED_READY;
-                suspended_blocked_a_suspended_ready(carpincho_a_desbloquear);
+               // suspended_blocked_a_suspended_ready(carpincho_a_desbloquear);
             }
         }
-        _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger); // se avisa que se hizo el post que pidio
+        _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", 0), sizeof(int), logger); 
     }
     else
     {
         log_info(logger, "se intento hacer post de un semaforo no inicializado");
-        _send_message(fd, ID_KERNEL, 1, -1, sizeof(int), logger);
+        _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", -1), sizeof(int), logger); 
     }
-
-
 }
 
-int mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
+
+void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
+    
     bool esIgualA(void *semaforo){
         return esIgualASemaforo(semaforo, nombre_semaforo);
     }
-    semaforo semaforoIgualA(void *semaforo){
-        return semaforoIgualANombreSemaforo(semaforo, nombre_semaforo);
-    }
+
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
         
-        semaforo semaforo_destroy = list_find(semaforos_carpinchos,esIgualA);
+        semaforo *semaforo_destroy = list_find(semaforos_carpinchos,esIgualA);
        
-       if(!queue_is_empty(semaforo_post->en_espera)){ // solo puede destruirlo si está inicializado y no tiene carpinchos en la lista de espera
+       if(!queue_is_empty(semaforo_destroy->en_espera)){ // solo puede destruirlo si está inicializado y no tiene carpinchos en la lista de espera
             list_remove_by_condition(semaforos_carpinchos,esIgualA);
-            _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger);
+            _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", 0), sizeof(int), logger); 
        }
        else{
             log_info(logger, "no se puede destruir un semáforo que tenga carpinchos en wait");
-            _send_message(fd, ID_KERNEL, 1, -2, sizeof(int), logger);
+            _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", -2), sizeof(int), logger); 
        }
     }
     else
     {
         log_info(logger, "se intento borrar un semaforo no inicializado");
-        _send_message(fd, ID_KERNEL, 1, -1, sizeof(int), logger);
+            _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", -1), sizeof(int), logger); 
     }
 }
+
+
+/////////////////////// hasta aca llegue compilando
 
 //////////////// FUNCIONES IO ///////////////////
 
@@ -1113,5 +1113,14 @@ void ejecuta(int id){
         //
     }
 }
+
+
+
+
+
+
+
+
+
 
 

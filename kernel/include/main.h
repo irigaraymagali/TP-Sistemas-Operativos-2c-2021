@@ -24,8 +24,8 @@
 
 typedef struct semaforo
 {
-    char *nombre;
-    int *valor;
+    char* nombre;
+    int valor;
     t_queue *en_espera; 
 } semaforo;
 
@@ -51,19 +51,19 @@ typedef struct tiempo
 
 typedef struct data_carpincho // la data que le importa tener al backend
 {
-    int *id;
-    float *rafaga_anterior; // para despues poder calcular la estimación siguiente --> inicializar en 0
-    float *estimacion_anterior; // idem --> inicializar segun config
-    float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
-    float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
-    float *RR; //para HRRN -> fijarnos si es necesario o no
-    char *estado; // => ir cambiandole el estado
-    CPU *hilo_CPU_usado; // para saber en qué hilo cpu se esta ejecutando
-    char *tiempo_entrada_a_exec; // para calcular milisegundos en exec
-    int *fd; // para saber a quien le tiene que responder
-    char *semaforo; // guarda el char porque es lo que nos manda el carpincho
-    int *valor_semaforo; // guarda int porque es lo que nos guarda el carpincho
-    char *dispositivo_io; 
+    int id;
+    float rafaga_anterior; // para despues poder calcular la estimación siguiente --> inicializar en 0
+    float estimacion_anterior; // idem --> inicializar segun config
+    float estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
+    float llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
+    float RR; //para HRRN -> fijarnos si es necesario o no
+    char estado; // => ir cambiandole el estado
+    CPU hilo_CPU_usado; // para saber en qué hilo cpu se esta ejecutando
+    char tiempo_entrada_a_exec; // para calcular milisegundos en exec
+    int fd; // para saber a quien le tiene que responder
+    char semaforo; // guarda el char porque es lo que nos manda el carpincho
+    int valor_semaforo; // guarda int porque es lo que nos guarda el carpincho
+    char dispositivo_io; 
 
 } data_carpincho;
 
@@ -97,21 +97,22 @@ t_log *logger;
 // socket memoria;
 int *socket_memoria;
 
-    int id_carpincho, *ptr_id_carpincho;
-
 // configuración
 t_config* config;
-char *ip_memoria; 
-int *puerto_memoria;
-int *puerto_escucha;
-char *algoritmo_planificacion;
-int *estimacion_inicial;
-int *alfa;
-char *dispositivos_io; 
-char *duraciones_io; 
+char ip_memoria; 
+int puerto_memoria;
+int puerto_escucha;
+char algoritmo_planificacion;
+float estimacion_inicial;
+int alfa;
+char dispositivos_io; 
+char duraciones_io; 
 int grado_multiprogramacion;
 int grado_multiprocesamiento;
-int *tiempo_deadlock;
+int tiempo_deadlock;
+
+// id carpincho
+int *id_carpincho;
 
 // Semáforos
 sem_t sem_grado_multiprogramacion_libre;

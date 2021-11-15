@@ -36,11 +36,7 @@ typedef struct mate_instance
     void *group_info; // un puntero a algun tipo de estructura que vamos a llenar despues con todas las referencias necesarias para mantener vivas las conexiones y para operar con la misma
 } mate_instance;
 
-typedef char *mate_io_resource;
 
-typedef char *mate_sem_name;
-
-typedef int32_t mate_pointer;
 
 // TODO: Docstrings
 
