@@ -65,6 +65,7 @@ typedef struct hilo_cpu
 
 t_list* semaforos_carpinchos;
 t_list* lista_carpinchos; 
+t_list* lista_dispositivos_io;
 
 
 /* Estados:*/

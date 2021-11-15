@@ -26,6 +26,7 @@ int main(int argc, char ** argv){
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
     semaforos_carpinchos = list_create(); // crear lista para ir guardando los semaforos
     hilos_CPU = list_create(); // crear lista para ir guardando los hilos cpus
+    lista_dispositivos_io = list_create(); // crear lista para ir guardando los dispositivios io
 
     t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
 
@@ -564,12 +565,10 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         return dispositivo_igual_a_nombre(nombre_io, dispositivo);
     }
 
-    // si nombre_io esta disponible => bloquear al carpincho por io
-    // si no => bloquearlo? a la espera de que se desocupe
-
-    if(list_any_satisfy(dispositivos_io, igual_a)){  
+    if(list_any_satisfy(dispositivos_io, igual_a)){  //asi con la lista del config o con lista_dispositivos_io que es la que agregan al crearle la estructura al dispositivo
 
         dispositivo_pedido = list_find(dispositivos_io, dispositivo_igual_a); 
+        // o directamente bloquear al carpincho, y si lo puede usar lo usa y sino espera
 
         if(dispositivo_pedido->en_uso === false){
             exec_a_block_io(id,dispositivo_pedido); //ver, hace falta que sea otra distinta? lo puse para pasarle el dispositivo que pidio
@@ -599,6 +598,8 @@ void crear_estructura_dispositivo(){ //deberia crearse al principio, no cuando l
             dispositivo->nombre = list_get(dispositivos_io, i);
             dispositivo->duracion = list_get(duraciones_io, i);
             dispositivo->en_uso = false;
+
+            list_add(lista_dispositivos_io, *dispositivo);
 
         }
 
@@ -866,22 +867,17 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){
 
 float calcular_milisegundos(){
 
-    char* string_tiempo = temporal_get_string_time("%H:%M:%S:%MS"); // " 10: 20: 30: 60  "
+    char* string_tiempo = temporal_get_string_time("%M:%S:%MS"); // " 20: 30: 60 " 
 
-    //separar tiempo en hora, min, seg y miliseg
-
-
+    //separar tiempo en hora, min, seg y miliseg:
     while(retorno!=NULL){ //no
-        int horas = str_split(string_tiempo,':');
         int minutos = str_split(string_tiempo,':');
-        int segundos = str_split(string_tiempo,':');
-        int milisegundos = str_split(string_tiempo,':');
+        
+                //o en una estructura?
     }
 
-    float tiempo_en_milisegundos = horas * 3600000 + minutos * 60000 + segundos * 60 + milisegundos
-    return tiempo_en_milisegundos;
-
-    //pasar todo a miliseg
+    //pasar todo a miliseg:
+    return minutos * 60000 + segundos * 60 + milisegundos
 
 
 }
