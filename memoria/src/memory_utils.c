@@ -555,6 +555,8 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         tempPagina->lRU = lRUACTUAL;
         pthread_mutex_lock(&lru_mutex);
 
+        log_info(logger, "tomo el frame %d con Exito", tempPagina->frame);
+
         return tempPagina->frame;
     }
 
@@ -566,6 +568,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 int memfree(int idProcess, int direccionLogicaBuscada){
     
     int paginaActual=1;
+    int pagAnterior=0;
 
     TablaDePaginasxProceso *tablaDelProceso = get_pages_by(idProcess);
 
@@ -594,7 +597,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
             memcpy(&nextAllocActual ,memoria + offset-sizeof(uint32_t), sizeof(uint32_t));
 
 
-            if(estadoAllocAnterior == FREE){
+            if(estadoAllocAnterior == FREE && direccionLogicaBuscada!=0){
                 memcpy(memoria + offsetNextAllocAnterior,&nextAllocActual, sizeof(uint32_t));
 
                 int paginaNextAlloc = (nextAllocActual/ tamanioDePagina) + 1;
@@ -606,6 +609,15 @@ int memfree(int idProcess, int direccionLogicaBuscada){
                 offset= (frameNextAlloc*tamanioDePagina) + posicionNextAllocNextAllocDentroDelFrame;
 
                 memcpy(memoria + offset ,&dirAllocActual, sizeof(uint32_t));
+            }else{
+                if((pagAnterior-1) == paginaActual){
+                    deletePagina(idProcess, paginaActual);
+
+                    nextAllocActual = 0;
+                    
+                    memcpy(memoria + offsetNextAllocAnterior,&nextAllocActual, sizeof(uint32_t));
+
+                }
             }
 
             return 1;
@@ -625,12 +637,33 @@ int memfree(int idProcess, int direccionLogicaBuscada){
             memcpy(&dirAllocActual, memoria + offset, sizeof(uint32_t));
 
             memcpy(&estadoAllocAnterior, memoria + offset + sizeof(uint32_t), sizeof(uint8_t));
+
+            pagAnterior = paginaActual;
         }
         
     }
 
     //falta hacer lo de liberar paginas pero deberia preguntar si deberia compactar y si debe llevar algun procesdimiento
     return MATE_FREE_FAULT;
+}
+
+void deletePagina(int idProcess,int paginaActual){
+
+    TablaDePaginasxProceso* tablaDePags =get_pages_by(idProcess);
+
+    t_list_iterator* iterator = list_iterator_create(tablaDePags->paginas);
+    
+    Pagina *tempPagina = list_iterator_next(iterator);
+
+    while (tempPagina->pagina != paginaActual)
+    {
+       tempPagina = list_iterator_next(iterator);
+    }
+    
+    list_iterator_remove(iterator);
+    log_info(logger, "Deleteo la pag %d con Exito", tempPagina->pagina);
+
+    list_iterator_destroy(iterator);
 }
 
 Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada){
