@@ -24,10 +24,6 @@ void initPaginacion(){
         tipoDeAsignacionDinamica= 1;
     }
     
-
-    void* payload = _serialize(sizeof(int), "%d", tipoDeAsignacionDinamica);
-    send_message_swamp(TIPO_ASIGNACION, payload, sizeof(int));
-    free(payload);
     lRUACTUAL=0;
 
     tamanioDeMemoria = config_get_int_value(config, "TAMANIO");
