@@ -67,6 +67,7 @@ void replace_tlb(){
 }
 
 void fetch_instance_by_page(){
+    int exp_page = 1;
     logger = create_log_test();
     config = config_create(CONFIG_PATH);
 
@@ -80,9 +81,10 @@ void fetch_instance_by_page(){
         frame++;
     }
 
-    TLB* tlb = fetch_entrada_tlb_by_page(1);
+    TLB* tlb = fetch_entrada_tlb_by_page(exp_page);
 
     CU_ASSERT_PTR_NOT_NULL(tlb);
+    CU_ASSERT_EQUAL(tlb->pagina, exp_page);
 }
 
 void not_fetch_instance_by_page(){
@@ -106,6 +108,7 @@ void not_fetch_instance_by_page(){
 
 
 void fetch_instance_by_pid(){
+    int exp_pid = 1;
     logger = create_log_test();
     config = config_create(CONFIG_PATH);
 
@@ -119,9 +122,10 @@ void fetch_instance_by_pid(){
         frame++;
     }
 
-    TLB* tlb = fetch_entrada_tlb_by_pid(1);
+    TLB* tlb = fetch_entrada_tlb_by_pid(exp_pid);
 
     CU_ASSERT_PTR_NOT_NULL(tlb);
+    CU_ASSERT_EQUAL(tlb->pid, exp_pid);
 }
 
 void not_fetch_instance_by_pid(){
