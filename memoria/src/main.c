@@ -13,6 +13,10 @@ int main(int argc, char ** argv){
 
     initPaginacion();
 
+    void* payload = _serialize(sizeof(int), "%d", tipoDeAsignacionDinamica);
+    send_message_swamp(TIPO_ASIGNACION, payload, sizeof(int));
+    free(payload);
+    
     inicializarUnProceso(1);
     inicializarUnProceso(2);
 
@@ -150,6 +154,7 @@ void init_swamp_connection(){
 
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
     void* resp;
+    int size_msg;
     int pid, size = 2, iresp, espacioAReservar = 10, dir_logica = 0;
     log_info(logger, "Deserializando los parametros recibidos...");
 
@@ -167,6 +172,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             break;
         case MATE_MEMREAD:
             resp = memread(pid, dir_logica, size);
+            size_msg = size;
             break;
         case MATE_MEMWRITE:
             iresp = memwrite(pid, dir_logica, payload, size);
@@ -185,9 +191,10 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
     }
     if(opcode != MATE_MEMREAD){
         resp = _serialize(sizeof(int), "%d", iresp);
+        size_msg = sizeof(int);
     }
 
-    _send_message(fd, ID_MEMORIA, opcode, resp, sizeof(resp), logger);
+    _send_message(fd, ID_MEMORIA, opcode, resp, size_msg, logger);
 }
 
 int deserialize_init_process(char* id, void* payload){
