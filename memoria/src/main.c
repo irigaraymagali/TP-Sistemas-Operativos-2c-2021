@@ -3,7 +3,7 @@ int main(int argc, char ** argv){
     if(argc > 1 && strcmp(argv[1],"-test") == 0){
         return run_tests();
     }
-
+    
     logger = log_create(LOG_PATH, PROGRAM, true, LOG_LEVEL_INFO);
     config = config_create(CONFIG_PATH);
 
@@ -16,7 +16,7 @@ int main(int argc, char ** argv){
     void* payload = _serialize(sizeof(int), "%d", tipoDeAsignacionDinamica);
     send_message_swamp(TIPO_ASIGNACION, payload, sizeof(int));
     free(payload);
-    
+
     inicializarUnProceso(1);
     inicializarUnProceso(2);
 
