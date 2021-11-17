@@ -130,7 +130,7 @@ int memalloc(int processId, int espacioAReservar){
             void* espacioAuxiliar = malloc(espacioDePaginasAux + tamanioDePagina);
             offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - ((mayorNroDePagina-1) * tamanioDePagina));
 
-            int espacioTotal = tempLastHeap + espacioAReservar + HEAP_METADATA_SIZE;
+            int espacioTotal = tempLastHeap + espacioAReservar ;
             memcpy(memoria + offset + sizeof(uint32_t), &espacioTotal, sizeof(uint32_t));
 
             memcpy(memoria + offset + 2*sizeof(uint32_t),&nuevoHeap->isfree, sizeof(uint32_t));
@@ -668,7 +668,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 
                 free(paginasAuxiliares);
             }else{
-                if((pagAnterior+1) == paginaActual  && direccionLogicaBuscada!=0){
+                if((pagAnterior+1) == paginaActual  && direccionLogicaBuscada!=0 && paginaActual == getLastPageDe(idProcess)){
                     deletePagina(idProcess, paginaActual);
 
                     int paginaInicial = (prevAllocActual/tamanioDePagina) + 1;
