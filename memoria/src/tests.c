@@ -7,10 +7,8 @@ int run_tests(){
     CU_add_test(tests, "Llenar TLB", full_tlb);
     CU_add_test(tests, "Reemplazo TLB con FIFO", replace_tlb_fifo);
     CU_add_test(tests, "Reemplazo TLB con LRU", replace_tlb_lru);
-    CU_add_test(tests, "Obtener Entrada de TLB (Condicion pagina)", fetch_instance_by_page);
-    CU_add_test(tests, "FAIL Intentar obtener Entrada de TLB (Condicion pagina)", not_fetch_instance_by_page);
-    CU_add_test(tests, "Obtener Entrada de TLB (Condicion PID)", fetch_instance_by_pid);
-    CU_add_test(tests, "FAIL Intentar obtener Entrada de TLB (Condicion PID)", not_fetch_instance_by_pid);
+    CU_add_test(tests, "Obtener Entrada de TLB", fetch_instance);
+    CU_add_test(tests, "FAIL Intentar obtener Entrada de TLB", not_fetch_instance);
 
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();
@@ -127,8 +125,8 @@ void replace_tlb_lru(){
     CU_ASSERT_EQUAL(actual->lru, exp_tlb->lru);    
 }
 
-void fetch_instance_by_page(){
-    int exp_page = 1;
+void fetch_instance(){
+    int exp_pid = 1, exp_page = 2;
     logger = create_log_test();
     config = config_create(CONFIG_PATH);
 
@@ -142,54 +140,15 @@ void fetch_instance_by_page(){
         frame++;
     }
 
-    TLB* tlb = fetch_entrada_tlb_by_page(exp_page);
+    TLB* tlb = fetch_entrada_tlb(exp_pid, exp_page);
 
     CU_ASSERT_PTR_NOT_NULL(tlb);
     CU_ASSERT_EQUAL(tlb->pagina, exp_page);
-}
-
-void not_fetch_instance_by_page(){
-    logger = create_log_test();
-    config = config_create(CONFIG_PATH);
-
-    initPaginacion();
-    int pid = 0, page = 1, frame = 1;
-
-    for (int i = 0; i < max_entradas_tlb; i++) {
-        add_entrada_tlb(pid, page, frame);
-        pid++;
-        page++;
-        frame++;
-    }
-
-    TLB* tlb = fetch_entrada_tlb_by_page(UINT32_MAX);
-
-    CU_ASSERT_PTR_NULL(tlb);
-}
-
-
-void fetch_instance_by_pid(){
-    int exp_pid = 1;
-    logger = create_log_test();
-    config = config_create(CONFIG_PATH);
-
-    initPaginacion();
-    int pid = 0, page = 1, frame = 1;
-
-    for (int i = 0; i < max_entradas_tlb; i++) {
-        add_entrada_tlb(pid, page, frame);
-        pid++;
-        page++;
-        frame++;
-    }
-
-    TLB* tlb = fetch_entrada_tlb_by_pid(exp_pid);
-
-    CU_ASSERT_PTR_NOT_NULL(tlb);
     CU_ASSERT_EQUAL(tlb->pid, exp_pid);
+
 }
 
-void not_fetch_instance_by_pid(){
+void not_fetch_instance(){
     logger = create_log_test();
     config = config_create(CONFIG_PATH);
 
@@ -203,7 +162,7 @@ void not_fetch_instance_by_pid(){
         frame++;
     }
 
-    TLB* tlb = fetch_entrada_tlb_by_pid(UINT32_MAX);
+    TLB* tlb = fetch_entrada_tlb(0, UINT32_MAX);
 
     CU_ASSERT_PTR_NULL(tlb);
 }

@@ -188,6 +188,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
 
     log_info(logger, "Buscando la tabla de paginas del proceso %d", pid);
 
+    //IF SI EL SIZE RECIBIDO ES > AL TAMAÑO DEL PROCESO. THEN ERROR.-
     TablaDePaginasxProceso* pages = get_pages_by(pid);
     if (pages->id != pid){
         log_error(logger, "El proceso ingresado es incorrecto");
@@ -211,6 +212,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
         log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
         return err_msg;
     }
+    //Obtener todas las paginas asociadas en base al size, y fijarse si un heap meta data está adentro de dos paginas.
     
     offset_to_read = dir_logica + HEAP_METADATA_SIZE; //TODO: AVERIGUAR si apunta por fuera
     size_to_read = heap->nextAlloc - HEAP_METADATA_SIZE;
@@ -1246,6 +1248,8 @@ HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset){
 }
 
 void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
+    pthread_mutex_lock(&tlb_mutex);
+
     TLB* new_instance = new_entrada_tlb(pid, page, frame);
     if (list_size(tlb_list) < max_entradas_tlb) {
        list_add(tlb_list, new_instance); 
@@ -1254,6 +1258,8 @@ void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
     }
 
     set_pid_metric_if_missing(pid);
+    pthread_mutex_unlock(&tlb_mutex);
+
 }
 
 TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
@@ -1301,35 +1307,26 @@ void* get_minimum_lru_tlb(void* actual, void* next){
     return next;
 }
 
-TLB* fetch_entrada_tlb(uint32_t pid, int dir_logica){
-    TLB* tlb;
-    bool has_pid(void* elem){
-        TLB* tlb = (TLB*) elem;
-        return tlb->pid == pid;
-    }
-
-    int count_pid = list_count_satisfying(tlb_list, has_pid);
-    if (count_pid > 1){
-        pthread_mutex_lock(&list_pages_mutex);
-        TablaDePaginasxProceso* tabla = get_pages_by(pid);
-        uint32_t nro_page = get_nro_page_by_dir_logica(tabla, dir_logica);
-        pthread_mutex_unlock(&list_pages_mutex);
-        if (nro_page == -1){
-            sum_metric(pid, TLB_MISS);
-            return NULL;
+TLB* fetch_entrada_tlb(uint32_t pid, uint32_t page){
+    pthread_mutex_lock(&tlb_mutex);
+    t_list_iterator* iterator = list_iterator_create(tlb_list);
+    while (list_iterator_has_next(iterator)){
+        TLB* tlb = (TLB*) list_iterator_next(iterator);
+        if (tlb->pid == pid && tlb->pagina == page){
+            sum_metric(pid, TLB_HIT);
+            log_info(logger, "TLB HIT: Proceso %d Pagina %d", pid, page);
+            sleep(retardo_hit_tlb);
+            return tlb;
         }
-        tlb = fetch_entrada_tlb_by_page(nro_page);
-    } else {
-        tlb = fetch_entrada_tlb_by_pid(pid);
     }
-    
-    if(tlb != NULL){
-        sum_metric(pid, TLB_HIT);
-    } else {
-        sum_metric(pid, TLB_MISS);
-    }
+    list_iterator_destroy(iterator);
+    pthread_mutex_unlock(&tlb_mutex);
 
-    return tlb;
+    log_info(logger, "TLB MISS: Proceso %d Pagina %d", pid, page);
+    sum_metric(pid, TLB_MISS);
+    sleep(retardo_miss_tlb);
+
+    return NULL;
 }
 
 void set_pid_metric_if_missing(uint32_t pid){
@@ -1359,54 +1356,13 @@ void sum_metric(uint32_t pid, int isHit){
         if (metric->pid == pid){
             if(isHit == 1){
                 metric->hits++;
-                sleep(retardo_hit_tlb);
             } else {
                 metric->miss++;
-                sleep(retardo_miss_tlb);
             }
         }
     }
     list_iterator_destroy(iterator);
     pthread_mutex_unlock(&m_list_mutex);
-}
-
-TLB* fetch_entrada_tlb_by_pid(uint32_t pid){
-    return get_entrada_tlb_by_condition(C_PID, pid);
-}
-
-TLB* fetch_entrada_tlb_by_page(uint32_t page){
-    return get_entrada_tlb_by_condition(C_PAGE, page);
-}
-
-TLB* fetch_entrada_tlb_by_frame(uint32_t frame){
-    return get_entrada_tlb_by_condition(C_FRAME, frame);
-}
-
-TLB* get_entrada_tlb_by_condition(int condition, uint32_t value){
-    uint32_t v_to_compare;
-    for (int i = 0; i < max_entradas_tlb; i++){
-        TLB* tlb = (TLB*) list_get(tlb_list, i);
-        switch (condition){
-            case C_PID:
-                v_to_compare = tlb->pid;              
-                break;
-            case C_PAGE:
-                v_to_compare = tlb->pagina;
-                break; 
-            case C_FRAME:
-                v_to_compare = tlb->frame;
-                break;            
-            default:
-                log_error(logger, "Condicion incorrecta.");
-                return NULL;
-                break;
-            }
-        if (v_to_compare == value){
-            return tlb;
-        }
-    }
-
-    return NULL;
 }
 
 void* send_message_swamp(int command, void* payload, int pay_len){
