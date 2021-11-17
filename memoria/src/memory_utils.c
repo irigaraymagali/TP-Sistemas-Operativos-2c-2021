@@ -1007,11 +1007,31 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
             
             int frameBuscado = getFrameDeUn(idProcess, paginaActual);
 
-            int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
+            if(paginaActual == (((dirAllocActual + HEAP_METADATA_SIZE)/ tamanioDePagina) + 1)){
+                int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
 
-            int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
+                int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
 
-            memcpy(&dirAllocActual, memoria + offset, sizeof(uint32_t));
+                //offsetNextAllocAnterior = offset;
+
+                memcpy(&dirAllocActual, memoria + offset, sizeof(uint32_t));
+
+            }else{
+                void* paginasAuxiliares = malloc(tamanioDePagina*2);
+
+                memcpy(paginasAuxiliares, memoria + frameBuscado, tamanioDePagina);
+
+                frameBuscado = getFrameDeUn(idProcess, paginaActual + 1);
+
+                memcpy(paginasAuxiliares + tamanioDePagina, memoria + frameBuscado, tamanioDePagina);
+
+                int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
+
+                memcpy(&dirAllocActual, paginasAuxiliares + posicionNextAllocDentroDelFrame, sizeof(uint32_t));
+
+                free(paginasAuxiliares);
+            }
+        
         }
 
     }
