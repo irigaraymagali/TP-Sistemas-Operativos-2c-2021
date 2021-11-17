@@ -551,7 +551,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         pthread_mutex_lock(&lru_mutex);
         lRUACTUAL++;
         tempPagina->lRU = lRUACTUAL;
-        pthread_mutex_lock(&lru_mutex);
+        pthread_mutex_unlock(&lru_mutex);
 
         log_info(logger, "tomo el frame %d con Exito", tempPagina->frame);
 
