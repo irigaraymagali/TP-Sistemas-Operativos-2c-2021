@@ -558,7 +558,7 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     if(list_any_satisfy(dispositivos_io, igual_a)){  
         
         exec_a_block(id_carpincho);
-        data_carpincho carpnicho = encontrar_estructura_segun_id(id_carpincho);
+        data_carpincho carpincho = encontrar_estructura_segun_id(id_carpincho);
         carpincho->estado = BLOCKED;
         dispositivo_pedido = list_find(dispositivos_io, dispositivo_igual_a); 
 
@@ -769,7 +769,7 @@ void ready_a_exec(){
 
         asignarle_hilo_CPU(carpincho_a_mover);
 
-        carpincho_a_mover->tiempo_entrada_a_exec = temporal_get_string_time("%H:%M:%S:%MS");
+        carpincho_a_mover->tiempo_entrada_a_exec = calcular_milisegundos(); //dejarlo aca o cuando lo agregas a la lista de exec?
 
         //mandar mensaje a la lib, con el fd que tiene en la estructura el carpincho
         _send_message(carpincho->fd, ID_KERNEL, 1, carpincho->id, sizeof(int), logger); // va así?
@@ -978,37 +978,10 @@ void calculo_estimacion_siguiente(data_carpincho *carpincho){
 // para SJF
 void calculo_rafaga_anterior(data_carpincho *carpincho){
 
-    //cuánto tiempo en milisegundos estuvo el carpincho en exec tomando la diferencia entre el timestamp al ingresar y al salir de exec.
-    char tiempo_al_salir = temporal_get_string_time("%M %S %MS"); // ver si funciona asi, sino ("%H:%M:%S:%MS") => cambiar pasaje a int
-    int tiempo_entrada = atoi(*carpincho->tiempo_entrada_a_exec);
-    int tiempo_salida = atoi(*tiempo_al_salir);
+    int tiempo_salida = calcular_milisegundos();
 
-    //pasar a milisegundos
-    
-    int diferencia_milisegundos = tiempo_salida - tiempo_entrada;
-
-    carpincho->rafaga_anterior = diferencia_milisegundos;
-
+    carpincho->rafaga_anterior = tiempo_salida - carpincho->tiempo_entrada_a_exec;
 }
-
-
-float calcular_milisegundos(){
-
-    char* string_tiempo = temporal_get_string_time("%M:%S:%MS"); // " 20: 30: 60 " 
-
-    //separar tiempo en hora, min, seg y miliseg:
-    while(retorno!=NULL){ //no
-        int minutos = str_split(string_tiempo,':');
-        
-                //o en una estructura?
-    }
-
-    //pasar todo a miliseg:
-    return minutos * 60000 + segundos * 60 + milisegundos
-
-
-}
-
 
 // para HRRN
 void calculo_RR(data_carpincho *carpincho){
@@ -1021,6 +994,23 @@ void calculo_RR(data_carpincho *carpincho){
     float s =  carpincho->estimacion_siguiente;
 
     carpincho->RR = 1 + w/s;
+}
+
+
+int calcular_milisegundos(){
+
+    char tiempo_sacado = temporal_get_string_time("%M:%S:%MS");
+    
+    char** tiempo_formateado = str_split(tiempo_sacado,':');
+
+    tiempo tiempo_calculado; 
+
+    tiempo_calculado->minutos = atoi(*tiempo_formateado[0])
+    tiempo_calculado->segundos = atoi(*tiempo_formateado[1])
+    tiempo_calculado->milisegundos = atoi(*tiempo_formateado[2])
+
+        // paso todo a milisegundos para que sea mas facil despues sacar la diferencia
+    return tiempo_calculado->minutos * 60000 + tiempo_calculado->segundos * 60 + tiempo_calculado->milisegundos
 }
 
 

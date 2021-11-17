@@ -62,6 +62,12 @@ typedef struct hilo_cpu
     t_sem semaforo;
 } hilo_cpu;
 
+typedef struct tiempo
+{
+    int minutos;
+    int segundos;
+    int milisegundos;
+} tiempo;
 
 t_list* semaforos_carpinchos;
 t_list* lista_carpinchos; 
