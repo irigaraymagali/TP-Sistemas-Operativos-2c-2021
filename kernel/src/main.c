@@ -986,14 +986,13 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){
 // para HRRN
 void calculo_RR(data_carpincho *carpincho){
 
-    char ahora = temporal_get_string_time("%M %S %MS"); // ver si funciona así, sino ("%H:%M:%S:%MS") => cambiar pasaje a int
-    int tiempo_ahora= atoi(*ahora);
+    char ahora = calcular_milisegundos();
 
-    float w = tiempo_ahora - carpincho->llegada_a_ready;
-    calculo_estimacion_siguiente(carpincho); //duda: prox rafaga = estimacion siguinete de SJF??
-    float s =  carpincho->estimacion_siguiente;
+    float espera = ahora - carpincho->llegada_a_ready;
+    calculo_estimacion_siguiente(carpincho); 
+    float prox_rafaga =  carpincho->estimacion_siguiente;
 
-    carpincho->RR = 1 + w/s;
+    carpincho->RR = 1 + espera/prox_rafaga;
 }
 
 
@@ -1005,9 +1004,9 @@ int calcular_milisegundos(){
 
     tiempo tiempo_calculado; 
 
-    tiempo_calculado->minutos = atoi(*tiempo_formateado[0])
-    tiempo_calculado->segundos = atoi(*tiempo_formateado[1])
-    tiempo_calculado->milisegundos = atoi(*tiempo_formateado[2])
+    tiempo_calculado->minutos = atoi(tiempo_formateado[0])
+    tiempo_calculado->segundos = atoi(tiempo_formateado[1])
+    tiempo_calculado->milisegundos = atoi(tiempo_formateado[2])
 
         // paso todo a milisegundos para que sea mas facil despues sacar la diferencia
     return tiempo_calculado->minutos * 60000 + tiempo_calculado->segundos * 60 + tiempo_calculado->milisegundos
@@ -1055,12 +1054,7 @@ void ejecuta(int id){
 }
 
 
-
-
-
-
-
-/////////////////////////////// Busquedas estructura carpincho ////////////////////////////
+/////////////////////////////// Busqueda estructura carpincho ////////////////////////////
 
 // segun su id:
 bool id_pertenece_al_carpincho(int ID, data_carpincho *carpincho){
