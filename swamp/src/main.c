@@ -22,6 +22,8 @@ int main(int argc, char ** argv) {
     guardar_pagina_asignacion_fija(1, 1, algo);
     void* otro = malloc(swap_page_size);
     otro = obtener_pagina(1, 1);
+    free(algo);
+    free(otro);
 
     // consola("TIPO_ASIGNACION ASIGNACION_FIJA", 0);
     // consola("GUARDAR_PAGINA 1 1 1111111111111111111111111111111111111111111111111111111111111111", 0);
@@ -65,7 +67,7 @@ int main(int argc, char ** argv) {
 
 void cerrar_swamp() {
     log_info(log_file, "Cerrando Swamp (∪︿∪)...");
-    free_t_mensaje(recibido);
+    // free_t_mensaje(recibido);
     close(server_socket);
     dictionary_destroy(swap_dict);
     list_destroy_and_destroy_elements(swap_list, nodo_swap_list_destroy);

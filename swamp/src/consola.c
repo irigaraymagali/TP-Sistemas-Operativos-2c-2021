@@ -20,6 +20,7 @@ void recibir_mensajes() {
     recibido = _receive_message(client_socket, log_file);
     while (recibido != NULL) {
         consola(recibido, client_socket);
+        free_t_mensaje(recibido);
         recibido = _receive_message(client_socket, log_file);
     }
 
