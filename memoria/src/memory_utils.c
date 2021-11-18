@@ -1394,6 +1394,7 @@ void* send_message_swamp(int command, void* payload, int pay_len){
     if(command == MEMORY_RECV_SWAP_SEND){
         t_mensaje* msg = _receive_message(swamp_fd, logger);
         void* payload = msg->payload;
+        free(msg->identifier);
         free(msg);
         return payload;
     }
