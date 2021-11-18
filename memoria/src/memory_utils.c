@@ -449,6 +449,7 @@ int getNewEmptyFrame(int idProcess){
                 if(tempPagina->isfree == FREE ){
                     list_iterator_destroy(iterator);
                     list_iterator_destroy(iterator2);
+                    add_entrada_tlb(idProcess, tempPagina->pagina, tempPagina->frame);
                     return tempPagina->frame;
                 }
         }
@@ -526,12 +527,19 @@ int frameAsignado(int unFrame){
 int getFrameDeUn(int processId, int mayorNroDePagina){
 
     TablaDePaginasxProceso* temp = get_pages_by(processId);
+    Pagina *tempPagina;
 
-    t_list_iterator* iterator = list_iterator_create(temp->paginas);
+    TLB* tlb = fetch_entrada_tlb(processId, mayorNroDePagina);
+    if (tlb != NULL){
+        /* TESTEAR */
+        tempPagina = (Pagina *) list_get(temp, tlb->pagina - 1);
+    } else {
+        t_list_iterator* iterator = list_iterator_create(temp->paginas);
 
-    Pagina *tempPagina = list_iterator_next(iterator);
-    while (list_iterator_has_next(iterator)  && tempPagina->pagina != mayorNroDePagina) {
         tempPagina = list_iterator_next(iterator);
+        while (list_iterator_has_next(iterator)  && tempPagina->pagina != mayorNroDePagina) {
+            tempPagina = list_iterator_next(iterator);
+        }
     }
 
     if(tempPagina->pagina == mayorNroDePagina){
@@ -555,6 +563,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 
         log_info(logger, "tomo el frame %d con Exito", tempPagina->frame);
 
+        add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
         return tempPagina->frame;
     }
 
@@ -758,10 +767,16 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 void deletePagina(int idProcess,int paginaActual){
 
     TablaDePaginasxProceso* tablaDePags =get_pages_by(idProcess);
-
+    Pagina *tempPagina;
+    TLB* tlb = fetch_entrada_tlb(idProcess, paginaActual);
+    if (tlb != NULL){
+        list_remove(tablaDePags, tlb->pagina - 1);
+        log_info(logger, "Deleteo la pag %d con Exito", tlb->pagina);
+        return;
+    } else {
     t_list_iterator* iterator = list_iterator_create(tablaDePags->paginas);
     
-    Pagina *tempPagina = list_iterator_next(iterator);
+    tempPagina = list_iterator_next(iterator);
 
     while (tempPagina->pagina != paginaActual)
     {
@@ -772,6 +787,7 @@ void deletePagina(int idProcess,int paginaActual){
     log_info(logger, "Deleteo la pag %d con Exito", tempPagina->pagina);
 
     list_iterator_destroy(iterator);
+    }
 }
 
 Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada){
@@ -823,18 +839,21 @@ int get_nro_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada){
 }
 
 Pagina *getPageDe(int processId,int nroPagina){
-
     TablaDePaginasxProceso* temp = get_pages_by(processId);
+    Pagina *tempPagina;
 
     t_list_iterator* iterator = list_iterator_create(temp->paginas);
-    
-   Pagina *tempPagina = list_iterator_next(iterator);
-    
-    while (tempPagina->pagina != nroPagina)
-    {
-       tempPagina = list_iterator_next(iterator);
+    TLB* tlb = fetch_entrada_tlb(processId, nroPagina);
+    if (tlb != NULL){
+        /* TESTEAR */
+        tempPagina = (Pagina *) list_get(temp, tlb->pagina - 1);
+    } else {
+        tempPagina = list_iterator_next(iterator);
+        while (tempPagina->pagina != nroPagina) {
+            tempPagina = list_iterator_next(iterator);
+        }
+        add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
     }
-    
     list_iterator_destroy(iterator);
     return tempPagina;
 }
@@ -1031,7 +1050,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
 
                 free(paginasAuxiliares);
             }
-        
+
         }
 
     }
@@ -1268,6 +1287,7 @@ HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset){
 }
 
 void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
+    log_info(logger, "Agregando una nueva entrada en la TLB");
     pthread_mutex_lock(&tlb_mutex);
 
     TLB* new_instance = new_entrada_tlb(pid, page, frame);
@@ -1279,7 +1299,7 @@ void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
 
     set_pid_metric_if_missing(pid);
     pthread_mutex_unlock(&tlb_mutex);
-
+    log_info(logger, "Entrada de TLB insertada con exito");
 }
 
 TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
@@ -1298,6 +1318,7 @@ TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
 void replace_entrada(TLB* new_instance){
     if (string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_REEMPLAZO_TLB"), "FIFO")){
         pthread_mutex_lock(&entrada_fifo_mutex);
+        /* TODO: LOGUEAR EL REEMPLAZO */
         list_replace_and_destroy_element(tlb_list, entrada_fifo, new_instance, (void*)free);
         if (entrada_fifo < max_entradas_tlb){
             entrada_fifo++;
@@ -1306,7 +1327,7 @@ void replace_entrada(TLB* new_instance){
         }
         pthread_mutex_unlock(&entrada_fifo_mutex);
     } else {
-        /* TESTEAR. */
+        /* TODO: LOGUEAR EL REEMPLAZO */
         TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_lru_tlb);
         tlb_to_replace->pid = new_instance->pid;
         tlb_to_replace->pagina = new_instance->pagina;
@@ -1334,7 +1355,13 @@ TLB* fetch_entrada_tlb(uint32_t pid, uint32_t page){
         TLB* tlb = (TLB*) list_iterator_next(iterator);
         if (tlb->pid == pid && tlb->pagina == page){
             sum_metric(pid, TLB_HIT);
-            log_info(logger, "TLB HIT: Proceso %d Pagina %d", pid, page);
+            log_info(logger, "TLB HIT: Proceso %d Pagina %d y Frame %d", pid, page, tlb->frame);
+            
+            pthread_mutex_lock(&tlb_lru_global);
+            tlb->lru = tlb_lru_global;
+            tlb_lru_global++;
+            pthread_mutex_unlock(&tlb_lru_global);
+            
             sleep(retardo_hit_tlb);
             return tlb;
         }
