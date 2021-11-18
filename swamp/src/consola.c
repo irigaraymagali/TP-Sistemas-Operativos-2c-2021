@@ -48,11 +48,11 @@ void consola(t_mensaje* recibido, int socket_conexion) {
         }
 
         else {
-            log_error(log_file, "Cantidad de parametros incorrecta.");
+            log_error(log_file, "TIPO_ASIGNACION Cantidad de parametros incorrecta.");
         }
     }
 
-    else if (recibido->command == RECV_PAGE) { // Ejemplo: GUARDAR_PAGINA PROCESO NUMERO_PAGINA CONTENIDO
+    else if (recibido->command == MEMORY_SEND_SWAP_RECV) { // Ejemplo: GUARDAR_PAGINA PROCESO NUMERO_PAGINA CONTENIDO
         if (recibido->pay_len == 3 * sizeof(int) + swap_page_size) {
             int offset = 0;
             int proceso, pagina;
@@ -73,11 +73,11 @@ void consola(t_mensaje* recibido, int socket_conexion) {
         }
 
         else {
-            log_error(log_file, "Cantidad de parametros incorrecta.");
+            log_error(log_file, "MEMORY_SEND_SWAP_RECV Cantidad de parametros incorrecta.");
         }
     }
 
-    else if (recibido->command == SEND_PAGE) { // Ejemplo: OBTENER_PAGINA PROCESO NUMERO_PAGINA
+    else if (recibido->command == MEMORY_RECV_SWAP_SEND) { // Ejemplo: OBTENER_PAGINA PROCESO NUMERO_PAGINA
         if (recibido->pay_len == 2 * sizeof(int)) {
             int offset = 0;
             int proceso, pagina;
@@ -88,7 +88,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             void* pagina_leida =  obtener_pagina(proceso, pagina);
             if (pagina_leida != NULL) {
                 void* pagina_a_enviar = _serialize(swap_page_size, "%v", pagina_leida);
-                if (_send_message(socket_conexion, "SWP", SEND_PAGE, pagina_a_enviar, swap_page_size, log_file)) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
+                if (_send_message(socket_conexion, "SWP", MEMORY_RECV_SWAP_SEND, pagina_a_enviar, swap_page_size, log_file)) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
                     log_info(log_file, "Pagina %d del proceso %d enviada.", pagina, proceso);
                 }
 
@@ -101,7 +101,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
         }
 
         else {
-            log_error(log_file, "Cantidad de parametros incorrecta.");
+            log_error(log_file, "MEMORY_RECV_SWAP_SEND Cantidad de parametros incorrecta.");
         }
     }
 
@@ -113,7 +113,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
         }
 
         else {
-            log_error(log_file, "Cantidad de parametros incorrecta.");
+            log_error(log_file, "FINISH_PROCESS Cantidad de parametros incorrecta.");
         }
     }
 
