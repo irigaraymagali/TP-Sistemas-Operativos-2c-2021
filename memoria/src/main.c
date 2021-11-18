@@ -20,6 +20,22 @@ int main(int argc, char ** argv){
     inicializarUnProceso(1);
     inicializarUnProceso(2);
 
+    memalloc(1, 300);
+    memalloc(1, 20);
+
+    void* contenido_pagina = _serialize(32, "%s", "HOLAHOLAHOLAHOLAHOLAHOLAHOLA");
+    void* payload2 = _serialize(sizeof(int) * 3 + 32, "%d%d%d%v", 1, 1, 32, contenido_pagina);
+    send_message_swamp(MEMORY_SEND_SWAP_RECV, payload2, sizeof(int) * 3 + 32);
+    free(payload2);
+
+    void* payload3 = _serialize(sizeof(int) * 2, "%d%d", 1, 1);
+    void* response = send_message_swamp(MEMORY_RECV_SWAP_SEND, payload3, sizeof(int) * 2);
+    free(payload3);
+
+    int a;
+    memcpy(&a, response, sizeof(int));
+    log_warning(logger, "Valor de a: %d", a);
+
     signal(SIGINT, print_metrics);
     signal(SIGUSR1, print_dump);
     signal(SIGUSR2, clean_tlb);

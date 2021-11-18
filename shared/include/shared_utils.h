@@ -20,8 +20,8 @@
 
 // Constantes comunicacion Memoria Swap
 #define TIPO_ASIGNACION     20
-#define RECV_PAGE           21
-#define SEND_PAGE           22
+#define MEMORY_RECV_SWAP_SEND           21
+#define MEMORY_SEND_SWAP_RECV           22
 #define FINISH_PROCESS      23
 
 // constante para saber quién envia mensaje a memoria

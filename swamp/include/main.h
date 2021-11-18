@@ -6,6 +6,7 @@
 #include "socket.h"
 #include "consola.h"
 #include "swap.h"
+#include "serialization.h"
 #include <commons/config.h>
 #include <commons/log.h>
 #include <commons/collections/list.h>
