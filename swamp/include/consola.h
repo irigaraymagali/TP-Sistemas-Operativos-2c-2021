@@ -14,8 +14,8 @@
 t_mensaje* recibido;
 
 void recibir_mensajes();
-// void consola(t_mensaje* recibido, int socket_conexion);
-void consola(char* buffer, int socket_conexion);
+void consola(t_mensaje* recibido, int socket_conexion);
+// void consola(char* buffer, int socket_conexion);
 void free_t_mensaje(t_mensaje* mensaje);
 int contar_parametros(char** parametros);
 
