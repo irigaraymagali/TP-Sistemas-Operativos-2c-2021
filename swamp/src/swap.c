@@ -355,6 +355,7 @@ void* obtener_pagina(int proceso, int pagina) {
         memcpy(contenido, swap_file_map + swap_page_size * frame_asignado, swap_page_size);
         //contenido[swap_page_size] = '\0';
         free(aux);
+        free(swap_file_path);
     }
     free(string_proceso);
 
