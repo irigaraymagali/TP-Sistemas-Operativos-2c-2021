@@ -19,6 +19,7 @@
 #include "socket.h"
 #include "shared_utils.h"
 #include "serialization.h"
+#include <commons/string.h>
 
 #endif
 
@@ -31,9 +32,10 @@ typedef struct semaforo
 
 typedef struct dispositivo_io
 {
-    char nombre;
-    float duracion;
+    char *nombre;
+    int duracion;
     bool en_uso;
+    t_queue *en_espera; 
 } dispositivo_io;
 
 typedef struct CPU
@@ -105,11 +107,15 @@ int puerto_escucha;
 char algoritmo_planificacion;
 float estimacion_inicial;
 int alfa;
-char dispositivos_io; 
-char duraciones_io; 
+char *dispositivos_io; 
+int *duraciones_io; 
 int grado_multiprogramacion;
 int grado_multiprocesamiento;
 int tiempo_deadlock;
+
+t_list* ptr_dispositivos_io;
+t_list* ptr_duraciones_io;
+
 
 // id carpincho
 int *id_carpincho;

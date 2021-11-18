@@ -3,14 +3,33 @@
 
 
 int main(int argc, char ** argv){
-   /* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
+/*
+    logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
     socket_memoria = (int *)malloc(sizeof(int));
     
     inicializar_colas();
 
     id_carpincho = malloc(sizeof(int));
-    *id_carpincho = 1;*/ para pruebas
+    *id_carpincho = 1;
     
+    config = config_create("../cfg/kernel.conf");
+
+	ip_memoria = config_get_string_value(config, "IP_MEMORIA");
+	puerto_memoria = config_get_int_value(config, "PUERTO_MEMORIA");
+	puerto_escucha = config_get_int_value(config, "PUERTO_ESCUCHA");    
+    algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
+    alfa = config_get_int_value(config, "ALFA");
+    dispositivos_io = config_get_array_value(config, "DISPOSITIVOS_IO");
+    duraciones_io = config_get_array_value(config, "DURACIONES_IO"); 
+    grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
+    grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
+    tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
+
+    t_list* ptr_dispositivos_io;
+    t_list* ptr_duraciones_io;
+*/
+
     int* socket;
     socket_memoria = malloc(sizeof(int));
 
@@ -49,169 +68,6 @@ int main(int argc, char ** argv){
     // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
     free_memory();
 } 
-
-void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
-    
-    log_info(logger, "Recibí un mensaje");
-    data_carpincho* estructura_interna;
-    estructura_interna = malloc(sizeof(estructura_interna));
-    int id_carpincho;
-    int size_memoria;
-    int addr_memfree;
-    int origin_memread;
-    void *dest_memread;
-    void *origin_memwrite;
-    int dest_memwrite;
-    int offset = 0;
-    int ptr_len = 0;
-    mate_pointer pointer;
-    
-    if(id === ID_MATE_LIB){
-        switch(opcode){
-            case MATE_INIT:
-                estructura_interna = deserializar(payload);
-                mate_init(fd);
-            break;
-            case MATE_CLOSE: 
-                estructura_interna = deserializar(payload);
-                mate_close(estructura_interna->id,fd);
-            break;
-            case MATE_SEM_INIT: 
-                estructura_interna = deserializar(payload);
-                mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
-            break;
-            case MATE_SEM_WAIT: 
-                estructura_interna = deserializar(payload);
-                mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
-            break;
-            case MATE_SEM_POST: 
-                estructura_interna = deserializar(payload);
-                mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
-            break;
-            case MATE_SEM_DESTROY:
-                estructura_interna = deserializar(payload);
-                mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
-            break;
-            case MATE_CALL_IO:
-                estructura_interna = deserializar(payload);
-                mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
-            break;
-            // ver qué tengo que pasar acá          
-            case MATE_MEMALLOC: 
-                // id_carpincho
-                memcpy(&id_carpincho, payload, sizeof(int));
-                offset += sizeof(int);
-                // size_memoria
-                memcpy(&size_memoria, payload, sizeof(int);
-                offset += sizeof(int);
-
-                mate_memalloc(id_carpincho, size_memoria, fd);      
-            break;      
-            case MATE_MEMFREE:
-                // id_carpincho
-                memcpy(&id_carpincho, payload, sizeof(int));
-                offset += sizeof(int);
-                // addr_memfree
-                memcpy(&addr_memfree, payload, sizeof(int);
-                offset += sizeof(int);
-
-                mate_memfree(id_carpincho, addr_memfree, fd);      
-            break;      
-            case MATE_MEMREAD: 
-                // id_carpincho
-                memcpy(&id_carpincho, payload, sizeof(int));
-                offset += sizeof(int);
-                // origin_memread
-                memcpy(&origin_memread, payload, sizeof(int);
-                offset += sizeof(int);
-                // dest_memread
-                memcpy(&ptr_len, payload + offset, sizeof(int));
-                offset += sizeof(int);
-                memcpy(&dest_memread, payload + offset, sizeof(int)* ptr_len);
-                offset += sizeof(int)* ptr_len;
-                // size_memoria
-                memcpy(&size_memoria, payload, sizeof(int);
-                offset += sizeof(int);
-
-                mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria), fd;            
-            break;
-            case MATE_MEMWRITE:  
-                // id_carpincho
-                memcpy(&id_carpincho, payload, sizeof(int));
-                offset += sizeof(int);
-                // origin_memwrite
-                memcpy(&ptr_len, payload + offset, sizeof(int));
-                offset += sizeof(int);
-                memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
-                offset += sizeof(int)* ptr_len;                
-                // dest_memwrite
-                memcpy(&dest_memwrite, payload, sizeof(int);
-                offset += sizeof(int);
-                // size_memoria
-                memcpy(&size_memoria, payload, sizeof(int);
-                offset += sizeof(int);
-
-                mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);     
-            break;  
-        }
-    }
-
-}
-
-
-
-
-////////////////////////////////////////////////////////////// pasar a las funciones de memoria 
-
-    else{
-        switch(opcode){
-            case MATE_MEMALLOC:
-                // id_carpincho
-                memcpy(&id_carpincho, payload, sizeof(int));
-                offset += sizeof(int);
-
-                responder_a_lib(id_carpincho);
-                
-            break;
-            case MATE_MEMFREE:
-                // id_carpincho
-                memcpy(&id_carpincho, payload, sizeof(int));
-                offset += sizeof(int);
-
-                responder_a_lib(id_carpincho);
-            break;
-            case MATE_MEMREAD:
-
-                // id_carpincho
-                memcpy(&id_carpincho, payload, sizeof(int));
-                offset += sizeof(int);
-
-                responder_a_lib(id_carpincho);
-            break;  
-            case MATE_MEMWRITE:
-                // id_carpincho
-                memcpy(&id_carpincho, payload, sizeof(int));
-                offset += sizeof(int);
-
-                responder_a_lib(id_carpincho);
-            break;
-    }
-
-void responder_a_lib(int id_carpincho){
-    data_carpincho *carpincho;
-    carpincho = encontrar_estructura_segun_id(id_carpincho); 
-    int fd = carpincho->fd;
-    
-    if(id_carpincho < 0){
-        log_info(logger, "no se pudo realizar la operación de memoria");
-        _send_message(fd, ID_KERNEL, 1, -1, sizeof(int), logger);
-    }
-    else{
-        _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger);
-    }
-}
-
-////////////////////////////////////////////////////////////// pasar a las funciones de memoria 
 
 
 
@@ -585,43 +441,29 @@ void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
     }
 }
 
-
-/////////////////////// hasta aca llegue compilando
-
 //////////////// FUNCIONES IO ///////////////////
 
-    //para el find:
+//para el find:
 
-        bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
-                return dispositivo->nombre === nombre_dispositivo;
-            }
-
-    //para el any satisfy:
-        dispositivo_io dispositivo_igual_a_nombre(mate_io_resource nombre_dispositivo, void *dispositivo){
-                return dispositivo->nombre === nombre_dispositivo;
-            }
-
-        bool esIgualDispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
-                return dispositivo->nombre === nombre_dispositivo;
-            }
+bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
+    return ((dispositivo_io *)dispositivo)->nombre == nombre_dispositivo;    // no se si aca estoy haciendo bien la comparacion. podria necesitar string_equals_ignore_case?
+} 
 
 
-int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
+void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
-    dispositivo_io dispositivo_igual_a(void *dispositivo){
-        return dispositivo_igual_a_nombre(nombre_io, dispositivo);
+    bool igual_a(void *dispositivo){
+        return es_igual_dispositivo(nombre_io, dispositivo);
     }
 
-    bool igual_a(void *dispoitivo){
-        return es_igual_dispositivo(dispositivo, nombre_dispositivo);
-    }
-
-    if(list_any_satisfy(dispositivos_io, igual_a)){  
+    if(list_any_satisfy(lista_dispositivos_io, igual_a)){  
         
-        exec_a_block(id_carpincho);
-        data_carpincho carpincho = encontrar_estructura_segun_id(id_carpincho);
+        dispositivo_io *dispositivo_pedido; 
+       // exec_a_block(id_carpincho);
+        data_carpincho *carpincho;
+        carpincho = encontrar_estructura_segun_id(id_carpincho);
         carpincho->estado = BLOCKED;
-        dispositivo_pedido = list_find(dispositivos_io, dispositivo_igual_a); 
+        dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); 
 
         if(dispositivo_pedido->en_uso){
            queue_push(dispositivo_pedido->en_espera, carpincho);       
@@ -629,54 +471,54 @@ int mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         else{ 
             dispositivo_pedido->en_uso = true;
             usleep(dispositivo_pedido->duracion);
-            block_a_ready(carpincho);
+           // block_a_ready(carpincho);
             while(!queue_is_empty(dispositivo_pedido->en_espera)){
-                data_carpincho carpincho_siguiente;
-                carpincho_siguiente = queue_peek(dispositivo_pedido->en_espera);
+                data_carpincho *carpincho_siguiente;
+                carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
                 queue_pop(dispositivo_pedido->en_espera);
                 usleep(dispositivo_pedido->duracion);
-                block_a_ready(carpincho_siguiente);
+               // block_a_ready(carpincho_siguiente);
             }
         }
     }
     else
     {
         log_info(logger, "Se pidio un dispositivo IO que no existe");
-        _send_message(fd, ID_KERNEL, 1, -1, sizeof(int), logger);
+        _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", -1), sizeof(int), logger); 
     }
-
 }
 
-// lista dispositivos_io y duraciones_io por config
-void crear_estructura_dispositivo(){ //deberia crearse al principio, no cuando lo piden
+void crear_estructura_dispositivo(t_list* ptr_duraciones_io, t_list* ptr_dispositivos_io){ //deberia crearse al principio, no cuando lo piden
 
-    for(int i= 0; i<list_size(dispositivos_io); i++){
+    for(int i= 0; i<list_size(ptr_dispositivos_io); i++){
 
-            dispositivo_io dispositivo = malloc(size_of(dispositivo_io); //free del malloc al final
-            dispositivo->nombre = list_get(dispositivos_io, i);
-            dispositivo->duracion = list_get(duraciones_io, i);
-            dispositivo->en_uso = false;
-            // dispositivo->en_espera = queue_create();  para crear la cola de espera y ahi ir guardando los carpinchos
+            dispositivo_io dispositivo;
+            dispositivo_io *ptr_dispositivo;
+            ptr_dispositivo = (dispositivo_io *)malloc(sizeof(dispositivo_io)); 
+            ptr_dispositivo = &dispositivo;
+            ptr_dispositivo->nombre = list_get(ptr_dispositivos_io, i);
+            ptr_dispositivo->duracion = list_get(ptr_duraciones_io, i);  // esto da assignment makes integer from pointer without a cast no se xq
+            ptr_dispositivo->en_uso = false;
+            ptr_dispositivo->en_espera = queue_create(); 
 
-            list_add(lista_dispositivos_io, *dispositivo);
-
+            list_add(lista_dispositivos_io, ptr_dispositivo);
         }
-
 }
 
 
 //////////////// FUNCIONES MEMORIA ///////////////////
 
-mate_pointer mate_memalloc(int id_carpincho, int size, int fd){
-    data_carpincho carpincho = encontrar_estructura_segun_id(id_carpincho);
+void mate_memalloc(int id_carpincho, int size, int fd){
+    data_carpincho *carpincho;
+    carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
 
-    _send_message(socket_memoria, 
+    _send_message(*socket_memoria, 
                     ID_KERNEL, 
                     MATE_MEMALLOC,
                      _serialize(    sizeof(int) * 2, 
                                     "%d%d", 
-                                    estructura_interna->id, 
+                                    carpincho->id, 
                                     size 
                                 ),
                     sizeof(int)*2,
@@ -684,32 +526,34 @@ mate_pointer mate_memalloc(int id_carpincho, int size, int fd){
 
 }
 
-int mate_memfree(int id_carpincho, mate_pointer addr, int fd){
-    data_carpincho carpincho = encontrar_estructura_segun_id(id_carpincho);
+void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
+    data_carpincho *carpincho;
+    carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
 
-    _send_message(socket_memoria, 
+    _send_message(*socket_memoria, 
                     ID_KERNEL, 
                     MATE_MEMFREE,
                      _serialize(    sizeof(int) + sizeof(mate_pointer), 
                                     "%d%d", 
-                                    estructura_interna->id, 
+                                    carpincho->id, 
                                     addr 
                                 ), 
                     sizeof(int) + sizeof(mate_pointer),
                     logger); 
 }
 
-int mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size, int fd){
-    data_carpincho carpincho = encontrar_estructura_segun_id(id_carpincho);
+void mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size, int fd){
+    data_carpincho *carpincho;
+    carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
 
-    _send_message(socket_memoria, 
+    _send_message(*socket_memoria, 
                     ID_KERNEL, 
                     MATE_MEMREAD, 
                     _serialize(     sizeof(int) * 3 + sizeof(int) * sizeof(dest) + sizeof(int), 
                                     "%d%d%d%v%d",
-                                    estructura_interna->id, 
+                                    carpincho->id, 
                                     origin,
                                     sizeof(dest),
                                     dest,
@@ -720,16 +564,17 @@ int mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size, in
 
 }
 
-int mate_memwrite(int id_carpincho, void origin, mate_pointer dest, int size, int fd){
-    data_carpincho carpincho = encontrar_estructura_segun_id(id_carpincho);
+void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, int fd){
+    data_carpincho *carpincho;
+    carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
 
-    _send_message(socket_memoria, 
+    _send_message(*socket_memoria, 
                     ID_KERNEL, 
                     MATE_MEMWRITE, 
                     _serialize(         sizeof(int) * 2 + sizeof(int) * sizeof(origin) + sizeof(int) +  sizeof(int), 
                                         "%d%d%v%d%d",
-                                        estructura_interna->id, 
+                                        carpincho->id, 
                                         sizeof(origin),
                                         origin,
                                         dest,
@@ -740,7 +585,10 @@ int mate_memwrite(int id_carpincho, void origin, mate_pointer dest, int size, in
                 );
 
 }
-    
+
+//////////////////////////////////// HASTA ACÁ LLEGUÉ COMPILANDO APROX
+
+
 
 ///////////////////// PLANIFICACIÓN ////////////////////////
 
@@ -1116,11 +964,165 @@ void ejecuta(int id){
 
 
 
+void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
+    
+    log_info(logger, "Recibí un mensaje");
+    data_carpincho* estructura_interna;
+    estructura_interna = malloc(sizeof(estructura_interna));
+    int id_carpincho;
+    int size_memoria;
+    int addr_memfree;
+    int origin_memread;
+    void *dest_memread;
+    void *origin_memwrite;
+    int dest_memwrite;
+    int offset = 0;
+    int ptr_len = 0;
+    mate_pointer pointer;
+    
+    if(id === ID_MATE_LIB){
+        switch(opcode){
+            case MATE_INIT:
+                estructura_interna = deserializar(payload);
+                mate_init(fd);
+            break;
+            case MATE_CLOSE: 
+                estructura_interna = deserializar(payload);
+                mate_close(estructura_interna->id,fd);
+            break;
+            case MATE_SEM_INIT: 
+                estructura_interna = deserializar(payload);
+                mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
+            break;
+            case MATE_SEM_WAIT: 
+                estructura_interna = deserializar(payload);
+                mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
+            break;
+            case MATE_SEM_POST: 
+                estructura_interna = deserializar(payload);
+                mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
+            break;
+            case MATE_SEM_DESTROY:
+                estructura_interna = deserializar(payload);
+                mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
+            break;
+            case MATE_CALL_IO:
+                estructura_interna = deserializar(payload);
+                mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
+            break;
+            // ver qué tengo que pasar acá          
+            case MATE_MEMALLOC: 
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // size_memoria
+                memcpy(&size_memoria, payload, sizeof(int);
+                offset += sizeof(int);
+
+                mate_memalloc(id_carpincho, size_memoria, fd);      
+            break;      
+            case MATE_MEMFREE:
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // addr_memfree
+                memcpy(&addr_memfree, payload, sizeof(int);
+                offset += sizeof(int);
+
+                mate_memfree(id_carpincho, addr_memfree, fd);      
+            break;      
+            case MATE_MEMREAD: 
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // origin_memread
+                memcpy(&origin_memread, payload, sizeof(int);
+                offset += sizeof(int);
+                // dest_memread
+                memcpy(&ptr_len, payload + offset, sizeof(int));
+                offset += sizeof(int);
+                memcpy(&dest_memread, payload + offset, sizeof(int)* ptr_len);
+                offset += sizeof(int)* ptr_len;
+                // size_memoria
+                memcpy(&size_memoria, payload, sizeof(int);
+                offset += sizeof(int);
+
+                mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria), fd;            
+            break;
+            case MATE_MEMWRITE:  
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // origin_memwrite
+                memcpy(&ptr_len, payload + offset, sizeof(int));
+                offset += sizeof(int);
+                memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
+                offset += sizeof(int)* ptr_len;                
+                // dest_memwrite
+                memcpy(&dest_memwrite, payload, sizeof(int);
+                offset += sizeof(int);
+                // size_memoria
+                memcpy(&size_memoria, payload, sizeof(int);
+                offset += sizeof(int);
+
+                mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);     
+            break;  
+        }
+    }
+
+}
 
 
 
 
+////////////////////////////////////////////////////////////// pasar a las funciones de memoria 
 
+    else{
+        switch(opcode){
+            case MATE_MEMALLOC:
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
 
+                responder_a_lib(id_carpincho);
+                
+            break;
+            case MATE_MEMFREE:
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
 
+                responder_a_lib(id_carpincho);
+            break;
+            case MATE_MEMREAD:
 
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+
+                responder_a_lib(id_carpincho);
+            break;  
+            case MATE_MEMWRITE:
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+
+                responder_a_lib(id_carpincho);
+            break;
+    }
+
+void responder_a_lib(int id_carpincho){
+    data_carpincho *carpincho;
+    carpincho = encontrar_estructura_segun_id(id_carpincho); 
+    int fd = carpincho->fd;
+    
+    if(id_carpincho < 0){
+        log_info(logger, "no se pudo realizar la operación de memoria");
+        _send_message(fd, ID_KERNEL, 1, -1, sizeof(int), logger);
+    }
+    else{
+        _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger);
+    }
+}
+
+////////////////////////////////////////////////////////////// pasar a las funciones de memoria 
