@@ -36,10 +36,14 @@ typedef struct {
 
 void inicializar_directorios();
 void inicializar_swap_files();
-void guardar_pagina(int proceso, int pagina, char* contenido);
-void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido);
-void guardar_pagina_asignacion_dinamica(int proceso, int pagina, char* contenido);
-char* obtener_pagina(int proceso, int pagina);
+// void guardar_pagina(int proceso, int pagina, char* contenido);
+// void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido);
+// void guardar_pagina_asignacion_dinamica(int proceso, int pagina, char* contenido);
+// char* obtener_pagina(int proceso, int pagina);
+void guardar_pagina(int proceso, int pagina, void* contenido);
+void guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido);
+void guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido);
+void* obtener_pagina(int proceso, int pagina);
 void finalizar_proceso(int proceso);
 nodo_swap_list* swap_file_menos_ocupado();
 int frames_ocupados(t_list* tabla_paginas);

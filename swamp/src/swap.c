@@ -70,7 +70,7 @@ void inicializar_swap_files() {
     free(swap_file_names);
 }
 
-void guardar_pagina(int proceso, int pagina, char* contenido) {
+void guardar_pagina(int proceso, int pagina, void* contenido) {
     if (tipo_asignacion == ASIGNACION_FIJA) {
         guardar_pagina_asignacion_fija(proceso, pagina, contenido);
     }
@@ -84,7 +84,7 @@ void guardar_pagina(int proceso, int pagina, char* contenido) {
     }
 }
 
-void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido) {
+void guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
     char* string_proceso = string_itoa(proceso);
     t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso); // Devuelve un puntero al t_list que representa a la tabla de paginas del archivo de swap que esta utilizando
     if (tabla_paginas == NULL) { // Si es la primera pagina del proceso que se va a guardar en swap
@@ -225,7 +225,7 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, char* contenido) {
 }
 
 
-void guardar_pagina_asignacion_dinamica(int proceso, int pagina, char* contenido) {
+void guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido) {
     char* string_proceso = string_itoa(proceso);
     t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso); // Devuelve un puntero al t_list que representa a la tabla de paginas del archivo de swap que esta utilizando
     if (tabla_paginas == NULL) { // Si es la primera pagina del proceso que se va a guardar en swap
@@ -330,8 +330,9 @@ void guardar_pagina_asignacion_dinamica(int proceso, int pagina, char* contenido
     free(string_proceso);
 }
 
-char* obtener_pagina(int proceso, int pagina) {
-    char* contenido = malloc(swap_page_size + 1);
+void* obtener_pagina(int proceso, int pagina) {
+    // char* contenido = malloc(swap_page_size + 1);
+    void* contenido = malloc(swap_page_size);
     char* string_proceso = string_itoa(proceso);
     t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso); // Devuelve un puntero al t_list que representa a la tabla de paginas del archivo de swap que esta utilizando
     if (tabla_paginas == NULL) {
@@ -352,7 +353,7 @@ char* obtener_pagina(int proceso, int pagina) {
         aux->pagina = pagina;
         int frame_asignado = get_frame_number(aux);
         memcpy(contenido, swap_file_map + swap_page_size * frame_asignado, swap_page_size);
-        contenido[swap_page_size] = '\0';
+        //contenido[swap_page_size] = '\0';
         free(aux);
     }
     free(string_proceso);
