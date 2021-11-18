@@ -542,8 +542,8 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
             tempPagina->frame = getNewEmptyFrame(processId);
             int pay_len = 2*sizeof(int);
             void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina);       
-            send_message_swamp(RECV_PAGE, payload, pay_len);
-
+            send_message_swamp(MEMORY_RECV_SWAP_SEND, payload, pay_len);
+            free(payload);
             //pedirselo a gonza
         }
         tempPagina->bitUso = 1;
@@ -1391,9 +1391,11 @@ void* send_message_swamp(int command, void* payload, int pay_len){
         return NULL;
     }
 
-    if(command == RECV_PAGE){
+    if(command == MEMORY_RECV_SWAP_SEND){
         t_mensaje* msg = _receive_message(swamp_fd, logger);
-        return msg->payload;
+        void* payload = msg->payload;
+        free(msg);
+        return payload;
     }
 
     return NULL;
