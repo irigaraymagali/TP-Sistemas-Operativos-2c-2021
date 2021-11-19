@@ -4,8 +4,6 @@
 
 int main(int argc, char ** argv){
 
-    // descomentar int* socket; // ver delfi si esto se tiene que usar
-
     config = config_create("../cfg/kernel.conf");
 
 	ip_memoria = config_get_string_value(config, "IP_MEMORIA");
@@ -19,7 +17,6 @@ int main(int argc, char ** argv){
     grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
     grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
     tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
-
 
     // descomentar  int id_carpincho = 1; o *?
 
@@ -68,10 +65,10 @@ void inicializar_colas(){ // Colas estados y sus mutex:
     suspended_ready = queue_create();
 	pthread_mutex_init(&sem_cola_suspended_ready, NULL);
 
-    hilos_CPU = list_create();   
+    CPU_libres = queue_create();
+    pthread_mutex_init(&sem_CPU_libres, NULL);
 
-    semaforos_carpinchos = list_create(); 
-	
+
     //pthread_mutex_init(&socket_memoria, NULL); //falta declarar socket_memoria => para que este mutex?
 }
 
@@ -92,26 +89,31 @@ void inicializar_semaforos(){ // Inicializacion de semaforos:
 
 void crear_hilos_CPU(){ // creación de los hilos CPU
 
-       // descomentar  sem_t liberar_CPU[grado_multiprocesamiento];
+        sem_t liberar_CPU[grado_multiprocesamiento];
         sem_t CPU_libre[grado_multiprocesamiento];
         sem_t usar_CPU[grado_multiprocesamiento];
 
+        pthread_t hilo_CPU[grado_multiprocesamiento]; // gonza -> nos va a pasar algo parecido que con los semaforos
+
 	for(int i= 0; i< grado_multiprocesamiento; i++){
         
+        int *id_CPU = &i;
         sem_init(&liberar_CPU[i], 0, 0);
         sem_init(&CPU_libre[i], 0, 1); // ver si es 0 o 1 en el segundo argumento
         sem_init(&usar_CPU[i], 0, 0);       
 
-        pthread_t hilo_CPU[i]; // gonza -> nos va a pasar algo parecido que con los semaforos
-        pthread_create(&hilo_CPU[i], NULL, (void*) ejecuta, &i); 
+        pthread_create(&hilo_CPU[i], NULL, (void*) ejecuta, id_CPU); 
         
-        // ver si podemos sacarla y solo usar el id
+        queue_push(CPU_libres, id_CPU);
+
+        /* versión anterior
         CPU *nuevo_CPU;
         nuevo_CPU = malloc(sizeof(hilo_CPU)); //es necsario? esta bien?
         nuevo_CPU->id = i;
         nuevo_CPU->semaforo = CPU_libre[i]; //esto funciona asi?
-        
-        list_add(hilos_CPU, nuevo_CPU); 
+        */
+
+        // list_add(hilos_CPU, &CPU_libre[i]); 
         // cambiar por una lista de semaforos de CPU_libre
         //
 	}
@@ -284,7 +286,7 @@ void mate_close(int id_carpincho, int fd){
 
 bool esIgualASemaforo(char* nombre_semaforo, void *semaforo_igual){
     
-    return strcmp(((semaforo *) semaforo_igual)->nombre, nombre_semaforo);
+    return strcmp(((semaforo *) semaforo_igual)->nombre, nombre_semaforo) == 0;
 }
 
 void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo, int fd){  
@@ -436,7 +438,7 @@ void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
 //para el find:
 
 bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
-    return  strcmp(((dispositivo_io *)dispositivo)->nombre, nombre_dispositivo) ;    
+    return  strcmp(((dispositivo_io *)dispositivo)->nombre, nombre_dispositivo) == 0 ;    
 } 
 
 
@@ -749,6 +751,7 @@ void ready_a_exec(){
             return aux->id == carpincho_a_mover->id;
         }
 
+        asignar_hilo_CPU(carpincho_a_mover);
 
     // Sacar de la cola de ready al elegido (por el algoritmo) y ponerlo en la la lista de exec
         pthread_mutex_lock(&sem_cola_ready); 
@@ -761,8 +764,6 @@ void ready_a_exec(){
 		pthread_mutex_unlock(&sem_cola_ready);
 
         *carpincho_a_mover->estado = EXEC;
-
-        //asignarle_hilo_CPU(carpincho_a_mover);
 
         *carpincho_a_mover->tiempo_entrada_a_exec = calcular_milisegundos(); //dejarlo aca o cuando lo agregas a la lista de exec?
 
@@ -802,11 +803,9 @@ void exec_a_block(int id_carpincho){
 
     *carpincho_a_bloquear->estado = BLOCKED; 
 
-    sem_post(&sem_hay_bloqueados);
+    sem_post(&(liberar_CPU[*carpincho_a_bloquear->CPU_en_uso])); // gonza -> subscripted value is neither array nor pointer nor vector
 
-    sem_t semaforo_a_usar = *carpincho_a_bloquear->hilo_CPU_usado.semaforo;  //ver error
-    
-    sem_post(&semaforo_a_usar); 
+    sem_post(&sem_hay_bloqueados);
 }
 
 void exec_a_exit(int id_carpincho, int fd){
@@ -817,7 +816,7 @@ void exec_a_exit(int id_carpincho, int fd){
     carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
 
     bool es_el_mismo_carpincho(data_carpincho* carpincho, data_carpincho* carpincho_que_termino){
-        return carpincho->id == carpincho_que_termino->id;
+        return carpincho->id == carpincho_que_termino->id; // gonza -> esta bien compararlos así?
     }
 
     bool es_el_mismo(void* carpincho){
@@ -837,11 +836,7 @@ void exec_a_exit(int id_carpincho, int fd){
     list_remove_by_condition(exec, es_el_mismo);
 	pthread_mutex_unlock(&sem_cola_exec);
 
-   // descomentar:           sem_t sem_uso = liberar_CPU[carpincho_que_termino->hilo_CPU_usado.id];
-    //sem_t sem_uso = 
-
-
-   //descomentar sem_post(&sem_uso); // "libera" el hilo cpu en el que estaba:
+    sem_post(&(liberar_CPU[*carpincho_que_termino->CPU_en_uso])); // "libera" el hilo cpu en el que estaba:
     sem_post(&sem_grado_multiprogramacion_libre);
 
     _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger); 
@@ -849,6 +844,7 @@ void exec_a_exit(int id_carpincho, int fd){
 
 
 void crear_hilos_planificadores(){
+
     pthread_t planficador_largo_plazo;
     pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
 
@@ -883,13 +879,13 @@ void block_a_ready(data_carpincho *carpincho_a_ready){ //la llaman cuando se hac
     pthread_mutex_lock(&sem_cola_ready); 
     pthread_mutex_lock(&sem_cola_blocked);
 
-    list_add(ready, carpincho);
+    list_add(ready, carpincho_a_ready);
     list_remove_by_condition(blocked, es_el_mismo);
 
     pthread_mutex_unlock(&sem_cola_blocked);
     pthread_mutex_unlock(&sem_cola_ready);
 
-    *carpincho->estado = READY;
+    *carpincho_a_ready->estado = READY;
     sem_post(&cola_ready_con_elementos);
 
     sem_wait(&sem_hay_bloqueados);
@@ -1100,35 +1096,49 @@ int calcular_milisegundos(){
 
 
 //////////////////////////// Funciones para exec ///////////////////////////////////
+
+/* version anterior
 bool obtener_valor_semaforo(CPU* hilo_cpu){
     
     int valor = sem_getvalue(&(hilo_cpu->semaforo), &valor);
     return valor == 1;
-}
+}*/
 
 
-void asignar_hilo_CPU(data_carpincho carpincho){
+void asignar_hilo_CPU(data_carpincho *carpincho){
 
-    CPU *hilo_CPU_disponible;
+    int *id_CPU_disponible;
 
+    /* version anterior
     bool buscar_disponible(void* hilo_cpu){
-        //int valor = sem_getvalue(&(hilo_cpu->semaforo), &valor);
-        //return valor == 1;
         CPU* otro_cpu = (CPU *) hilo_cpu;
         return obtener_valor_semaforo(otro_cpu);
+    }*/
+
+/*
+    bool buscar_disponible(void* semaforo_hilo){
+        sem_t hilo_CPU = (sem_t *) semaforo_hilo;
+        int *valor;
+        sem_getvalue(hilo_CPU, &semaforo );
+        return valor == 1;
     }
+*/
+    // hilo_CPU_disponible = (CPU* ) list_find(hilos_CPU, buscar_disponible);
 
-    hilo_CPU_disponible = (CPU* ) list_find(hilos_CPU, buscar_disponible);
+    pthread_mutex_lock(&sem_CPU_libres);
+    id_CPU_disponible = queue_peek(CPU_libres);
+    queue_pop(CPU_libres);
+    pthread_mutex_unlock(&sem_CPU_libres);
 
-    // descomentar  sem_post(&(usar_CPU[hilo_CPU_disponible->id]);
+    sem_post(&(usar_CPU[id_CPU_disponible]));
 
-    *carpincho.hilo_CPU_usado = *hilo_CPU_disponible;
+    carpincho->CPU_en_uso = id_CPU_disponible;
 
 }
 
 
 
-void ejecuta(int id){ 
+void ejecuta(int *id){ 
 
     while(1){
 
@@ -1138,9 +1148,10 @@ void ejecuta(int id){
         // mutex
         
         sem_wait(&liberar_CPU[id]); // espera a que algun carpincho indique que quiere liberar el cpu
+        queue_push(CPU_libres, id);
         
         //
-        sem_post(&CPU_libre[id]); // indica que ya esta el cpu libre de nuevo
+        sem_post(&CPU_libre[id]); // indica que ya esta el cpu libre de nuevo. gonza -> como hacemos 
         sem_post(&sem_grado_multiprocesamiento_libre); // indica que ya hay algun cpu libre
         //
     }
@@ -1161,8 +1172,8 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     int dest_memwrite;
     int offset = 0;
     int ptr_len = 0;
-    
-    if(id == ID_MATE_LIB){ // comparison with string literal results in unspecified behavior
+
+    if(strcmp(id, ID_MATE_LIB) == 0){ // comparison with string literal results in unspecified behavior
         switch(opcode){
             case MATE_INIT:
                 estructura_interna = deserializar(payload);

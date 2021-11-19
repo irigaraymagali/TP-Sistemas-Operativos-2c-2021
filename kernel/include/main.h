@@ -62,7 +62,8 @@ typedef struct data_carpincho // la data que le importa tener al backend, hacer 
     float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
     float *RR; //para HRRN -> fijarnos si es necesario o no
     char *estado; // => ir cambiandole el estado
-    CPU *hilo_CPU_usado; // para saber en qué hilo cpu se esta ejecutando
+    //CPU *hilo_CPU_usado; // para saber en qué hilo cpu se esta ejecutando
+    int *CPU_en_uso;
     char *tiempo_entrada_a_exec; // para calcular milisegundos en exec
     int *fd; // para saber a quien le tiene que responder
     char *semaforo; // guarda el char porque es lo que nos manda el carpincho
@@ -78,6 +79,8 @@ t_list*  exit_list;
 t_list* blocked;
 t_list* suspended_blocked;
 t_queue* suspended_ready;
+
+t_queue* CPU_libres;
     
 t_list* hilos_CPU;
 t_list* semaforos_carpinchos;
@@ -93,6 +96,7 @@ pthread_mutex_t sem_cola_blocked;
 pthread_mutex_t sem_cola_exit;
 pthread_mutex_t sem_cola_suspended_blocked;
 pthread_mutex_t sem_cola_suspended_ready;
+pthread_mutex_t sem_CPU_libres;
 
 // log
 t_log *logger;
@@ -100,14 +104,14 @@ t_log *logger;
 // socket memoria;
 int socket_memoria;
 
-// configuración
+// configuración gonza -> con punteros o sin punteros?
 t_config* config;
 char *ip_memoria; 
-char* puerto_memoria;
-char* puerto_escucha;
+char *puerto_memoria;
+char *puerto_escucha;
 char *algoritmo_planificacion;
 float *estimacion_inicial;
-int alfa;
+float *alfa;
 char **dispositivos_io; 
 char **duraciones_io; 
 int grado_multiprogramacion;
@@ -141,8 +145,9 @@ sem_t sem_hay_bloqueados;
 
 
 
+
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger);
-void ejecuta(int id);
+void ejecuta(int *id);
 
 void inicializar_colas();
 void inicializar_semaforos();
@@ -186,8 +191,8 @@ void calculo_estimacion_siguiente(data_carpincho *carpincho);
 void calculo_rafaga_anterior(data_carpincho *carpincho);
 void calculo_RR(data_carpincho *carpincho);
 int calcular_milisegundos();
-void asignar_hilo_CPU(data_carpincho carpincho);
-void ejecuta(int id);
+void asignar_hilo_CPU(data_carpincho *carpincho);
+void ejecuta(int *id);
 bool obtener_valor_semaforo(CPU hilo_cpu);
 
 void detectar_deadlock();
