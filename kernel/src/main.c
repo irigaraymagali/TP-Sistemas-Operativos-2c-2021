@@ -20,16 +20,12 @@ int main(int argc, char ** argv){
     algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
     estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
     alfa = config_get_int_value(config, "ALFA");
-    dispositivos_io = config_get_array_value(config, "DISPOSITIVOS_IO");
-    duraciones_io = config_get_array_value(config, "DURACIONES_IO"); 
+    dispositivos_io = config_get_array_value(config, "DISPOSITIVOS_IO"); //esto va a ser un char**
+    duraciones_io = config_get_array_value(config, "DURACIONES_IO");  // hay que usar atoi porque lo trae como char**
     grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
     grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
     tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
-
-    t_list* ptr_dispositivos_io;
-    t_list* ptr_duraciones_io;
 */
-
     int* socket;
     socket_memoria = malloc(sizeof(int));
 
@@ -67,8 +63,8 @@ int main(int argc, char ** argv){
 
     // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
     free_memory();
-} 
 
+} 
 
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
@@ -109,24 +105,11 @@ void inicializar_semaforos(){ // Inicializacion de semaforos:
     sem_init(&cola_blocked_con_elementos,0,0);
     sem_init(&cola_suspended_blocked_con_elementos,0,0);
     sem_init(&cola_suspended_ready_con_elementos,0,0); 
+    sem_init(&sem_programacion_lleno,0,0);
+    sem_init(&sem_procesamiento_lleno,0,0);
+    sem_init(&sem_hay_bloqueados,0,0);
 }
-// para compilar
-void entrantes_a_ready(){}
-void ready_a_exec(){}
-void suspender(){}
-void ejecuta(){}
 
-
-void crear_hilos_planificadores(){
-    pthread_t planficador_largo_plazo;
-    pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
-
-    pthread_t planficador_corto_plazo;
-    pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
-    
-    pthread_t planficador_mediano_plazo;
-    pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); //FALTA función "x"
-}
 
 void crear_hilos_CPU(){ // creación de los hilos CPU
 
@@ -485,24 +468,37 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     {
         log_info(logger, "Se pidio un dispositivo IO que no existe");
         _send_message(fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", -1), sizeof(int), logger); 
+        // (void *) payload = _serialize(sizeof(int), "%d", -1) => esto habria que hacerlo a todos los msjs
     }
 }
 
-void crear_estructura_dispositivo(t_list* ptr_duraciones_io, t_list* ptr_dispositivos_io){ //deberia crearse al principio, no cuando lo piden
+void crear_estructura_dispositivo(){ //deberia crearse al principio, no cuando lo piden
 
-    for(int i= 0; i<list_size(ptr_dispositivos_io); i++){
+    for(int i= 0; i < contar_elementos(dispositivos_io); i++){
 
-            dispositivo_io dispositivo;
-            dispositivo_io *ptr_dispositivo;
-            ptr_dispositivo = (dispositivo_io *)malloc(sizeof(dispositivo_io)); 
-            ptr_dispositivo = &dispositivo;
-            ptr_dispositivo->nombre = list_get(ptr_dispositivos_io, i);
-            ptr_dispositivo->duracion = list_get(ptr_duraciones_io, i);  // esto da assignment makes integer from pointer without a cast no se xq
-            ptr_dispositivo->en_uso = false;
-            ptr_dispositivo->en_espera = queue_create(); 
+            dispositivo_io *dispositivo;
+            dispositivo = (dispositivo_io *)malloc(sizeof(dispositivo_io)); 
+            dispositivo->nombre = string_from_format("%s",dispositivos_io[i]);
+            dispositivo->duracion = atoi(duraciones_io[i]);
+            dispositivo->en_uso = false;
+            dispositivo->en_espera = queue_create(); 
 
-            list_add(lista_dispositivos_io, ptr_dispositivo);
+            list_add(lista_dispositivos_io, dispositivo);
         }
+}
+
+// free de nombre
+// destruir queue y elemntos
+// free estructura
+// destruir lista_dispositivos_io
+
+
+int contar_elementos(char** elementos) {
+    int i = 0;
+    while (elementos[i] != NULL) {
+        i++;
+    }
+    return i;
 }
 
 
@@ -588,15 +584,11 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
 
 //////////////////////////////////// HASTA ACÁ LLEGUÉ COMPILANDO APROX
 
-
-
-///////////////////// PLANIFICACIÓN ////////////////////////
-
 void entrantes_a_ready(){
 
     data_carpincho *carpincho_a_mover;
-    int respuesta_memoria;
-    t_mensaje buffer;
+    int *valor;
+    valor = (int *) 1;
 
     while(1){
         sem_wait(&hay_estructura_creada); // hacerle post en mate_init y cuando uno pasa a estar en suspended_ready
@@ -609,8 +601,8 @@ void entrantes_a_ready(){
 
             carpincho_a_mover = queue_peek(suspended_ready);
 
-            queue_push(ready, carpincho_a_mover);
-            queue_pop(suspended_ready)
+            list_add(ready, carpincho_a_mover);
+            queue_pop(suspended_ready);
 
             pthread_mutex_unlock(&sem_cola_ready); 
             pthread_mutex_unlock(&sem_cola_suspended_ready); 
@@ -633,15 +625,20 @@ void entrantes_a_ready(){
         carpincho_a_mover->estado = READY;
         sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
 
-        if(sem_getvalue(&sem_grado_multiprogramacion_libre) === 0){ // si con este se llena el grado de multiprocesamiento, podria necesitarse suspender 
+        sem_getvalue(&sem_grado_multiprogramacion_libre, valor);
+        if(valor == 0){ // si con este se llena el grado de multiprocesamiento, podria necesitarse suspender 
             sem_post(&sem_programacion_lleno);
         }
     }
 }
 
+
 void ready_a_exec(){  
 
-    data_carpincho carpincho_a_mover;
+    int *valor;
+    valor = (int *) 1;
+
+    data_carpincho *carpincho_a_mover;
 
     while(1){ 
 
@@ -649,68 +646,63 @@ void ready_a_exec(){
         sem_wait(&sem_grado_multiprocesamiento_libre);
 
     // Depende del algoritmo en el config:
-        if(algoritmo_planificacion == "SJF"){
+    
+        if(string_equals_ignore_case(algoritmo_planificacion, "SJF")){
             carpincho_a_mover = ready_a_exec_SJF();
         }
         else{
             carpincho_a_mover = ready_a_exec_HRRN();
         }
 
+        bool es_el_mismo(void* carpincho){
+            return ((data_carpincho *) carpincho)->id == carpincho_a_mover->id;
+        }
+
+
     // Sacar de la cola de ready al elegido (por el algoritmo) y ponerlo en la la lista de exec
         pthread_mutex_lock(&sem_cola_ready); 
 		pthread_mutex_lock(&sem_cola_exec);
 
-        list_add(exec, *carpincho_a_mover);
-        list_remove_by_condition(ready, es_el_mismo);
+        list_add(exec, carpincho_a_mover);
+        list_remove_by_condition(ready, (void *)es_el_mismo);
     
 		pthread_mutex_unlock(&sem_cola_exec);
 		pthread_mutex_unlock(&sem_cola_ready);
 
         carpincho_a_mover->estado = EXEC;
 
-        bool es_el_mismo(void* carpincho){
-            return es_el_mismo_carpincho(carpincho,carpincho_a_mover);
-            }
-
-        bool es_el_mismo_carpincho(data_carpincho carpincho, data_carpincho carpincho_a_mover){
-            return carpincho->id === carpincho_a_mover->id;
-            }
-
         asignarle_hilo_CPU(carpincho_a_mover);
 
         carpincho_a_mover->tiempo_entrada_a_exec = calcular_milisegundos(); //dejarlo aca o cuando lo agregas a la lista de exec?
 
         //mandar mensaje a la lib, con el fd que tiene en la estructura el carpincho
-        _send_message(carpincho->fd, ID_KERNEL, 1, carpincho->id, sizeof(int), logger); // va así?
-
-        if(sem_getvalue(&sem_grado_multiprocesamiento_libre) === 0){ // si con este se llena el grado de multiprocesamiento, podria necesitarse suspender 
+        _send_message(carpincho_a_mover->fd, ID_KERNEL, 1, _serialize(sizeof(int), "%d", 0), sizeof(int), logger); 
+        
+        sem_getvalue(&sem_grado_multiprocesamiento_libre, valor);
+        if( valor == 0){ // si con este se llena el grado de multiprocesamiento, podria necesitarse suspender 
             sem_post(&sem_procesamiento_lleno);
         }
-
     }
 }
 
-
-
 void exec_a_block(int id_carpincho){
-     bool es_el_mismo(void* carpincho){
-        return es_el_mismo_carpincho(carpincho,carpincho_a_bloquear);
-    }
 
-    bool es_el_mismo_carpincho(data_carpincho carpincho, data_carpincho carpincho_a_bloquear){
-        return carpincho->id === carpincho_a_bloquear->id;
-    }
+    data_carpincho *carpincho_a_bloquear;
+    carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
+
+    bool es_el_mismo(void* carpincho){
+            return ((data_carpincho *) carpincho)->id == carpincho_a_bloquear->id;
+        }
 
     // le pasan el id del carpincho y lo saca de la lista de exec, lo pone en block y le hace signal al cpu
 
-    data_carpincho carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
     calculo_rafaga_anterior(carpincho_a_bloquear); 
 
     // Sacar de la lista de exec y ponerlo en la la cola de blocked
     pthread_mutex_lock(&sem_cola_exec); 
 	pthread_mutex_lock(&sem_cola_blocked);
 
-    list_add(blocked, *carpincho_a_bloquear); 
+    list_add(blocked, carpincho_a_bloquear); 
     list_remove_by_condition(exec, es_el_mismo);
     
 	pthread_mutex_unlock(&sem_cola_blocked);
@@ -719,23 +711,15 @@ void exec_a_block(int id_carpincho){
     carpincho_a_bloquear->estado = BLOCKED; 
 
     sem_post(&sem_hay_bloqueados);
-
-    sem_post(liberar_CPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
-
-}
-
-
-void exec_a_block_io(int id_carpincho, char dispositivo){ //hace falta que sea una distinta?
     
-    // ver lo de las duraciones
-    exec_a_block(id_carpincho);
-
+    sem_post((carpincho_a_bloquear->hilo_CPU_usado)->semaforo); 
 }
 
+//////////////////////////// hasta aca llegue a compilar
 
 void exec_a_exit(int id_carpincho, int fd){
     
-    data_carpincho carpincho_que_termino;
+    data_carpincho *carpincho_que_termino;
     carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
 
     bool es_el_mismo(void* carpincho){
@@ -748,6 +732,12 @@ void exec_a_exit(int id_carpincho, int fd){
 
     _send_message(socket_memoria, ID_KERNEL, MATE_CLOSE, _serialize(sizeof(int), "%d", id_carpincho), sizeof(int), logger);  //avisar a mem para que libere
 
+    void *buffer;
+    int respuesta_memoria;
+    respuesta_memoria = -1;
+    buffer = _receive_message(*socket_memoria, logger);
+    memcpy((void*)respuesta_memoria, buffer, sizeof(int));
+
     pthread_mutex_lock(&sem_cola_exec); 
     list_remove_by_condition(exec, es_el_mismo);
 	pthread_mutex_unlock(&sem_cola_exec);
@@ -757,6 +747,19 @@ void exec_a_exit(int id_carpincho, int fd){
 
     _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger); 
 }
+
+
+void crear_hilos_planificadores(){
+    pthread_t planficador_largo_plazo;
+    pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
+
+    pthread_t planficador_corto_plazo;
+    pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
+    
+    pthread_t planficador_mediano_plazo;
+    pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); 
+}
+
 
 void block_a_ready(data_carpincho *carpincho){ //la llaman cuando se hace post o cuando se termina IO
    
@@ -961,7 +964,6 @@ void ejecuta(int id){
         //
     }
 }
-
 
 
 void handler( int fd, char* id, int opcode, void* payload, t_log* logger){

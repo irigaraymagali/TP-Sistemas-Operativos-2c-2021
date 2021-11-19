@@ -101,10 +101,10 @@ int *socket_memoria;
 
 // configuración
 t_config* config;
-char ip_memoria; 
+char *ip_memoria; 
 int puerto_memoria;
 int puerto_escucha;
-char algoritmo_planificacion;
+char *algoritmo_planificacion;
 float estimacion_inicial;
 int alfa;
 char *dispositivos_io; 
@@ -132,3 +132,6 @@ sem_t cola_suspended_ready_con_elementos;
 sem_t liberar_CPU;
 sem_t CPU_libre;
 sem_t usar_CPU;  
+sem_t sem_programacion_lleno;
+sem_t sem_procesamiento_lleno;
+sem_t sem_hay_bloqueados;
