@@ -272,6 +272,9 @@ void mate_close(int id_carpincho, int fd){
 
     exec_a_exit(id_carpincho, fd); // acá se encarga de avisar a memoria y responder al fd
 
+    log_info(logger, "La estructura del carpincho %d se eliminó correctamente", id_carpincho);
+    
+
 }
 
 //////////////// FUNCIONES SEMAFOROS ///////////////////
@@ -292,7 +295,7 @@ void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo,
     if(list_any_satisfy(semaforos_carpinchos, (void *)esIgualA)){  
         void  *payload;
         payload = _serialize(sizeof(int), "%d", -1);
-        log_info(logger, "El semaforo ya estaba incializado");
+        log_info(logger, "El semaforo %s ya estaba incializado", *nombre_semaforo);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
     else {
@@ -310,7 +313,7 @@ void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo,
         list_add(semaforos_carpinchos, ptr_semaforo);
 
         // esto está quedando mal no se por que
-        log_info(logger, "Se inicializó el semáforo %d   ", *semaforo_nuevo.nombre );        
+        log_info(logger, "Se inicializó el semáforo %s", *nombre_semaforo );        
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger);         
     }
 }
