@@ -1349,9 +1349,8 @@ void replace_entrada(TLB* new_instance){
         tlb_to_replace->frame = new_instance->frame;
         tlb_to_replace->lru = new_instance->lru;
 
-        if (entrada_fifo < max_entradas_tlb){
-            entrada_fifo++;
-        } else {
+        entrada_fifo++;
+        if (max_entradas_tlb <= entrada_fifo){
             entrada_fifo = 0;
         }
 
