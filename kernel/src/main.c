@@ -1,6 +1,6 @@
 #include "main.h"
 
-
+// cuando quiera lleanr la estructura con palabras, tengo que hacer el malloc.
 
 int main(int argc, char ** argv){
 
@@ -48,7 +48,6 @@ int main(int argc, char ** argv){
    //descomentar pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
     
     _start_server(puerto_escucha, handler, logger);
-    socket_memoria = _connect(ip_memoria, puerto_memoria, logger);
 
     // esta bien esperar asi a los hilos? o cuando se va a terminar la conexion?
     pthread_join ( planficador_largo_plazo , NULL ) ;
@@ -174,7 +173,7 @@ void free_memory(){
 data_carpincho* encontrar_estructura_segun_id(int id){
     
     bool id_pertenece_al_carpincho(int id, data_carpincho *carpincho){
-        return carpincho->id == id; // GONZA -> esto da comparison between pointer and integer (le agregue * revisar)
+        return carpincho->id == id; 
     }
 
     bool buscar_id(void * carpincho){
@@ -221,21 +220,22 @@ data_carpincho* deserializar(void* buffer){
 //////////////// FUNCIONES GENERALES ///////////////////
 
 void mate_init(int fd){
-    //gonza -> como crear la estructura de punteros. deberiamos hacer malloc pa todos? siempre que hay puntero hay malloc?
-    data_carpincho carpincho;
-    data_carpincho *ptr_carpincho;
-    ptr_carpincho = (data_carpincho *) malloc(sizeof(data_carpincho));
-    ptr_carpincho = &carpincho;
-    carpincho.id = id_carpincho;
-    carpincho.rafaga_anterior = 0;
-    carpincho.estimacion_anterior = 0;
-    carpincho.estimacion_siguiente = estimacion_inicial; // viene por config
-    carpincho.estado = NEW;
-    carpincho.fd = fd; // GONZA ->  assignment makes pointer from integer without a cast (le agregue * pero revisar)
+    data_carpincho *carpincho;
+    carpincho = malloc(sizeof(data_carpincho));
+    carpincho->id = id_carpincho;
+    carpincho->rafaga_anterior = 0;
+    carpincho->estimacion_anterior = 0;
+    carpincho->estimacion_siguiente = estimacion_inicial; // viene por config
+    carpincho->estado = NEW;
+    carpincho->fd = fd; 
 
     void *payload;
-    payload =  _serialize(sizeof(int), "%d", ptr_carpincho->id);
+    payload =  _serialize(sizeof(int), "%d", carpincho->id);
 
+    int socket_memoria;
+    socket_memoria = _connect(ip_memoria, puerto_memoria, logger);
+
+    // hacer esto para todas
     // tendria que chequear que se cree bien la conexión?
     _send_message(socket_memoria, ID_KERNEL, MATE_INIT, payload , sizeof(int), logger); // envia la estructura al backend para que inicialice todo
 
@@ -244,10 +244,14 @@ void mate_init(int fd){
     buffer = _receive_message(socket_memoria, logger);
     memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
     
+    close(socket_memoria);
+    
+    //
+    
     if(respuesta_memoria >= 0){  // si la memoria crea la estructura, le devuelve el id
             
         log_info(logger, "La estructura del carpincho %d se creó correctamente en memoria", id_carpincho);
-        list_add(lista_carpinchos, ptr_carpincho);
+        list_add(lista_carpinchos, (void *) carpincho);
         sem_post(&hay_estructura_creada);
         _send_message(fd, ID_KERNEL, MATE_INIT, payload, sizeof(int), logger);
     }
@@ -380,7 +384,7 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
             carpincho_a_desbloquear = queue_peek(semaforo_post->en_espera);
             queue_pop(semaforo_post->en_espera);
 
-            if(carpincho_a_desbloquear->estado == BLOCKED){ // GONZA -> comparison between pointer and integer (le agregue *, revisar)
+            if(carpincho_a_desbloquear->estado == BLOCKED){ 
                 carpincho_a_desbloquear->estado = READY;
                 block_a_ready(carpincho_a_desbloquear);
             }
@@ -799,7 +803,7 @@ void exec_a_block(int id_carpincho){
 
     carpincho_a_bloquear->estado = BLOCKED; 
 
-    sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); // gonza -> subscripted value is neither array nor pointer nor vector
+    sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); 
 
     sem_post(&sem_hay_bloqueados);
 }
@@ -812,7 +816,7 @@ void exec_a_exit(int id_carpincho, int fd){
     carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
 
     bool es_el_mismo_carpincho(data_carpincho* carpincho, data_carpincho* carpincho_que_termino){
-        return carpincho->id == carpincho_que_termino->id; // gonza -> esta bien compararlos así?
+        return carpincho->id == carpincho_que_termino->id;
     }
 
     bool es_el_mismo(void* carpincho){
@@ -959,7 +963,7 @@ data_carpincho* ready_a_exec_SJF(){
     while (list_iterator_has_next(list_iterator)) {
         data_carpincho* carpincho_actual = list_iterator_next(list_iterator);
         calculo_estimacion_siguiente(carpincho_actual);
-        float estimacion_actual = carpincho_actual->estimacion_siguiente; //agarro su estimacion. GONZA -> incompatible types when initializing type ‘float’ using type ‘float *’.  con el * accederiamos bien a esto?
+        float estimacion_actual = carpincho_actual->estimacion_siguiente; 
             if(min_hasta_el_momento == 0){
                 carpincho_menor = carpincho_actual;
                 min_hasta_el_momento = estimacion_actual;
@@ -1028,7 +1032,7 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){
 
     int tiempo_salida = calcular_milisegundos();
 
-    carpincho->rafaga_anterior = tiempo_salida - carpincho->tiempo_entrada_a_exec; // GONZA -> invalid operands to binary - (have ‘int’ and ‘char *’) (le agregue *)
+    carpincho->rafaga_anterior = tiempo_salida - carpincho->tiempo_entrada_a_exec; 
 }
 
 // para HRRN
@@ -1092,7 +1096,7 @@ void ejecuta(void *id_cpu){
         queue_push(CPU_libres, id);
         
         //
-        sem_post(&CPU_libre[*id]); // indica que ya esta el cpu libre de nuevo. gonza -> como hacemos 
+        sem_post(&CPU_libre[*id]); 
         sem_post(&sem_grado_multiprocesamiento_libre); // indica que ya hay algun cpu libre
         //
     }

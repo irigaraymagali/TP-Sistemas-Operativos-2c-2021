@@ -94,8 +94,6 @@ pthread_mutex_t sem_CPU_libres;
 // log
 t_log *logger;
 
-// socket memoria;
-int socket_memoria;
 
 // configuración gonza -> con punteros o sin punteros?
 t_config* config;
