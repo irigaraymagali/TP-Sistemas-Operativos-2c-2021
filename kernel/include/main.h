@@ -55,20 +55,19 @@ typedef struct tiempo
 
 typedef struct data_carpincho // la data que le importa tener al backend, hacer todo punteros
 {
-    int id;
-    float rafaga_anterior; // para despues poder calcular la estimación siguiente --> inicializar en 0
-    float estimacion_anterior; // idem --> inicializar segun config
-    float estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
-    float llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
-    float RR; //para HRRN -> fijarnos si es necesario o no
-    char estado; // => ir cambiandole el estado
-    CPU hilo_CPU_usado; // para saber en qué hilo cpu se esta ejecutando
-    char tiempo_entrada_a_exec; // para calcular milisegundos en exec
-    int fd; // para saber a quien le tiene que responder
-    char semaforo; // guarda el char porque es lo que nos manda el carpincho
-    int valor_semaforo; // guarda int porque es lo que nos guarda el carpincho
-    char dispositivo_io; 
-
+    int *id;
+    float *rafaga_anterior; // para despues poder calcular la estimación siguiente --> inicializar en 0
+    float *estimacion_anterior; // idem --> inicializar segun config
+    float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
+    float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
+    float *RR; //para HRRN -> fijarnos si es necesario o no
+    char *estado; // => ir cambiandole el estado
+    CPU *hilo_CPU_usado; // para saber en qué hilo cpu se esta ejecutando
+    char *tiempo_entrada_a_exec; // para calcular milisegundos en exec
+    int *fd; // para saber a quien le tiene que responder
+    char *semaforo; // guarda el char porque es lo que nos manda el carpincho
+    int *valor_semaforo; // guarda int porque es lo que nos guarda el carpincho
+    char *dispositivo_io; 
 } data_carpincho;
 
 // Estados
@@ -107,7 +106,7 @@ char *ip_memoria;
 char* puerto_memoria;
 char* puerto_escucha;
 char *algoritmo_planificacion;
-float estimacion_inicial;
+float *estimacion_inicial;
 int alfa;
 char **dispositivos_io; 
 char **duraciones_io; 

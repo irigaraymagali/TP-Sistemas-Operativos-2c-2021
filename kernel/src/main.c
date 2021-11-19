@@ -3,31 +3,8 @@
 
 
 int main(int argc, char ** argv){
-/*
-    logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
-    socket_memoria = (int *)malloc(sizeof(int));
-    
-    inicializar_colas();
 
-    id_carpincho = malloc(sizeof(int));
-    *id_carpincho = 1;
-    
-    config = config_create("../cfg/kernel.conf");
-
-	ip_memoria = config_get_string_value(config, "IP_MEMORIA");
-	puerto_memoria = config_get_int_value(config, "PUERTO_MEMORIA");
-	puerto_escucha = config_get_int_value(config, "PUERTO_ESCUCHA");    
-    algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
-    estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
-    alfa = config_get_int_value(config, "ALFA");
-    dispositivos_io = config_get_array_value(config, "DISPOSITIVOS_IO"); //esto va a ser un char**
-    duraciones_io = config_get_array_value(config, "DURACIONES_IO");  // hay que usar atoi porque lo trae como char**
-    grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
-    grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
-    tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
-*/
-    int* socket;
-    //socket_memoria = malloc(sizeof(int));
+    int* socket; // ver delfi si esto se tiene que usar
 
     config = config_create("../cfg/kernel.conf");
 
@@ -54,6 +31,7 @@ int main(int argc, char ** argv){
     t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
 
     //leer_archivo_config();
+    crear_estructura_dispositivo();
 	inicializar_semaforos();
 	inicializar_colas();
     crear_hilos_CPU();
@@ -118,27 +96,27 @@ void crear_hilos_CPU(){ // creación de los hilos CPU
         sem_t CPU_libre[grado_multiprocesamiento];
         sem_t usar_CPU[grado_multiprocesamiento];
 
-   
 	for(int i= 0; i< grado_multiprocesamiento; i++){
         
-       
-        
-       sem_init(&liberar_CPU[i], 0, 0);
+        sem_init(&liberar_CPU[i], 0, 0);
         sem_init(&CPU_libre[i], 0, 1); // ver si es 0 o 1 en el segundo argumento
         sem_init(&usar_CPU[i], 0, 0);       
 
-       
-        pthread_t hilo_CPU[i];
+        pthread_t hilo_CPU[i]; // gonza -> nos va a pasar algo parecido que con los semaforos
         pthread_create(&hilo_CPU[i], NULL, (void*) ejecuta, &i); 
         
+        // ver si podemos sacarla y solo usar el id
         CPU *nuevo_CPU;
         nuevo_CPU = malloc(sizeof(hilo_CPU)); //es necsario? esta bien?
         nuevo_CPU->id = i;
         nuevo_CPU->semaforo = CPU_libre[i]; //esto funciona asi?
         
-        list_add(hilos_CPU, nuevo_CPU);
+        list_add(hilos_CPU, nuevo_CPU); 
+        // cambiar por una lista de semaforos de CPU_libre
+        //
 	}
 }
+
 
 void free_memory(){
     
@@ -197,7 +175,7 @@ void free_memory(){
 data_carpincho* encontrar_estructura_segun_id(int id){
     
     bool id_pertenece_al_carpincho(int id, data_carpincho *carpincho){
-        return carpincho->id == id;
+        return carpincho->id == id; // GONZA -> esto da comparison between pointer and integer
     }
 
     bool buscar_id(void * carpincho){
@@ -250,14 +228,14 @@ void mate_init(int fd){
     data_carpincho *ptr_carpincho;
     ptr_carpincho = (data_carpincho *) malloc(sizeof(data_carpincho));
     ptr_carpincho = &carpincho;
-    carpincho.id = (int)id_carpincho;
+    carpincho.id = id_carpincho;
     carpincho.rafaga_anterior = 0;
     carpincho.estimacion_anterior = 0;
     carpincho.estimacion_siguiente = estimacion_inicial; // viene por config
     // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
     // carpincho->RR no le pongo nada todavia
     carpincho.estado = NEW;
-    carpincho.fd = fd;
+    carpincho.fd = fd; // GONZA ->  assignment makes pointer from integer without a cast 
 
     void *payload;
     payload =  _serialize(sizeof(int), "%d", ptr_carpincho->id);
@@ -348,7 +326,7 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         return esIgualASemaforo(semaforo, nombre_semaforo);
     }
 
-    if(list_any_satisfy(semaforos_carpinchos, (void *)esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
+    if(list_any_satisfy(semaforos_carpinchos, (void *)esIgualA)){ 
 
         semaforo *semaforo_wait;
         semaforo_wait = (semaforo *)list_find(semaforos_carpinchos, (void *)esIgualA);
@@ -360,7 +338,7 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
         if(semaforo_wait->valor<1){
             log_info(logger, "Se hizo un wait de un semaforo menor a 1, se bloquea el carpincho");
-            //exec_a_block(id_carpincho); 
+            exec_a_block(id_carpincho); 
             queue_push(semaforo_wait->en_espera, carpincho); //queda esperando para que lo desbloqueen, es el primero. 
         }
         else
@@ -403,13 +381,13 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
             carpincho_a_desbloquear = queue_peek(semaforo_post->en_espera);
             queue_pop(semaforo_post->en_espera);
 
-            if(carpincho_a_desbloquear->estado == BLOCKED){
+            if(carpincho_a_desbloquear->estado == BLOCKED){ // GONZA -> comparison between pointer and integer
                 carpincho_a_desbloquear->estado = READY;
-                //block_a_ready(carpincho_a_desbloquear);
+                block_a_ready(carpincho_a_desbloquear);
             }
             else{ // si no esta en blocked es porque estaba en suspended blocked, ahora lo cambio a suspended_ready
                 carpincho_a_desbloquear->estado = SUSPENDED_READY;
-               // suspended_blocked_a_suspended_ready(carpincho_a_desbloquear);
+               suspended_blocked_a_suspended_ready(carpincho_a_desbloquear);
             }
         }
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
@@ -458,7 +436,7 @@ void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
 //para el find:
 
 bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
-    return  strcmp(((dispositivo_io *)dispositivo)->nombre, nombre_dispositivo) ;    // no se si aca estoy haciendo bien la comparacion. podria necesitar string_equals_ignore_case?
+    return  strcmp(((dispositivo_io *)dispositivo)->nombre, nombre_dispositivo) ;    
 } 
 
 
@@ -699,9 +677,6 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
 void entrantes_a_ready(){
 
     data_carpincho *carpincho_a_mover;
-   /*  int *valor;
-    valor = (int *) 1;
-    */
    int valor = 1; 
 
     while(1){
@@ -749,8 +724,7 @@ void entrantes_a_ready(){
 
 void ready_a_exec(){  
 
-    int *valor;
-    valor = (int *) 1;
+    int valor = 1;
     void *payload;
 
     data_carpincho *carpincho_a_mover;
@@ -1018,7 +992,7 @@ data_carpincho* ready_a_exec_SJF(){
     while (list_iterator_has_next(list_iterator)) {
         data_carpincho* carpincho_actual = list_iterator_next(list_iterator);
         calculo_estimacion_siguiente(carpincho_actual);
-        float estimacion_actual = carpincho_actual->estimacion_siguiente; //agarro su estimacion
+        float estimacion_actual = *carpincho_actual->estimacion_siguiente; //agarro su estimacion. GONZA -> incompatible types when initializing type ‘float’ using type ‘float *’.  con el * accederiamos bien a esto?
             if(min_hasta_el_momento == 0){
                 carpincho_menor = carpincho_actual;
                 min_hasta_el_momento = estimacion_actual;
@@ -1083,7 +1057,8 @@ void calculo_estimacion_siguiente(data_carpincho *carpincho){
 
     calculo_rafaga_anterior(carpincho);
 
-    carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa);
+    carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa); // gonza -> invalid operands to binary * (have ‘float *’ and ‘int’)
+
 
 }
 
@@ -1092,7 +1067,7 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){
 
     int tiempo_salida = calcular_milisegundos();
 
-    carpincho->rafaga_anterior = tiempo_salida - carpincho->tiempo_entrada_a_exec;
+    carpincho->rafaga_anterior = tiempo_salida - carpincho->tiempo_entrada_a_exec; // GONZA -> invalid operands to binary - (have ‘int’ and ‘char *’)
 }
 
 // para HRRN
@@ -1187,21 +1162,20 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     int dest_memwrite;
     int offset = 0;
     int ptr_len = 0;
-    mate_pointer pointer;
     
-    if(id == ID_MATE_LIB){
+    if(id == ID_MATE_LIB){ // comparison with string literal results in unspecified behavior
         switch(opcode){
             case MATE_INIT:
                 estructura_interna = deserializar(payload);
                 mate_init(fd);
             break;
             case MATE_CLOSE: 
-                estructura_interna = deserializar(payload);
-                mate_close(estructura_interna->id,fd);
+                estructura_interna = deserializar(payload); 
+                mate_close(estructura_interna->id,fd); // gonza .> passing argument 1 of ‘mate_close’ makes integer from pointer without a cast
             break;
             case MATE_SEM_INIT: 
                 estructura_interna = deserializar(payload);
-                mate_sem_init(estructura_interna->id, &estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
+                mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
             break;
             case MATE_SEM_WAIT: 
                 estructura_interna = deserializar(payload);
@@ -1256,7 +1230,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&size_memoria, payload, sizeof(int));
                 offset += sizeof(int);
 
-                mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria), fd;            
+                mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria, fd);            
             break;
             case MATE_MEMWRITE:  
                 // id_carpincho
@@ -1390,7 +1364,7 @@ void solucionar_deadlock(t_list lista_en_deadlock){
             }
     }
 
-   data_carpincho carpincho_a_eliminar = encontrar_estructura_segun_id(mayor_id_hasta_ahora);
+   data_carpincho *carpincho_a_eliminar = encontrar_estructura_segun_id(mayor_id_hasta_ahora);
 
    //simular mate_close para carpincho_a_eliminar
 
