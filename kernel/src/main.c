@@ -32,15 +32,25 @@ int main(int argc, char ** argv){
 	inicializar_semaforos();
 	inicializar_colas();
     crear_hilos_CPU();
-    crear_hilos_planificadores();
+
+    pthread_t planficador_largo_plazo;
+    pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
+    pthread_t planficador_corto_plazo;
+    pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
+    pthread_t planficador_mediano_plazo;
+    pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); 
+   //descomentar pthread_t deteccion_deadlock;
+   //descomentar pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
     
     _start_server(puerto_escucha, handler, logger);
     socket_memoria = _connect(ip_memoria, puerto_memoria, logger);
 
-    // borrar todo, habria que ponerle que espere a la finalización de todos los hilos
-    free_memory();
+    // esta bien esperar asi a los hilos? o cuando se va a terminar la conexion?
+    pthread_join ( planficador_largo_plazo , NULL ) ;
+    pthread_join ( planficador_corto_plazo , NULL ) ;
+    pthread_join ( planficador_mediano_plazo , NULL ) ;    
 
-} 
+    free_memory();
 
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
@@ -67,7 +77,6 @@ void inicializar_colas(){ // Colas estados y sus mutex:
 
     CPU_libres = queue_create();
     pthread_mutex_init(&sem_CPU_libres, NULL);
-
 
     //pthread_mutex_init(&socket_memoria, NULL); //falta declarar socket_memoria => para que este mutex?
 }
@@ -105,17 +114,6 @@ void crear_hilos_CPU(){ // creación de los hilos CPU
         pthread_create(&hilo_CPU[i], NULL, (void*) ejecuta, id_CPU); 
         
         queue_push(CPU_libres, id_CPU);
-
-        /* versión anterior
-        CPU *nuevo_CPU;
-        nuevo_CPU = malloc(sizeof(hilo_CPU)); //es necsario? esta bien?
-        nuevo_CPU->id = i;
-        nuevo_CPU->semaforo = CPU_libre[i]; //esto funciona asi?
-        */
-
-        // list_add(hilos_CPU, &CPU_libre[i]); 
-        // cambiar por una lista de semaforos de CPU_libre
-        //
 	}
 }
 
@@ -136,7 +134,6 @@ void free_memory(){
 
     list_destroy_and_destroy_elements(semaforos_carpinchos, remove_semaforos_carpinchos);
     list_destroy_and_destroy_elements(semaforos_carpinchos, free);
-    
 
     sem_destroy(&sem_grado_multiprogramacion_libre);  
 	sem_destroy(&sem_grado_multiprocesamiento_libre); 
@@ -217,15 +214,14 @@ data_carpincho* deserializar(void* buffer){
     offset += sizeof(int);
     memcpy(&estructura_interna->dispositivo_io, buffer + offset, str_len);
 
-return estructura_interna;
+    return estructura_interna;
 } 
 
-// agregar free despues de crear el data carpincho
 
 //////////////// FUNCIONES GENERALES ///////////////////
 
 void mate_init(int fd){
-    
+    //gonza -> como crear la estructura de punteros. deberiamos hacer malloc pa todos? siempre que hay puntero hay malloc?
     data_carpincho carpincho;
     data_carpincho *ptr_carpincho;
     ptr_carpincho = (data_carpincho *) malloc(sizeof(data_carpincho));
@@ -234,8 +230,6 @@ void mate_init(int fd){
     carpincho.rafaga_anterior = 0;
     carpincho.estimacion_anterior = 0;
     carpincho.estimacion_siguiente = estimacion_inicial; // viene por config
-    // carpincho->llegada_a_ready no le pongo valor porque todavia no llegó
-    // carpincho->RR no le pongo nada todavia
     *carpincho.estado = NEW;
     *carpincho.fd = fd; // GONZA ->  assignment makes pointer from integer without a cast (le agregue * pero revisar)
 
@@ -842,39 +836,15 @@ void exec_a_exit(int id_carpincho, int fd){
     _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger); 
 }
 
-
-void crear_hilos_planificadores(){
-
-    pthread_t planficador_largo_plazo;
-    pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
-
-    pthread_t planficador_corto_plazo;
-    pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
-    
-    pthread_t planficador_mediano_plazo;
-    pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); 
-
-   //descomentar pthread_t deteccion_deadlock;
-   //descomentar pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
-} 
-
 bool sonElMismoC(data_carpincho *carpincho_lista, data_carpincho * carpincho_a_ready){
     return carpincho_lista->id == carpincho_a_ready->id;
 }
 
 void block_a_ready(data_carpincho *carpincho_a_ready){ //la llaman cuando se hace post o cuando se termina IO
- /*  
-   bool esIgualACarpincho (void* carpincho_lista){
-            data_carpincho* carpincho_a_buscar = (data_carpincho*)carpincho_lista;
-           // data_carpincho* aux = 
-            return carpincho_a_buscar->id == carpincho_lista->id;   //volver a ver
-        }
-*/    
 
     bool es_el_mismo(void* carpincho){
             return ((data_carpincho *) carpincho)->id == carpincho_a_ready->id;
         }
-
 
     pthread_mutex_lock(&sem_cola_ready); 
     pthread_mutex_lock(&sem_cola_blocked);
@@ -1039,22 +1009,16 @@ data_carpincho* ready_a_exec_HRRN(){
                     max_hasta_el_momento = RR_actual;
                     carpincho_mayor = carpincho_actual;
                 }
-            }         
-        
+            }          
     }
     list_iterator_destroy(list_iterator);
-
     return carpincho_mayor;     
 }
 
 
 void calculo_estimacion_siguiente(data_carpincho *carpincho){ 
-
     calculo_rafaga_anterior(carpincho);
-
     *carpincho->estimacion_siguiente = *carpincho->rafaga_anterior * alfa + *carpincho->estimacion_anterior * (1 - alfa); // gonza -> invalid operands to binary * (have ‘float *’ and ‘int’) (le agregue *)
-
-
 }
 
 // para SJF
@@ -1097,33 +1061,9 @@ int calcular_milisegundos(){
 
 //////////////////////////// Funciones para exec ///////////////////////////////////
 
-/* version anterior
-bool obtener_valor_semaforo(CPU* hilo_cpu){
-    
-    int valor = sem_getvalue(&(hilo_cpu->semaforo), &valor);
-    return valor == 1;
-}*/
-
-
 void asignar_hilo_CPU(data_carpincho *carpincho){
 
     int *id_CPU_disponible;
-
-    /* version anterior
-    bool buscar_disponible(void* hilo_cpu){
-        CPU* otro_cpu = (CPU *) hilo_cpu;
-        return obtener_valor_semaforo(otro_cpu);
-    }*/
-
-/*
-    bool buscar_disponible(void* semaforo_hilo){
-        sem_t hilo_CPU = (sem_t *) semaforo_hilo;
-        int *valor;
-        sem_getvalue(hilo_CPU, &semaforo );
-        return valor == 1;
-    }
-*/
-    // hilo_CPU_disponible = (CPU* ) list_find(hilos_CPU, buscar_disponible);
 
     pthread_mutex_lock(&sem_CPU_libres);
     id_CPU_disponible = queue_peek(CPU_libres);
@@ -1135,8 +1075,6 @@ void asignar_hilo_CPU(data_carpincho *carpincho){
     carpincho->CPU_en_uso = id_CPU_disponible;
 
 }
-
-
 
 void ejecuta(int *id){ 
 
@@ -1162,7 +1100,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     
     log_info(logger, "Recibí un mensaje");
     data_carpincho* estructura_interna;
-    estructura_interna = malloc(sizeof(estructura_interna));
+    estructura_interna = malloc(sizeof(estructura_interna)); // gonza -> acá le hacemos malloc?
     int id_carpincho;
     int size_memoria;
     int addr_memfree;
@@ -1262,10 +1200,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
             break;  
         }
     }
-
 }
-
-
 
 
 ////////////////////////////// DEADLOCK ////////////////////////////////
