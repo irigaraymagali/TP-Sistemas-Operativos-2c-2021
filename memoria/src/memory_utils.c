@@ -37,6 +37,7 @@ void initPaginacion(){
     tlb_list = list_create();
     metrics_list = list_create();
     tlb_lru_global = 0;
+    entrada_fifo = 0;
 
     memoria = malloc(tamanioDeMemoria);
 
@@ -1337,16 +1338,31 @@ void replace_entrada(TLB* new_instance){
     if (string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_REEMPLAZO_TLB"), "FIFO")){
         pthread_mutex_lock(&entrada_fifo_mutex);
         /* TODO: LOGUEAR EL REEMPLAZO */
-        list_replace_and_destroy_element(tlb_list, entrada_fifo, new_instance, (void*)free);
+
+        log_info(logger, "Reemplazo por FIFO, entrada %d", entrada_fifo);
+        TLB* tlb_to_replace = list_get(tlb_list, entrada_fifo);
+        log_inf(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
+        log_inf(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
+
+        tlb_to_replace->pid = new_instance->pid;
+        tlb_to_replace->pagina = new_instance->pagina;
+        tlb_to_replace->frame = new_instance->frame;
+        tlb_to_replace->lru = new_instance->lru;
+
         if (entrada_fifo < max_entradas_tlb){
             entrada_fifo++;
         } else {
             entrada_fifo = 0;
         }
+
+        free(new_instance);
         pthread_mutex_unlock(&entrada_fifo_mutex);
     } else {
-        /* TODO: LOGUEAR EL REEMPLAZO */
+        log_info(logger, "Reemplazo por LRU, entrada %d", entrada_fifo);
         TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_lru_tlb);
+        log_inf(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
+        log_inf(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
+
         tlb_to_replace->pid = new_instance->pid;
         tlb_to_replace->pagina = new_instance->pagina;
         tlb_to_replace->frame = new_instance->frame;
