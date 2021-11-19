@@ -178,6 +178,9 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             iresp = memwrite(pid, dir_logica, payload, size);
             break;
         case MATE_CLOSE:
+            pid = deserialize_delete_process(payload);
+            delete_process(pid);
+            break;     
         case MATE_SEM_INIT:
         case MATE_SEM_WAIT:
         case MATE_SEM_POST:
@@ -211,6 +214,12 @@ int deserialize_init_process(char* id, void* payload){
     return pid;
 }
 
+int deserialize_delete_process(void* payload){
+    int pid;
+    memcpy(&pid, payload, sizeof(int));
+    return pid;
+}
+
 void deserialize_mem_alloc(int* pid, int* espacioAReservar, void* payload){
     int offset = 0;
 
@@ -235,9 +244,4 @@ void free_memory(){
 
     free(memoria);
     exit(EXIT_SUCCESS);
-}
-
-void remove_paginas(void* elem){
-    TablaDePaginasxProceso* tabla = (TablaDePaginasxProceso*) elem;
-    list_destroy_and_destroy_elements(tabla->paginas, free);
 }

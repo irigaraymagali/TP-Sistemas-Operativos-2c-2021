@@ -946,6 +946,26 @@ void inicializarUnProceso(int idDelProceso){
     log_info(logger, "Proceso %d inicializado con Exito", idDelProceso);
 }
 
+void delete_process(int pid){
+    TablaDePaginasxProceso* table = get_pages_by(pid);
+    if (table->id != pid) {
+        log_error(logger, "El carpincho %d no posee tabla de paginas", pid);
+        return;
+    }
+    void* payload = _serialize(sizeof(int), "%d", pid);
+    log_info(logger, "Enviando el Carpincho %d a Swamp para eliminarlo de disco", pid);
+    send_message_swamp(FINISH_PROCESS, payload, sizeof(int));
+   
+    free(payload);
+    remove_paginas(table);
+    free(table);
+}
+
+void remove_paginas(void* elem){
+    TablaDePaginasxProceso* tabla = (TablaDePaginasxProceso*) elem;
+    list_destroy_and_destroy_elements(tabla->paginas, free);
+}
+
 int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir, int tamanio){
     int paginaActual=1;
 
