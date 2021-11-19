@@ -1381,6 +1381,7 @@ TLB* fetch_entrada_tlb(uint32_t pid, uint32_t page){
             pthread_mutex_unlock(&tlb_lru_mutex);
             
             sleep(retardo_hit_tlb);
+            pthread_mutex_unlock(&tlb_mutex);
             return tlb;
         }
     }
