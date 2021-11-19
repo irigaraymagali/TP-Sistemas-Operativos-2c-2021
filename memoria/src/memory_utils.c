@@ -532,7 +532,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
     TLB* tlb = fetch_entrada_tlb(processId, mayorNroDePagina);
     if (tlb != NULL){
         /* TESTEAR */
-        tempPagina = (Pagina *) list_get(temp, tlb->pagina - 1);
+        tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
     } else {
         t_list_iterator* iterator = list_iterator_create(temp->paginas);
 
@@ -540,11 +540,10 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         while (list_iterator_has_next(iterator)  && tempPagina->pagina != mayorNroDePagina) {
             tempPagina = list_iterator_next(iterator);
         }
+        list_iterator_destroy(iterator);
     }
 
     if(tempPagina->pagina == mayorNroDePagina){
-        list_iterator_destroy(iterator);
-        
         if(tempPagina->bitPresencia==0){
             utilizarAlgritmoDeAsignacion(processId);
             tempPagina->frame = getNewEmptyFrame(processId);
@@ -566,8 +565,6 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
         return tempPagina->frame;
     }
-
-    list_iterator_destroy(iterator);
 
     return -1;
 }
@@ -677,7 +674,8 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 
                 free(paginasAuxiliares);
             }else{
-                if((pagAnterior+1) == paginaActual  && direccionLogicaBuscada!=0 && paginaActual == getLastPageDe(idProcess)){
+                Pagina* page = getLastPageDe(idProcess);
+                if((pagAnterior+1) == paginaActual  && direccionLogicaBuscada!=0 && paginaActual == page->pagina){
                     deletePagina(idProcess, paginaActual);
 
                     int paginaInicial = (prevAllocActual/tamanioDePagina) + 1;
@@ -770,7 +768,7 @@ void deletePagina(int idProcess,int paginaActual){
     Pagina *tempPagina;
     TLB* tlb = fetch_entrada_tlb(idProcess, paginaActual);
     if (tlb != NULL){
-        list_remove(tablaDePags, tlb->pagina - 1);
+        list_remove(tablaDePags->paginas, tlb->pagina - 1);
         log_info(logger, "Deleteo la pag %d con Exito", tlb->pagina);
         return;
     } else {
@@ -846,7 +844,7 @@ Pagina *getPageDe(int processId,int nroPagina){
     TLB* tlb = fetch_entrada_tlb(processId, nroPagina);
     if (tlb != NULL){
         /* TESTEAR */
-        tempPagina = (Pagina *) list_get(temp, tlb->pagina - 1);
+        tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
     } else {
         tempPagina = list_iterator_next(iterator);
         while (tempPagina->pagina != nroPagina) {
@@ -1377,10 +1375,10 @@ TLB* fetch_entrada_tlb(uint32_t pid, uint32_t page){
             sum_metric(pid, TLB_HIT);
             log_info(logger, "TLB HIT: Proceso %d Pagina %d y Frame %d", pid, page, tlb->frame);
             
-            pthread_mutex_lock(&tlb_lru_global);
+            pthread_mutex_lock(&tlb_lru_mutex);
             tlb->lru = tlb_lru_global;
             tlb_lru_global++;
-            pthread_mutex_unlock(&tlb_lru_global);
+            pthread_mutex_unlock(&tlb_lru_mutex);
             
             sleep(retardo_hit_tlb);
             return tlb;
