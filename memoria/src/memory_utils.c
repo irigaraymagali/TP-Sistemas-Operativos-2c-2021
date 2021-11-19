@@ -1341,8 +1341,8 @@ void replace_entrada(TLB* new_instance){
 
         log_info(logger, "Reemplazo por FIFO, entrada %d", entrada_fifo);
         TLB* tlb_to_replace = list_get(tlb_list, entrada_fifo);
-        log_inf(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
-        log_inf(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
+        log_info(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
+        log_info(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
 
         tlb_to_replace->pid = new_instance->pid;
         tlb_to_replace->pagina = new_instance->pagina;
@@ -1360,8 +1360,8 @@ void replace_entrada(TLB* new_instance){
     } else {
         log_info(logger, "Reemplazo por LRU, entrada %d", entrada_fifo);
         TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_lru_tlb);
-        log_inf(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
-        log_inf(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
+        log_info(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
+        log_info(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
 
         tlb_to_replace->pid = new_instance->pid;
         tlb_to_replace->pagina = new_instance->pagina;
