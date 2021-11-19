@@ -1017,7 +1017,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
                     nroPagAux++;    
                 }
 
-                offsetInicioAlloc -= (frameBuscado*tamanioDePagina);
+                offsetInicioAlloc = (dirAllocActual) - ((paginaActual-1) * tamanioDePagina) + HEAP_METADATA_SIZE;
 
                 memcpy(espacioAuxiliar + offsetInicioAlloc, loQueQuierasEscribir , tamanio);
 
