@@ -40,12 +40,6 @@ typedef struct dispositivo_io
     t_queue *en_espera; 
 } dispositivo_io;
 
-typedef struct CPU
-{
-    int id;
-    sem_t semaforo;
-} CPU;
-
 typedef struct tiempo
 {
     int minutos;
@@ -55,19 +49,18 @@ typedef struct tiempo
 
 typedef struct data_carpincho // la data que le importa tener al backend, hacer todo punteros
 {
-    int *id;
-    float *rafaga_anterior; // para despues poder calcular la estimación siguiente --> inicializar en 0
-    float *estimacion_anterior; // idem --> inicializar segun config
-    float *estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
-    float *llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
-    float *RR; //para HRRN -> fijarnos si es necesario o no
-    char *estado; // => ir cambiandole el estado
-    //CPU *hilo_CPU_usado; // para saber en qué hilo cpu se esta ejecutando
-    int *CPU_en_uso;
-    char *tiempo_entrada_a_exec; // para calcular milisegundos en exec
-    int *fd; // para saber a quien le tiene que responder
+    int id;
+    float rafaga_anterior; // para despues poder calcular la estimación siguiente --> inicializar en 0
+    float estimacion_anterior; // idem --> inicializar segun config
+    float estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
+    float llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
+    float RR; //para HRRN -> fijarnos si es necesario o no
+    char estado; // => ir cambiandole el estado
+    int CPU_en_uso;
+    int tiempo_entrada_a_exec; // para calcular milisegundos en exec
+    int fd; // para saber a quien le tiene que responder
     char *semaforo; // guarda el char porque es lo que nos manda el carpincho
-    int *valor_semaforo; // guarda int porque es lo que nos guarda el carpincho
+    int valor_semaforo; // guarda int porque es lo que nos guarda el carpincho
     char *dispositivo_io; 
 } data_carpincho;
 
@@ -110,8 +103,8 @@ char *ip_memoria;
 char *puerto_memoria;
 char *puerto_escucha;
 char *algoritmo_planificacion;
-float *estimacion_inicial;
-float *alfa;
+float estimacion_inicial;
+float alfa;
 char **dispositivos_io; 
 char **duraciones_io; 
 int grado_multiprogramacion;
@@ -121,9 +114,8 @@ int tiempo_deadlock;
 t_list* ptr_dispositivos_io;
 t_list* ptr_duraciones_io;
 
-
 // id carpincho
-int *id_carpincho;
+int id_carpincho;
 
 // Semáforos
 sem_t sem_grado_multiprogramacion_libre;
@@ -134,20 +126,17 @@ sem_t cola_exec_con_elementos;
 sem_t cola_blocked_con_elementos;
 sem_t cola_suspended_blocked_con_elementos;
 sem_t cola_suspended_ready_con_elementos;
-sem_t liberar_CPU;
-sem_t CPU_libre;
-sem_t usar_CPU;  
 sem_t sem_programacion_lleno;
 sem_t sem_procesamiento_lleno;
 sem_t sem_hay_bloqueados;
+    sem_t liberar_CPU[1000];
+    sem_t CPU_libre[1000];
+    sem_t usar_CPU[1000];
 
-
-
-
+    pthread_t hilo_CPU[1000]; // gonza -> nos va a pasar algo parecido que con los semaforos
 
 
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger);
-void ejecuta(int *id);
 
 void inicializar_colas();
 void inicializar_semaforos();
@@ -192,7 +181,6 @@ void calculo_rafaga_anterior(data_carpincho *carpincho);
 void calculo_RR(data_carpincho *carpincho);
 int calcular_milisegundos();
 void asignar_hilo_CPU(data_carpincho *carpincho);
-void ejecuta(int *id);
-bool obtener_valor_semaforo(CPU hilo_cpu);
+void ejecuta(void *id_cpu);
 
 void detectar_deadlock();
