@@ -127,6 +127,7 @@ void seleccionClockMejorado();
 void liberarFrame(uint32_t nroDeFrame);
 Pagina *getMarcoDe(uint32_t nroDeFrame);
 void setAsUsedRecently(int idProcess, int nroDePagina);
+uint32_t getProcessIdby(uint32_t nroDeFrame);
 
 int memwrite(int idProcess, int direccionLogica, void* loQueQuierasEscribir, int tamanio);
 Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada);

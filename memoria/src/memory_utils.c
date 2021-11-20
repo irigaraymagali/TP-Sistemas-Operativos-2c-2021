@@ -551,7 +551,9 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
             int pay_len = 2*sizeof(int);
             void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina);       
             send_message_swamp(MEMORY_RECV_SWAP_SEND, payload, pay_len);
+            memcpy(memoria + (tempPagina->frame*tamanioDePagina), payload,tamanioDePagina);
             free(payload);
+            tempPagina->bitPresencia=1;
             //pedirselo a gonza
         }
         tempPagina->bitUso = 1;
@@ -1095,6 +1097,7 @@ void seleccionLRU(int processID){
 
     uint32_t LRUmenor=9999; //recordar que lo que se busca es el LRU menor
     uint32_t frameVictima=0;
+    uint32_t numeroDePagVictima;
 
     if (tipoDeAsignacionDinamica)
     {
@@ -1114,6 +1117,7 @@ void seleccionLRU(int processID){
                 if(paginatemp->lRU < LRUmenor && paginatemp->bitPresencia==1){
                     LRUmenor= paginatemp->lRU;
                     frameVictima = paginatemp->frame;
+                    numeroDePagVictima = paginatemp->pagina;
                 }
 
                 paginatemp = list_iterator_next(iterator2);
@@ -1139,6 +1143,7 @@ void seleccionLRU(int processID){
             if(paginatemp->lRU < LRUmenor && paginatemp->bitPresencia==1){
                 LRUmenor= paginatemp->lRU;
                 frameVictima = paginatemp->frame;
+                numeroDePagVictima = paginatemp->pagina;
             }
 
             paginatemp = list_iterator_next(iterator2);
@@ -1149,10 +1154,14 @@ void seleccionLRU(int processID){
 
     //falta una parte que le mande el mendaje a gonza
 
-    /*
-        if(gonza tiene espacio)
-        liberarFrame(uint32_t nroDeFrame)
-     */
+    int pay_len = 2*sizeof(uint32_t)+tamanioDePagina;
+    void* paginaAEnviar = malloc(tamanioDePagina);
+    memcpy(paginaAEnviar,memoria + (frameVictima*tamanioDePagina),tamanioDePagina);
+    void* payload = _serialize(pay_len, "%d%d%d%v", processID, numeroDePagVictima,tamanioDePagina,paginaAEnviar);       
+    send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+    free(payload);
+    free(paginaAEnviar);
+
     liberarFrame(frameVictima);
 }
 
@@ -1178,10 +1187,13 @@ void seleccionClockMejorado(){
         if(paginaEncontrada->bitModificado == 0 && paginaEncontrada->bitUso==0){
             frameNoEncontrado =0;
             
-            /*
-                le pido a gonza que se agarre esta pagina y libero el frame
-                liberarFrame(paginaEncontrada->frame)
-             */
+            int pay_len = 2*sizeof(uint32_t)+tamanioDePagina;
+            void* paginaAEnviar = malloc(tamanioDePagina);
+            memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
+            void* payload = _serialize(pay_len, "%d%d%d%v", getProcessIdby(paginaEncontrada->frame), paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);       
+            send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+            free(payload);
+            free(paginaAEnviar);
             liberarFrame(paginaEncontrada->frame);
         }
 
@@ -1200,10 +1212,14 @@ void seleccionClockMejorado(){
         if(paginaEncontrada->bitUso==0){
             frameNoEncontrado =0;
             
-            /*
-                le pido a gonza que se agarre esta pagina y libero el frame
-                liberarFrame(paginaEncontrada->frame)
-             */
+            int pay_len = 2*sizeof(uint32_t)+tamanioDePagina;
+            void* paginaAEnviar = malloc(tamanioDePagina);
+            memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
+            void* payload = _serialize(pay_len, "%d%d%d%v", getProcessIdby(paginaEncontrada->frame), paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);       
+            send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+            free(payload);
+            free(paginaAEnviar);
+
             liberarFrame(paginaEncontrada->frame);
         }else
         {
@@ -1247,6 +1263,40 @@ Pagina *getMarcoDe(uint32_t nroDeFrame){
     list_iterator_destroy(iterator);
 
     return paginatemp;
+}
+
+uint32_t getProcessIdby(uint32_t nroDeFrame)
+{
+    uint32_t processEncontrado =0;
+
+    t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+    
+
+    Pagina *paginatemp = malloc(sizeof(Pagina));
+        
+    while (list_iterator_has_next(iterator)) {
+
+        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+        
+        t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
+        
+        
+
+        while (list_iterator_has_next(iterator2))
+        {
+            paginatemp = list_iterator_next(iterator2);
+            if(paginatemp->frame == nroDeFrame){
+                return temp->id;
+            }
+
+        }
+        
+        list_iterator_destroy(iterator2);
+    }
+        
+    list_iterator_destroy(iterator);
+
+    return processEncontrado;
 }
 
 void liberarFrame(uint32_t nroDeFrame){
