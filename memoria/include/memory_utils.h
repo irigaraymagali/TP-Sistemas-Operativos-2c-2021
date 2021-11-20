@@ -135,16 +135,16 @@ HeapMetaData* get_heap_metadata(int offset);
 HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset);
 void* memread(uint32_t pid, int dir_logica, int size);
 
-int get_nro_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada);
 void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame);
 TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame);
 void* get_minimum_lru_tlb(void* actual, void* next);
 void replace_entrada(TLB* new_instance);
 TLB* fetch_entrada_tlb(uint32_t pid, uint32_t page);
 void free_tlb();
-void delete_process(int pid);
+int delete_process(int pid);
 void remove_paginas(void* elem);
 void set_pid_metric_if_missing(uint32_t pid); 
 void sum_metric(uint32_t pid, int isHit);
 
+int suspend_process(int pid);
 #endif

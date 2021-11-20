@@ -180,6 +180,50 @@ int memalloc(int processId, int espacioAReservar){
 
 }
 
+int suspend_process(int pid) {
+    log_info(logger, "Suspendiendo el Proceso %d...", pid);
+    int pay_len = sizeof(int)*3 + tamanioDePagina;
+    void* free_mem = malloc(tamanioDePagina);
+
+    log_info(logger, "Buscando la tabla de paginas del proceso %d", pid);
+    TablaDePaginasxProceso* table = get_pages_by(pid);
+    if(table->id != pid){
+        log_error(logger, "El proceso %d no se encuentra en Memoria", pid);
+        return -1;
+    }
+    pthread_mutex_lock(&list_pages_mutex);
+    t_list_iterator* iterator = list_iterator_create(table->paginas);
+    while (list_iterator_has_next(iterator)){
+        Pagina* page = (Pagina*) list_iterator_next(iterator);
+        int res;
+        void* mem_aux = malloc(tamanioDePagina);
+        
+        memcpy(mem_aux, memoria + (page->frame * tamanioDePagina), tamanioDePagina);
+        log_info(logger, "Enviando a Swamp la pagina %d del proceso %d", page->pagina, pid);
+        void* payload = _serialize(pay_len, "%d%d%d%v", pid, page->pagina, tamanioDePagina, mem_aux);
+        void* v_res = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);        // SI SWAMP NO TIENE MAS ESPACIO DEBERIAMOS RECIBIR ALGO.
+        
+        memcpy(&res, v_res, sizeof(int));
+        if(res == -1){
+            log_error(logger, "Swamp no pudo setear la pagina %d en disco", page->pagina);
+            return -1;
+        }
+
+        page->bitPresencia = 0;
+        memcpy(memoria + (page->frame * tamanioDePagina), free_mem, tamanioDePagina);
+
+        free(mem_aux);
+        free(v_res);
+        free(payload);
+        log_info(logger, "Pagina %d suspendida con exito!", page->pagina, pid);
+
+    }
+    
+    list_iterator_destroy(iterator);
+    pthread_mutex_unlock(&list_pages_mutex);
+    return 1;
+}
+
 void* memread(uint32_t pid, int dir_logica, int size){
     void* read;
     int size_to_read, offset_to_read;
@@ -215,9 +259,9 @@ void* memread(uint32_t pid, int dir_logica, int size){
     }
     //Obtener todas las paginas asociadas en base al size, y fijarse si un heap meta data está adentro de dos paginas.
     
-    offset_to_read = dir_logica + HEAP_METADATA_SIZE; //TODO: AVERIGUAR si apunta por fuera
+    offset_to_read = dir_logica + HEAP_METADATA_SIZE;
     size_to_read = heap->nextAlloc - HEAP_METADATA_SIZE;
-    read = malloc(size_to_read);
+    read = malloc(size);
     memcpy(read, memoria + offset_to_read, size_to_read);
 
     pthread_mutex_lock(&lru_mutex);
@@ -230,6 +274,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
 }
 
 TablaDePaginasxProceso* get_pages_by(int processID){
+    pthread_mutex_lock(&list_pages_mutex);
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
     TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
@@ -237,6 +282,8 @@ TablaDePaginasxProceso* get_pages_by(int processID){
         temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
     }
     list_iterator_destroy(iterator);
+    pthread_mutex_unlock(&list_pages_mutex);
+    
     return temp; 
 }
 
@@ -815,30 +862,6 @@ Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada){
     return NULL;
 }
 
-int get_nro_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada){
-    int paginaActual = 1;
-    int dirAllocFinal = tabla->lastHeap;
-    int dirAllocActual = 0, pid = tabla->id;
-    int frameBuscado;
-
-    while((dirAllocActual <= dir_buscada) && dirAllocFinal >= dir_buscada){
-        if (dirAllocActual == dir_buscada){
-            paginaActual = (dirAllocActual / tamanioDePagina) + 1;
-            return paginaActual;
-        } else {
-            paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
-            frameBuscado = getFrameDeUn(pid, paginaActual);
-
-            int posAllocDentroDelFrame = (dirAllocActual) - ((paginaActual-1) * tamanioDePagina);
-            int offset = (frameBuscado * tamanioDePagina) + posAllocDentroDelFrame;
-            
-            HeapMetaData* heap = get_heap_metadata(offset);
-            dirAllocActual = heap->nextAlloc;
-        }
-    }
-    return -1;
-}
-
 Pagina *getPageDe(int processId,int nroPagina){
     TablaDePaginasxProceso* temp = get_pages_by(processId);
     Pagina *tempPagina;
@@ -947,11 +970,11 @@ void inicializarUnProceso(int idDelProceso){
     log_info(logger, "Proceso %d inicializado con Exito", idDelProceso);
 }
 
-void delete_process(int pid){
+int delete_process(int pid){
     TablaDePaginasxProceso* table = get_pages_by(pid);
     if (table->id != pid) {
         log_error(logger, "El carpincho %d no posee tabla de paginas", pid);
-        return;
+        return -1;
     }
     void* payload = _serialize(sizeof(int), "%d", pid);
     log_info(logger, "Enviando el Carpincho %d a Swamp para eliminarlo de disco", pid);
@@ -960,10 +983,23 @@ void delete_process(int pid){
     free(payload);
     remove_paginas(table);
     free(table);
+
+    return 1;
 }
 
 void remove_paginas(void* elem){
+    // TODO: BLOQUEAR??
     TablaDePaginasxProceso* tabla = (TablaDePaginasxProceso*) elem;
+    t_list_iterator* iterator = list_iterator_create(tabla->paginas);
+    while(list_iterator_has_next(iterator)){
+        Pagina* page = list_iterator_next(iterator);
+        if (page->bitPresencia == 1){
+            //POR AHORA USO MEMFREE PARA ELIMINAR LOS DATOS DE LA PAGINA, PARA NO DUPLICAR CODIGO
+            memfree(tabla->id, (page->frame * tamanioDePagina));
+        }
+    }
+
+    list_iterator_destroy(iterator);
     list_destroy_and_destroy_elements(tabla->paginas, free);
 }
 
@@ -1497,6 +1533,7 @@ void sum_metric(uint32_t pid, int isHit){
 }
 
 void* send_message_swamp(int command, void* payload, int pay_len){
+    pthread_mutex_lock(&swamp_mutex);
     if (_send_message(swamp_fd, ID_MEMORIA, command, payload, pay_len, logger) < 0){
         log_error(logger, "Error al enviar mensaje a Swamp");
         return NULL;
@@ -1507,9 +1544,12 @@ void* send_message_swamp(int command, void* payload, int pay_len){
         void* payload = msg->payload;
         free(msg->identifier);
         free(msg);
+        pthread_mutex_unlock(&swamp_mutex);
+
         return payload;
     }
 
+    pthread_mutex_unlock(&swamp_mutex);
     return NULL;
 }
 
