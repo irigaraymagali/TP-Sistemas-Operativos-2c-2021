@@ -184,7 +184,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             break;
         case MATE_CLOSE:
             pid = deserialize_id_process(payload);
-            delete_process(pid);
+            ires = delete_process(pid);
             break;    
         case SUSPENDER:
             pid = deserialize_id_process(payload);

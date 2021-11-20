@@ -988,18 +988,7 @@ int delete_process(int pid){
 }
 
 void remove_paginas(void* elem){
-    // TODO: BLOQUEAR??
     TablaDePaginasxProceso* tabla = (TablaDePaginasxProceso*) elem;
-    t_list_iterator* iterator = list_iterator_create(tabla->paginas);
-    while(list_iterator_has_next(iterator)){
-        Pagina* page = list_iterator_next(iterator);
-        if (page->bitPresencia == 1){
-            //POR AHORA USO MEMFREE PARA ELIMINAR LOS DATOS DE LA PAGINA, PARA NO DUPLICAR CODIGO
-            memfree(tabla->id, (page->frame * tamanioDePagina));
-        }
-    }
-
-    list_iterator_destroy(iterator);
     list_destroy_and_destroy_elements(tabla->paginas, free);
 }
 
