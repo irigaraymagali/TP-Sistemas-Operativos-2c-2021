@@ -295,7 +295,8 @@ void mate_close(int id_carpincho, int fd){
 // para las funciones de orden superior
 
 bool esIgualASemaforo(char* nombre_semaforo, void *semaforo_igual){
-    return ((semaforo *) semaforo_igual)->nombre == nombre_semaforo;
+    
+    return strcmp(((semaforo *) semaforo_igual)->nombre, nombre_semaforo);
 }
 
 void mate_sem_init(int id_carpincho, char* nombre_semaforo, int valor_semaforo, int fd){  
@@ -448,7 +449,7 @@ void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
 //para el find:
 
 bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
-    return ((dispositivo_io *)dispositivo)->nombre == nombre_dispositivo;    // no se si aca estoy haciendo bien la comparacion. podria necesitar string_equals_ignore_case?
+    return  strcmp(((dispositivo_io *)dispositivo)->nombre, nombre_dispositivo) ;    // no se si aca estoy haciendo bien la comparacion. podria necesitar string_equals_ignore_case?
 } 
 
 
@@ -833,7 +834,7 @@ void exec_a_exit(int id_carpincho, int fd){
     }
 
     bool es_el_mismo_carpincho(data_carpincho carpincho, data_carpincho carpincho_que_termino){
-        return carpincho->id === carpincho_que_termino->id;
+        return carpincho->id == carpincho_que_termino->id;
     }
 
     payload = _serialize(sizeof(int), "%d", id_carpincho);
@@ -870,7 +871,7 @@ void crear_hilos_planificadores(){
 void block_a_ready(data_carpincho *carpincho){ //la llaman cuando se hace post o cuando se termina IO
    
    void* esIgualACarpincho (void* carpincho_lista){
-       return (data_carpincho *) carpincho_lista === carpincho;
+       return (data_carpincho *) carpincho_lista == carpincho;
    }
 
     pthread_mutex_lock(&sem_cola_ready); 
@@ -894,7 +895,7 @@ void block_a_ready(data_carpincho *carpincho){ //la llaman cuando se hace post o
 void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
 
     void* esIgualACarpincho (void* carpincho_lista){
-       return (data_carpincho *) carpincho_lista === carpincho;
+       return (data_carpincho *) carpincho_lista == carpincho;
     }    
 
     pthread_mutex_lock(&sem_cola_ready); 
@@ -944,7 +945,7 @@ void suspender(){
 }
 
 bool estan_las_condiciones_para_suspender(){
-    return sem_getvalue(&sem_grado_multiprogramacion_libre) === 0 && !list_is_empty(blocked) && sem_getvalue(&hay_estructura_creada) > 0;
+    return sem_getvalue(&sem_grado_multiprogramacion_libre) == 0 && !list_is_empty(blocked) && sem_getvalue(&hay_estructura_creada) > 0;
 }
 
 ////////////////////////// ALGORITMOS ////////////////////////
@@ -1041,7 +1042,7 @@ void asignar_hilo_CPU(data_carpincho carpincho){
     bool buscar_disponible(void* hilo_cpu){
         int *valor;
         sem_getvalue(cpu->semaforo, valor);
-        return valor === 1;
+        return valor == 1;
     }
 
     hilo_CPU_disponible = list_find(hilos_CPU, buscar_disponible);
@@ -1089,7 +1090,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     int ptr_len = 0;
     mate_pointer pointer;
     
-    if(id === ID_MATE_LIB){
+    if(id == ID_MATE_LIB){
         switch(opcode){
             case MATE_INIT:
                 estructura_interna = deserializar(payload);
