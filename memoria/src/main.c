@@ -155,42 +155,51 @@ void init_swamp_connection(){
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
     void* resp;
     int size_msg;
-    int pid, size = 2, iresp, espacioAReservar = 10, dir_logica = 0;
+    int pid, size, iresp, espacioAReservar, dir_logica;
+    void* to_write = NULL;
     log_info(logger, "Deserializando los parametros recibidos...");
 
     switch(opcode){
         case MATE_INIT:
             pid = deserialize_init_process(id, payload);
-            inicializarUnProceso(pid);      
+            inicializarUnProceso(pid);  
+            iresp = 1;    
             break;
         case MATE_MEMALLOC:
             deserialize_mem_alloc(&pid, &espacioAReservar, payload);
             iresp = memalloc(pid, espacioAReservar);
             break;
         case MATE_MEMFREE:
+            deserialize_mem_free(&pid, &dir_logica, payload);
             iresp = memfree(pid, dir_logica);
             break;
         case MATE_MEMREAD:
+            deserialize_mem_read(&pid, &dir_logica, &size, payload);
             resp = memread(pid, dir_logica, size);
             size_msg = size;
             break;
         case MATE_MEMWRITE:
-            iresp = memwrite(pid, dir_logica, payload, size);
+            deserialize_mem_write(&pid, &dir_logica, &size, to_write, payload);
+            iresp = memwrite(pid, dir_logica, to_write, size);
             break;
         case MATE_CLOSE:
-            pid = deserialize_delete_process(payload);
+            pid = deserialize_id_process(payload);
             delete_process(pid);
-            break;     
+            break;    
+        case SUSPENDER:
+            pid = deserialize_id_process(payload);
+            iresp = suspend_process(pid);
+            break;
         case MATE_SEM_INIT:
         case MATE_SEM_WAIT:
         case MATE_SEM_POST:
         case MATE_SEM_DESTROY:
         case MATE_CALL_IO:
             log_error(logger, "Comando sin validez");
+            iresp = -1;
             break;
         default:
-            log_error(logger,"Comando incorrecto");
-            //que hacemos en este caso? nada?
+            log_error(logger, "Comando incorrecto");
     }
     if(opcode != MATE_MEMREAD){
         resp = _serialize(sizeof(int), "%d", iresp);
@@ -198,6 +207,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
     }
 
     _send_message(fd, ID_MEMORIA, opcode, resp, size_msg, logger);
+    free(payload);
 }
 
 int deserialize_init_process(char* id, void* payload){
@@ -214,7 +224,7 @@ int deserialize_init_process(char* id, void* payload){
     return pid;
 }
 
-int deserialize_delete_process(void* payload){
+int deserialize_id_process(void* payload){
     int pid;
     memcpy(&pid, payload, sizeof(int));
     return pid;
@@ -227,6 +237,43 @@ void deserialize_mem_alloc(int* pid, int* espacioAReservar, void* payload){
     offset += sizeof(int);
 
     memcpy(espacioAReservar, payload + offset, sizeof(int));
+}
+
+void deserialize_mem_free(int* pid, int* dir_logica, void* payload){
+    int offset = 0;
+
+    memcpy(pid, payload, sizeof(int));
+    offset += sizeof(int);
+
+    memcpy(dir_logica, payload + offset, sizeof(int));
+}
+
+void deserialize_mem_read(int* pid, int* dir_logica, int* size, void* payload){
+    int offset = 0;
+
+    memcpy(pid, payload, sizeof(int));
+    offset += sizeof(int);
+
+    memcpy(dir_logica, payload + offset, sizeof(int));
+
+    memcpy(size, payload + offset, sizeof(int));
+}
+
+void deserialize_mem_write(int* pid, int* dir_logica, int* size, void* info,  void* payload){
+    int offset = 0;
+
+    memcpy(pid, payload, sizeof(int));
+    offset += sizeof(int);
+
+    memcpy(dir_logica, payload + offset, sizeof(int));
+
+    memcpy(size, payload + offset, sizeof(int));
+
+    int len_info; 
+
+    memcpy(&len_info, payload + offset, sizeof(int));
+    info = malloc(len_info);
+    memcpy(info, payload, len_info);
 }
 
 void free_memory(){
