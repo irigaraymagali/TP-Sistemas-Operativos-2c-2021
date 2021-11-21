@@ -1195,9 +1195,10 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 
 ////////////////////////////// DEADLOCK ////////////////////////////////
 
-void detectar_deadlock(){
 
-}
+
+
+
 
 /* 
 
@@ -1249,6 +1250,7 @@ void agregando_a_lista_posible_deadlock(){
     }
 }
 
+*/
 
 void solucionar_deadlock(t_list lista_en_deadlock){
     for(int i= 0; i< contar_elementos(lista_en_deadlock); i++){
@@ -1274,5 +1276,5 @@ void solucionar_deadlock(t_list lista_en_deadlock){
 
 
 
-*/
+
 
