@@ -305,20 +305,19 @@ void mate_sem_init(int id_carpincho, char* nombre_semaforo, int valor_semaforo, 
         return esIgualASemaforo(nombre_semaforo, semaforo_igual);
     }
 
-    if(list_any_satisfy(semaforos_carpinchos, (void *)esIgualA)){  }
+    if(list_any_satisfy(semaforos_carpinchos, (void *)esIgualA)){  
         void  *payload;
         payload = _serialize(sizeof(int), "%d", -1);
         log_info(logger, "El semaforo ya estaba incializado");
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
-    else 
-    {
+    else {
         semaforo semaforo_nuevo;
         void *ptr_semaforo;    
         ptr_semaforo = (semaforo *) malloc(sizeof(semaforo));     
         ptr_semaforo = &semaforo_nuevo;  
         
-        void *payload = _serialize(sizeof(int), "%d", 0), sizeof(int);
+        void *payload = _serialize(sizeof(int), "%d", 0); //asi estaba:sizeof(int), "%d", 0), sizeof(int) 
 
         semaforo_nuevo.nombre = nombre_semaforo;
         semaforo_nuevo.valor = valor_semaforo;
@@ -327,7 +326,7 @@ void mate_sem_init(int id_carpincho, char* nombre_semaforo, int valor_semaforo, 
         list_add(semaforos_carpinchos, ptr_semaforo);
 
         // esto está quedando mal no se por que
-        log_info(logger, "Se inicializó el semáforo %d   ", *semaforo_nuevo.nombre  );        
+        log_info(logger, "Se inicializó el semáforo %d   ", *semaforo_nuevo.nombre );        
         _send_message(fd, ID_KERNEL, 1, payload, logger);         
     }
 }
@@ -489,7 +488,7 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     else
     {
         log_info(logger, "Se pidio un dispositivo IO que no existe");
-         payload = _serialize(sizeof(int), "%d", -1) // => esto habria que hacerlo a todos los msjs
+         payload = _serialize(sizeof(int), "%d", -1); // => esto habria que hacerlo a todos los msjs
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
 }
@@ -553,12 +552,12 @@ void mate_memalloc(int id_carpincho, int size, int fd){  // hay que revisar lo q
 
     if(respuesta_memoria >= 0){
         // mandar mensaje de que todo ok a lib
-        log_info("el memalloc se realizó correctamente");
+        log_info(logger,"el memalloc se realizó correctamente");
         void *payload = _serialize(sizeof(int), "%d", 0);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
     else{
-        log_info("no se pudo realizar el memalloc");
+        log_info(logger,"no se pudo realizar el memalloc");
         void *payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }   
@@ -591,12 +590,12 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
 
     if(respuesta_memoria >= 0){
         // mandar mensaje de que todo ok a lib
-        log_info("el memalloc se realizó correctamente");
+        log_info(logger,"el memalloc se realizó correctamente");
         void *payload = _serialize(sizeof(int), "%d", 0);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
     else{
-        log_info("no se pudo realizar el memalloc");
+        log_info(logger,"no se pudo realizar el memalloc");
         void *payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }   
@@ -632,12 +631,12 @@ void mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size, i
 
     if(respuesta_memoria >= 0){
         // mandar mensaje de que todo ok a lib
-        log_info("el memread se realizó correctamente");
+        log_info(logger,"el memread se realizó correctamente");
         void *payload = _serialize(sizeof(int), "%d", 0);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
     else{
-        log_info("no se pudo realizar el memread");
+        log_info(logger,"no se pudo realizar el memread");
         void *payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
 
@@ -674,12 +673,12 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
 
     if(respuesta_memoria >= 0){
         // mandar mensaje de que todo ok a lib
-        log_info("el memread se realizó correctamente");
+        log_info(logger,"el memread se realizó correctamente");
         void *payload = _serialize(sizeof(int), "%d", 0);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
     else{
-        log_info("no se pudo realizar el memread");
+        log_info(logger,"no se pudo realizar el memread");
         void *payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
 
@@ -742,7 +741,7 @@ void ready_a_exec(){
     valor = (int *) 1;
     void *payload;
 
-    data_carpincho *carpincho_a_mover;
+    data_carpincho carpincho_a_mover;
 
     while(1){ 
 
@@ -849,7 +848,7 @@ void exec_a_exit(int id_carpincho, int fd){
     list_remove_by_condition(exec, es_el_mismo);
 	pthread_mutex_unlock(&sem_cola_exec);
 
-    sem_post(liberar_CPU[carpincho_a_bloquear->hilo_CPU_usado->id]); // "libera" el hilo cpu en el que estaba:
+    sem_post(liberar_CPU[carpincho_que_termino->hilo_CPU_usado->id]); // "libera" el hilo cpu en el que estaba:
     sem_post(&sem_grado_multiprogramacion_libre);
 
     _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger); 
@@ -878,7 +877,7 @@ void block_a_ready(data_carpincho *carpincho){ //la llaman cuando se hace post o
    }
 
     pthread_mutex_lock(&sem_cola_ready); 
-    pthread_mutex_lock(&sem_cola_blocked;
+    pthread_mutex_lock(&sem_cola_blocked);
 
     list_add(ready, carpincho);
     list_remove_by_condition(blocked, esIgualACarpincho);
@@ -915,13 +914,15 @@ void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
 
 }
 
-void suspender(){
+void suspender(){  //no hace falta pasarle el carpincho??
     void *payload;
     while(1){
 
         sem_wait(&sem_procesamiento_lleno);
         sem_wait(&sem_programacion_lleno);
         sem_wait(&sem_hay_bloqueados);
+
+        data_carpincho carpincho_a_suspender; //
 
         if(estan_las_condiciones_para_suspender()){
 
@@ -931,14 +932,14 @@ void suspender(){
             pthread_mutex_lock(&sem_cola_blocked);
             pthread_mutex_lock(&sem_cola_suspended_blocked);
 
-            carpincho_a_suspender = list_remove(blocked, longitud);
-            list_add(suspended_blocked, carpincho_a_suspender);
+            carpincho_a_suspender* = list_remove(blocked, longitud);
+            list_add(suspended_blocked, *carpincho_a_suspender);
 
             pthread_mutex_unlock(&sem_cola_blocked);
             pthread_mutex_unlock(&sem_cola_suspended_blocked);
 
             carpincho_a_suspender->estado = SUSPENDED_BLOCKED;
-            sem_post(liberar_CPU[carpincho_a_bloquear->hilo_CPU_usado->id]);
+            sem_post(liberar_CPU[carpincho_a_suspender->hilo_CPU_usado->id]);
 
             payload = _serialize(sizeof(int), "%d", carpincho_a_suspender->id);
             _send_message(socket_memoria, ID_KERNEL, SUSPENDER, payload, sizeof(int), logger);  //avisar a mem para que libere
@@ -948,7 +949,10 @@ void suspender(){
 }
 
 bool estan_las_condiciones_para_suspender(){
-    return sem_getvalue(&sem_grado_multiprogramacion_libre) == 0 && !list_is_empty(blocked) && sem_getvalue(&hay_estructura_creada) > 0;
+    int valor1 = sem_getvalue(&sem_grado_multiprogramacion_libre, valor1);
+    int valor2 = sem_getvalue(&hay_estructura_creada, valor2);
+    
+    return valor1 == 0 && !list_is_empty(blocked) && valor2 > 0;
 }
 
 ////////////////////////// ALGORITMOS ////////////////////////
@@ -960,15 +964,16 @@ data_carpincho ready_a_exec_SJF(){
             float min_hasta_el_momento = 0;
             data_carpincho carpincho_sig;
             data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
-            calculo_estimacion_siguiente(carpincho_listo);       // le calculo su estimacion
+            calculo_estimacion_siguiente(*carpincho_listo);       // le calculo su estimacion
             float estimacion_actual = carpincho_listo->estimacion_siguiente; //agarro su estimacion
                 if(estimacion_actual < min_hasta_el_momento){    // si esta es menor => pasa a ser la minima hasta el momento
-                    carpincho_sig = carpincho_listo;
+                    //carpincho_sig = carpincho_listo;
+                    id_carpincho = carpincho_listo->id;
                     min_hasta_el_momento = estimacion_actual;
                 }
         }
         
-    return carpincho_sig;        
+    return encontrar_estructura_segun_id(id_carpincho); //carpincho_sig;        
 }
 
 data_carpincho ready_a_exec_HRRN(){ 
@@ -977,8 +982,8 @@ data_carpincho ready_a_exec_HRRN(){
 
             float max_hasta_el_momento = 0;
             data_carpincho carpincho_sig;
-            data_carpincho carpincho_listo = list_get(ready, i); 
-            calculo_RR(carpincho_listo);                         
+            data_carpincho carpincho_listo* = list_get(ready, i); 
+            calculo_RR(*carpincho_listo);                         
             float RR_actual = carpincho_listo->RR;               
                 if(RR_actual > max_hasta_el_momento){            
                     max_hasta_el_momento = RR_actual;
@@ -990,7 +995,7 @@ data_carpincho ready_a_exec_HRRN(){
 }
 
 
-void calculo_estimacion_siguiente(data_carpincho *carpincho){
+void calculo_estimacion_siguiente(data_carpincho *carpincho){ 
 
     calculo_rafaga_anterior(carpincho);
 
@@ -1007,7 +1012,7 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){
 }
 
 // para HRRN
-void calculo_RR(data_carpincho *carpincho){
+void calculo_RR(data_carpincho *carpincho){ 
 
     char ahora = calcular_milisegundos();
 
@@ -1027,12 +1032,12 @@ int calcular_milisegundos(){
 
     tiempo tiempo_calculado; 
 
-    tiempo_calculado->minutos = atoi(tiempo_formateado[0])
-    tiempo_calculado->segundos = atoi(tiempo_formateado[1])
-    tiempo_calculado->milisegundos = atoi(tiempo_formateado[2])
+    tiempo_calculado->minutos = atoi(tiempo_formateado[0]);
+    tiempo_calculado->segundos = atoi(tiempo_formateado[1]);
+    tiempo_calculado->milisegundos = atoi(tiempo_formateado[2]);
 
         // paso todo a milisegundos para que sea mas facil despues sacar la diferencia
-    return tiempo_calculado->minutos * 60000 + tiempo_calculado->segundos * 60 + tiempo_calculado->milisegundos
+    return tiempo_calculado->minutos * 60000 + tiempo_calculado->segundos * 60 + tiempo_calculado->milisegundos;
 }
 
 
@@ -1052,7 +1057,7 @@ void asignar_hilo_CPU(data_carpincho carpincho){
 
     sem_post(&usar_CPU[hilo_CPU_disponible->id]);
 
-    carpicho->hilo_CPU_usado = hilo_CPU_disponible;
+    carpincho->hilo_CPU_usado = hilo_CPU_disponible;
 
 }
 
@@ -1129,7 +1134,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
                 // size_memoria
-                memcpy(&size_memoria, payload, sizeof(int);
+                memcpy(&size_memoria, payload, sizeof(int));
                 offset += sizeof(int);
 
                 mate_memalloc(id_carpincho, size_memoria, fd);      
@@ -1139,7 +1144,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
                 // addr_memfree
-                memcpy(&addr_memfree, payload, sizeof(int);
+                memcpy(&addr_memfree, payload, sizeof(int));
                 offset += sizeof(int);
 
                 mate_memfree(id_carpincho, addr_memfree, fd);      
@@ -1188,7 +1193,11 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 
 
 
-////////////////////////////// DEADLOCK ////////////////////////////////7
+////////////////////////////// DEADLOCK ////////////////////////////////
+
+void detectar_deadlock(){
+
+}
 
 /* 
 

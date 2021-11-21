@@ -141,4 +141,51 @@ sem_t sem_hay_bloqueados;
 
 
 void handler(int fd, char* id, int opcode, void* payload, t_log* logger);
+void ejecuta(int id);
 
+void inicializar_colas();
+void inicializar_semaforos();
+void crear_hilos_CPU();
+void free_memory();
+data_carpincho* encontrar_estructura_segun_id(int id);
+void deserializar(void* buffer);
+
+void mate_init(int fd);
+void mate_close(int id_carpincho, int fd);
+bool esIgualASemaforo(char* nombre_semaforo, void *semaforo_igual);
+void mate_sem_init(int id_carpincho, char* nombre_semaforo, int valor_semaforo, int fd);
+bool esIgualA(void *semaforo_igual);
+void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd);
+void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd);
+void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd);
+bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo);
+void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd);
+bool igual_a(void *dispositivo);
+
+void crear_estructura_dispositivo();
+int contar_elementos(char** elementos);
+
+void mate_memalloc(int id_carpincho, int size, int fd);
+void mate_memfree(int id_carpincho, mate_pointer addr, int fd);
+void mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size, int fd);
+void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, int fd);
+
+void entrantes_a_ready();
+void ready_a_exec();
+void exec_a_block(int id_carpincho);
+void exec_a_exit(int id_carpincho, int fd);
+void crear_hilos_planificadores();
+void block_a_ready(data_carpincho *carpincho);
+void suspended_blocked_a_suspended_ready(data_carpincho *carpincho);
+void suspender();
+bool estan_las_condiciones_para_suspender();
+data_carpincho ready_a_exec_SJF();
+data_carpincho ready_a_exec_HRRN();
+void calculo_estimacion_siguiente(data_carpincho *carpincho);
+void calculo_rafaga_anterior(data_carpincho *carpincho);
+void calculo_RR(data_carpincho *carpincho);
+int calcular_milisegundos();
+void asignar_hilo_CPU(data_carpincho carpincho);
+void ejecuta(int id);
+
+void detectar_deadlock();
