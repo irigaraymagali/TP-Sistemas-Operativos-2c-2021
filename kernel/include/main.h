@@ -1,6 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include "server.h"
 #include <stdio.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -97,18 +98,18 @@ pthread_mutex_t sem_cola_suspended_ready;
 t_log *logger;
 
 // socket memoria;
-int *socket_memoria;
+int socket_memoria;
 
 // configuración
 t_config* config;
 char *ip_memoria; 
-int puerto_memoria;
-int puerto_escucha;
+char* puerto_memoria;
+char* puerto_escucha;
 char *algoritmo_planificacion;
 float estimacion_inicial;
 int alfa;
-char *dispositivos_io; 
-int *duraciones_io; 
+char **dispositivos_io; 
+char **duraciones_io; 
 int grado_multiprogramacion;
 int grado_multiprocesamiento;
 int tiempo_deadlock;
@@ -148,7 +149,7 @@ void inicializar_semaforos();
 void crear_hilos_CPU();
 void free_memory();
 data_carpincho* encontrar_estructura_segun_id(int id);
-void deserializar(void* buffer);
+data_carpincho* deserializar(void* buffer);
 
 void mate_init(int fd);
 void mate_close(int id_carpincho, int fd);
@@ -179,8 +180,8 @@ void block_a_ready(data_carpincho *carpincho);
 void suspended_blocked_a_suspended_ready(data_carpincho *carpincho);
 void suspender();
 bool estan_las_condiciones_para_suspender();
-data_carpincho ready_a_exec_SJF();
-data_carpincho ready_a_exec_HRRN();
+data_carpincho* ready_a_exec_SJF();
+data_carpincho* ready_a_exec_HRRN();
 void calculo_estimacion_siguiente(data_carpincho *carpincho);
 void calculo_rafaga_anterior(data_carpincho *carpincho);
 void calculo_RR(data_carpincho *carpincho);
