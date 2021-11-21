@@ -1149,7 +1149,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
                 // origin_memread
-                memcpy(&origin_memread, payload, sizeof(int);
+                memcpy(&origin_memread, payload, sizeof(int));
                 offset += sizeof(int);
                 // dest_memread
                 memcpy(&ptr_len, payload + offset, sizeof(int));
@@ -1157,7 +1157,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&dest_memread, payload + offset, sizeof(int)* ptr_len);
                 offset += sizeof(int)* ptr_len;
                 // size_memoria
-                memcpy(&size_memoria, payload, sizeof(int);
+                memcpy(&size_memoria, payload, sizeof(int));
                 offset += sizeof(int);
 
                 mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria), fd;            
@@ -1172,10 +1172,10 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
                 offset += sizeof(int)* ptr_len;                
                 // dest_memwrite
-                memcpy(&dest_memwrite, payload, sizeof(int);
+                memcpy(&dest_memwrite, payload, sizeof(int));
                 offset += sizeof(int);
                 // size_memoria
-                memcpy(&size_memoria, payload, sizeof(int);
+                memcpy(&size_memoria, payload, sizeof(int));
                 offset += sizeof(int);
 
                 mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);     
@@ -1190,12 +1190,80 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 
 ////////////////////////////// DEADLOCK ////////////////////////////////7
 
+/* 
+
+
 void detectar_deadlock(){
 
-    while(1)
+    usleep(tiempo_deadlock);
+
+    //while(1){}
     // sem_wait(hay_bloqueados_para_deadlock); --> post cuando 1 se bloquea como el ed cola_bloqueados_con elementos, falta inicializarlo este
     
-
-
+    //agarro carpincho1 de la lista de posibles
+        for(int i= 0; i< contar_elementos(lista_disponibles); i++){
+            data_carpincho carpincho_a_chequear = list_get(lista_disponibles, i);
+    //agarro un semaforo1 que ese carpincho tiene retenido
+            semaforo semaforo_a_evaluar = carpincho_a_evaluar->retenidos[i]; //ver estructura
+    
+    //a ese semaforo1 veo si tiene en espera a algun carpincho que pertenezca a la lista de posibles
+           if(list_any_satisfy(lista_disponibles, semaforo_a_evaluar->esperando)){
+    // si => agarro ese carpincho2
+                data_carpincho otro_carpincho_a_evaluar = ese carpincho que saque
+           } 
+    //agarro un semaforo2 que ese carpincho2 tiene retenido
+            semaforo otro_semaforo_a_evaluar = list_get(otro_carpincho_a_evaluar->retenidos, i);
+    //a ese semaforo2 veo si tiene en espera a algun carpincho que pertenezca a la lista de posibles
+            if(list_any_satisfy(lista_disponibles, semaforo_a_evaluar->esperando)){
+                data_carpincho ultimo_carpincho_a_evaluar = ese carpincho que saque
+           } 
+    // si => es carpincho_a_evaluar?
+            if(ultimo_carpincho_a_evaluar->id == carpincho_a_evaluar->id){
+                list_add(lista_en_deadlock, ultimo_carpincho_a_evaluar);
+                list_add(lista_en_deadlock, otro_carpincho_a_evaluar);
+    // si => deadlock => eliminar > id y hacerle post a los sem que tiene retenido
+                solucionar_deadlock(lista_en_deadlock);
+            }
+        }
 
 }
+
+
+void agregando_a_lista_posible_deadlock(){
+
+    // los carpinchos tienen que estar en bloq o bloq suspended
+   
+    for(int i= 0; i< lista_carpinchos; i++){ //era asi la lista?
+        if(carpincho->retenido !=NULL && carpincho->espera !=NULL){ //ver nombres
+                list_add(lista_posibles, carpincho); //crearla
+        }
+    }
+}
+
+
+void solucionar_deadlock(t_list lista_en_deadlock){
+    for(int i= 0; i< contar_elementos(lista_en_deadlock); i++){
+        int mayor_id_hasta_ahora = 0;
+        data_carpincho carpincho= list_get(lista_en_deadlock, i);
+        int id_actual = carpincho->id;
+            if(id_actual < mayor_id_hasta_ahora){    
+                mayor_id_hasta_ahora = id_actual;
+            }
+    }
+
+   data_carpincho carpincho_a_eliminar = encontrar_estructura_segun_id(mayor_id_hasta_ahora);
+
+   //simular mate_close para carpincho_a_eliminar
+
+   //simular post a los semaforos que tenia retenido ese carpincho
+    for(int i=0; i<contar_elementos(carpincho_a_eliminar->retenidos); i++){
+        sem_post(list_get(carpincho_a_eliminar->retenidos, i));
+    }
+
+    //cerrar socket
+}
+
+
+
+*/
+

@@ -135,3 +135,10 @@ sem_t usar_CPU;
 sem_t sem_programacion_lleno;
 sem_t sem_procesamiento_lleno;
 sem_t sem_hay_bloqueados;
+
+
+
+
+
+void handler(int fd, char* id, int opcode, void* payload, t_log* logger);
+
