@@ -381,7 +381,7 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         return esIgualASemaforo(semaforo, nombre_semaforo);
     }
 
-    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  // para ver cómo pasar la función: https://www.youtube.com/watch?v=1kYyxZXGjp0
+    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
 
         semaforo *semaforo_post;
         semaforo_post = list_find(semaforos_carpinchos, (void *) esIgualA);
@@ -865,6 +865,9 @@ void crear_hilos_planificadores(){
     
     pthread_t planficador_mediano_plazo;
     pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); 
+
+    pthread_t deteccion_deadlock;
+    pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
 }
 
 
@@ -923,7 +926,7 @@ void suspender(){
         if(estan_las_condiciones_para_suspender()){
 
             int longitud;
-            longitud = list_size(blocked);
+            longitud = contar_elementos(blocked); //list_size(blocked);
 
             pthread_mutex_lock(&sem_cola_blocked);
             pthread_mutex_lock(&sem_cola_suspended_blocked);
@@ -952,7 +955,7 @@ bool estan_las_condiciones_para_suspender(){
 
 data_carpincho ready_a_exec_SJF(){
 
-        for(int i= 0; i<list_size(ready); i++){
+        for(int i= 0; i< contar_elementos(ready) /* list_size(ready) */; i++){
 
             float min_hasta_el_momento = 0;
             data_carpincho carpincho_sig;
@@ -970,7 +973,7 @@ data_carpincho ready_a_exec_SJF(){
 
 data_carpincho ready_a_exec_HRRN(){ 
     
-        for(int i= 0; i<list_size(ready); i++){
+        for(int i= 0; i< contar_elementos(ready) /* list_size(ready) */; i++){
 
             float max_hasta_el_momento = 0;
             data_carpincho carpincho_sig;
@@ -1182,3 +1185,17 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 
 }
 
+
+
+
+////////////////////////////// DEADLOCK ////////////////////////////////7
+
+void detectar_deadlock(){
+
+    while(1)
+    // sem_wait(hay_bloqueados_para_deadlock); --> post cuando 1 se bloquea como el ed cola_bloqueados_con elementos, falta inicializarlo este
+    
+
+
+
+}
