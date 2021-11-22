@@ -688,7 +688,7 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
 
 }
 
-//////////////////////////////////// HASTA ACÁ LLEGUÉ COMPILANDO APROX
+
 
 void entrantes_a_ready(){
 
@@ -826,7 +826,7 @@ void exec_a_block(int id_carpincho){
     sem_post(&semaforo_a_usar); 
 }
 
-//////////////////////////// hasta aca llegue a compilar
+/////// hasta aca llegue a compilar
 
 void exec_a_exit(int id_carpincho, int fd){
     
@@ -882,7 +882,8 @@ void crear_hilos_planificadores(){
 void block_a_ready(data_carpincho *carpincho){ //la llaman cuando se hace post o cuando se termina IO
    
    bool esIgualACarpincho (void* carpincho_lista){
-            data_carpincho* aux = (data_carpincho*)carpincho_lista;
+            data_carpincho* carpincho_a_buscar = (data_carpincho*)carpincho_lista;
+           // data_carpincho* aux = 
             return aux->id == carpincho_lista->id;
         }
 
@@ -1255,11 +1256,40 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 
 ////////////////////////////// DEADLOCK ////////////////////////////////
 
-void detectar_deadlock(){
 
-    int asignacion[n][m]; //recursos (semaforos) asignados a cada carpincho
-    int solicitud[n][m]; //solicitudes hechas (waits) por cada carpincho
 
+void detectar_deadlock(){ //pag 250 libro silberschats --> https://www.utnianos.com.ar/foro/attachment.php?aid=5321
+
+/* 
+    int available[m]; //num de sems disponibles
+    int allocation[n][m]; //asignacion: semaforos asignados a cada carpincho
+    int request[n][m]; //solicitud: waits hechos por cada carpincho
+    bool work[m];
+    bool finish[n];
+
+    work[i]=true; //al inicio
+
+    if(allocation != 0){ //ver
+        finish[i]==false;
+    }
+    else{
+        finish[i]==true;
+    }
+    
+    for(int i, ????? , i++){
+        if(finish[i]==false && request<=work){
+            work = work + allocation;
+            finish[i]==true;
+        }
+        else{
+            if(finish[i]==false){
+                // => HAY DEADLOCK
+            }
+        }
+    }
+    
+
+*/
 }
 
 
@@ -1267,7 +1297,7 @@ void detectar_deadlock(){
 
 
 /* 
-
+// INTENTO CON LISTAS:
 
 void detectar_deadlock(){
 
