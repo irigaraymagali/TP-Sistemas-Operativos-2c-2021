@@ -225,11 +225,14 @@ int suspend_process(int pid) {
 }
 
 void* memread(uint32_t pid, int dir_logica, int size){
-    void* read;
+    void* read = malloc(size);
     int size_to_read, offset_to_read;
+    int paginaActual = 1;
+    int dirAllocActual = dir_logica;
+    HeapMetaData* heap;
+    int read_len = 0;
 
     void* err_msg = _serialize(sizeof(int), "%d", MATE_READ_FAULT);
-    HeapMetaData* heap;
 
     log_info(logger, "Buscando la tabla de paginas del proceso %d", pid);
 
@@ -239,13 +242,11 @@ void* memread(uint32_t pid, int dir_logica, int size){
         log_error(logger, "El proceso ingresado es incorrecto");
         return err_msg;
     }
-
-    Pagina* page = get_page_by_dir_logica(pages, dir_logica);
-    if (page == NULL){
+    
+    int dirAllocFinal = pages->lastHeap;
+    if (size >= dirAllocFinal){
+        log_error(logger, "La Longitud de lectura recibida es invalida.");
         return err_msg;
-    } 
-    if(page->bitPresencia == 0){
-        log_info(logger, "TODO: buscar en swap");
     }
 
     heap = get_heap_metadata(dir_logica);
@@ -257,21 +258,47 @@ void* memread(uint32_t pid, int dir_logica, int size){
         log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
         return err_msg;
     }
-    //Obtener todas las paginas asociadas en base al size, y fijarse si un heap meta data está adentro de dos paginas.
-    
-    offset_to_read = dir_logica + HEAP_METADATA_SIZE;
-    size_to_read = heap->nextAlloc - HEAP_METADATA_SIZE;
-    read = malloc(size);
-    memcpy(read, memoria + offset_to_read, size_to_read);
 
-    pthread_mutex_lock(&lru_mutex);
-    page->lRU = lRUACTUAL;
-    lRUACTUAL++;
-    pthread_mutex_unlock(&lru_mutex);
-    page->bitUso = 1;
+    while(read_len < size){
+        int div_heap = 0;
+
+        paginaActual = (dirAllocActual / tamanioDePagina) + 1;       
+        getFrameDeUn(pid, paginaActual);
+        int page_len = paginaActual*(tamanioDePagina);
+
+        int size_all_heap = (((dirAllocActual + HEAP_METADATA_SIZE)/ tamanioDePagina) + 1);
+        if(paginaActual != size_all_heap){
+            getFrameDeUn(pid, paginaActual + 1);
+            div_heap = 1;
+        }
+
+        heap = get_heap_metadata(dirAllocActual);
+        offset_to_read = dirAllocActual + HEAP_METADATA_SIZE;
+        int alloc_len = abs(heap->nextAlloc - offset_to_read);
+        size_to_read = alloc_len;
+
+        if (size < size_to_read){
+            size_to_read = size;
+        } else if ((read_len + size_to_read) > size){
+                size_to_read = size - read_len;
+        }
+
+        if (heap->nextAlloc > page_len){
+            int nxt_long_alloc = page_len - heap->nextAlloc;
+            int act_long_alloc = alloc_len - nxt_long_alloc;
+
+            if (size_to_read > act_long_alloc && !div_heap){
+                getFrameDeUn(pid, paginaActual + 1);
+            }
+        }
+
+        memcpy(read, memoria + offset_to_read, size_to_read);
+        read_len += size_to_read;
+        dirAllocActual = heap->nextAlloc;
+    }
 
     return read;
-}
+} 
 
 TablaDePaginasxProceso* get_pages_by(int processID){
     pthread_mutex_lock(&list_pages_mutex);
