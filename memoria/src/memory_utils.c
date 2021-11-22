@@ -110,7 +110,10 @@ int memalloc(int processId, int espacioAReservar){
             memcpy(memoria + offset, &nuevoHeap->nextAlloc, sizeof(uint32_t));
             offset = offset + sizeof(uint32_t);
 
+            pthread_mutex_lock(&lru_mutex);
+            lRUACTUAL++;
             paginaFInalEncontrada->lRU = lRUACTUAL;
+            pthread_mutex_unlock(&lru_mutex);
             paginaFInalEncontrada->bitUso = 1 ;
 
             temp->lastHeap = tempLastHeap + espacioAReservar;
@@ -435,8 +438,10 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             nuevaPagina->bitModificado = 0;
             nuevaPagina->bitPresencia = 1;
             nuevaPagina->bitUso=1;
+            pthread_mutex_lock(&lru_mutex);
             lRUACTUAL++;
             nuevaPagina->lRU = lRUACTUAL;
+            pthread_mutex_unlock(&lru_mutex);
 
             TablaDePaginasxProceso* temp = get_pages_by(processId);
 
@@ -463,8 +468,10 @@ void agregarXPaginasPara(int processId, int espacioRestante){
 
                 paginaSiguienteALaUltima->frame = getNewEmptyFrame(processId);
                 paginaSiguienteALaUltima->isfree = BUSY;
+                pthread_mutex_lock(&lru_mutex);
                 lRUACTUAL++;
                 paginaSiguienteALaUltima->lRU = lRUACTUAL;
+                pthread_mutex_unlock(&lru_mutex);
                 paginaSiguienteALaUltima->bitUso=1;
                 paginaSiguienteALaUltima->bitModificado=1;
                 paginaSiguienteALaUltima->bitPresencia=1;
@@ -474,8 +481,10 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                 cantidadDePaginasAAgregar--;
             }else{
                 paginaSiguienteALaUltima->isfree = BUSY;
+                pthread_mutex_lock(&lru_mutex);
                 lRUACTUAL++;
                 paginaSiguienteALaUltima->lRU = lRUACTUAL;
+                pthread_mutex_unlock(&lru_mutex);
                 paginaSiguienteALaUltima->bitUso=1;
                 paginaSiguienteALaUltima->bitModificado=1;
                 paginaSiguienteALaUltima->bitPresencia=1;
@@ -937,7 +946,10 @@ void inicializarUnProceso(int idDelProceso){
 
         Pagina* nuevaPagina = malloc(sizeof(Pagina));
         nuevaPagina->pagina=1;
+        pthread_mutex_lock(&lru_mutex);
+        lRUACTUAL++;
         nuevaPagina->lRU = lRUACTUAL;
+        pthread_mutex_unlock(&lru_mutex);
         nuevaPagina->isfree= BUSY;
         nuevaPagina->frame = nuevoFrame;
         nuevaPagina->bitPresencia =1;
@@ -967,7 +979,10 @@ void inicializarUnProceso(int idDelProceso){
 
                 Pagina* nuevaPagina = malloc(sizeof(Pagina));
                 nuevaPagina->pagina=1;
+                pthread_mutex_lock(&lru_mutex);
+                lRUACTUAL++;
                 nuevaPagina->lRU = lRUACTUAL;
+                pthread_mutex_unlock(&lru_mutex);
                 nuevaPagina->isfree= BUSY;
                 nuevaPagina->frame = nuevoFrame;
                 nuevaPagina->bitPresencia =1;
@@ -982,7 +997,10 @@ void inicializarUnProceso(int idDelProceso){
 
                 Pagina* nuevaPagina = malloc(sizeof(Pagina));
                 nuevaPagina->pagina=paginasCargadas+1;
+                pthread_mutex_lock(&lru_mutex);
+                lRUACTUAL++;
                 nuevaPagina->lRU = lRUACTUAL;
+                pthread_mutex_unlock(&lru_mutex);
                 nuevaPagina->isfree= FREE;
                 nuevaPagina->frame = nuevoFrame;
                 nuevaPagina->bitPresencia =0;
