@@ -1259,6 +1259,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 
 
 void detectar_deadlock(){ //pag 250 libro silberschats --> https://www.utnianos.com.ar/foro/attachment.php?aid=5321
+//cosas a tener en cuenta: https://docs.google.com/document/d/14-7RvGDeBjIGaqG7fMPsrrvUZuoIiAIYrbaHGf1q2Bg/edit
 
 /* 
     int available[m]; //num de sems disponibles
