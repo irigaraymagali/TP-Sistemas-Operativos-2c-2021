@@ -18,12 +18,6 @@ int main(int argc, char ** argv) {
     inicializar_directorios();
     inicializar_swap_files();
 
-    void* algo = malloc(swap_page_size);
-    memset(algo, '@', swap_page_size);
-    guardar_pagina_asignacion_fija(1, 1, algo);
-    void* otro = malloc(swap_page_size);
-    otro = obtener_pagina(1, 1);
-
     // consola("TIPO_ASIGNACION ASIGNACION_FIJA", 0);
     // consola("GUARDAR_PAGINA 1 1 1111111111111111111111111111111111111111111111111111111111111111", 0);
     // consola("GUARDAR_PAGINA 1 2 2222222222222222222222222222222222222222222222222222222222222222", 0);
