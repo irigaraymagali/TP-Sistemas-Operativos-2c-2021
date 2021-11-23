@@ -117,14 +117,19 @@ void crear_hilos_CPU(){ // creación de los hilos CPU
    
 	for(int i= 0; i< grado_multiprocesamiento; i++){
         
-        sem_t liberar_CPU[i];
+       //descomentar sem_t liberar_CPU[i];
         sem_t CPU_libre[i];
         sem_t usar_CPU[i];
 
-        sem_init(&liberar_CPU[i], 0, 0);
+       //descomentar  sem_init(&liberar_CPU[i], 0, 0);
         sem_init(&CPU_libre[i], 0, 1); // ver si es 0 o 1 en el segundo argumento
-        sem_init(&usar_CPU[i], 0, 0);        
-        
+        sem_init(&usar_CPU[i], 0, 0);       
+
+/* 
+        list_add(lista_liberar_CPU, liberar_CPU[i]); //CREAR LISTAS
+        list_add(lista_CPU_libre, CPU_libre[i]);
+        list_add(lista_usar_CPU, usar_CPU[i]); 
+ */       
         pthread_t hilo_CPU[i];
         pthread_create(&hilo_CPU[i], NULL, (void*) ejecuta, &i); 
         
@@ -173,14 +178,17 @@ void free_memory(){
     pthread_mutex_destroy(&sem_cola_suspended_blocked);
     pthread_mutex_destroy(&sem_cola_suspended_ready);
 
+/* 
 	for(int i= 0; i< grado_multiprocesamiento; i++){
         sem_t liberar_CPU[i];
         sem_t CPU_libre[i];
         sem_t usar_CPU[i];        
-        sem_destroy(&liberar_CPU[i]);
-        sem_destroy(&CPU_libre[i]);
-        sem_destroy(&usar_CPU[i]);   
-	}
+       // sem_destroy(&liberar_CPU[i]);
+       // sem_destroy(&CPU_libre[i]);
+       // sem_destroy(&usar_CPU[i]);   
+
+
+    } */
 
     //free(socket_memoria);
 
@@ -479,13 +487,13 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         else{ 
             dispositivo_pedido->en_uso = true;
             usleep(dispositivo_pedido->duracion);
-           // block_a_ready(carpincho);
+            block_a_ready(carpincho);
             while(!queue_is_empty(dispositivo_pedido->en_espera)){
                 data_carpincho *carpincho_siguiente;
                 carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
                 queue_pop(dispositivo_pedido->en_espera);
                 usleep(dispositivo_pedido->duracion);
-               // block_a_ready(carpincho_siguiente);
+                block_a_ready(carpincho_siguiente);
             }
         }
     }
@@ -841,7 +849,7 @@ void exec_a_exit(int id_carpincho, int fd){
 
     bool es_el_mismo(void* carpincho){
         data_carpincho* aux = (data_carpincho*)carpincho; // A CHEQUEAR
-        return es_el_mismo_carpincho(carpincho,carpincho_que_termino);
+        return es_el_mismo_carpincho(aux,carpincho_que_termino);
     }
 
     payload = _serialize(sizeof(int), "%d", id_carpincho);
@@ -856,8 +864,11 @@ void exec_a_exit(int id_carpincho, int fd){
     list_remove_by_condition(exec, es_el_mismo);
 	pthread_mutex_unlock(&sem_cola_exec);
 
-    sem_t sem_uso = liberar_CPU[carpincho_que_termino->hilo_CPU_usado.id];
-    sem_post(&sem_uso); // "libera" el hilo cpu en el que estaba:
+   // descomentar:           sem_t sem_uso = liberar_CPU[carpincho_que_termino->hilo_CPU_usado.id];
+    //sem_t sem_uso = 
+
+
+   //descomentar sem_post(&sem_uso); // "libera" el hilo cpu en el que estaba:
     sem_post(&sem_grado_multiprogramacion_libre);
 
     _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger); 
@@ -874,24 +885,32 @@ void crear_hilos_planificadores(){
     pthread_t planficador_mediano_plazo;
     pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); 
 
-    pthread_t deteccion_deadlock;
-    pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
+   //descomentar pthread_t deteccion_deadlock;
+   //descomentar pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
 }
 
+bool esIgualACarpi(data_carpincho carpincho, data_carpincho otro_carpincho){
+     return carpincho->id == otro_carpincho->id;
+} 
 
 void block_a_ready(data_carpincho *carpincho){ //la llaman cuando se hace post o cuando se termina IO
-   
+ /*  
    bool esIgualACarpincho (void* carpincho_lista){
             data_carpincho* carpincho_a_buscar = (data_carpincho*)carpincho_lista;
            // data_carpincho* aux = 
-            return aux->id == carpincho_lista->id;
+            return carpincho_a_buscar->id == carpincho_lista->id;   //volver a ver
         }
+*/
+
+    bool esIgualAC(void *carpincho){
+        return esIgualACarpi(carpincho, otro_carpincho);
+    }
 
     pthread_mutex_lock(&sem_cola_ready); 
     pthread_mutex_lock(&sem_cola_blocked);
 
     list_add(ready, carpincho);
-    list_remove_by_condition(blocked, esIgualACarpincho);
+    list_remove_by_condition(blocked, esIgualAC);
 
     pthread_mutex_unlock(&sem_cola_blocked);
     pthread_mutex_unlock(&sem_cola_ready);
@@ -926,25 +945,27 @@ void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
 }
 
 void suspender(){  //no hace falta pasarle el carpincho??
-    void *payload;
+  /*  void *payload;
     while(1){
 
         sem_wait(&sem_procesamiento_lleno);
         sem_wait(&sem_programacion_lleno);
         sem_wait(&sem_hay_bloqueados);
 
-        data_carpincho carpincho_a_suspender; //
+        data_carpincho carpincho_a_suspender; 
 
         if(estan_las_condiciones_para_suspender()){
 
-            int longitud;
-            longitud = contar_elementos(blocked); //list_size(blocked);
+           // int longitud;
+            //longitud = list_size(blocked);
 
             pthread_mutex_lock(&sem_cola_blocked);
             pthread_mutex_lock(&sem_cola_suspended_blocked);
 
-            carpincho_a_suspender* = list_remove(blocked, longitud);
-            list_add(suspended_blocked, *carpincho_a_suspender);
+            //carpincho_a_suspender = list_remove(blocked, longitud); 
+            carpincho_a_suspender = list_get(blocked, longitud);  //para que saque al ultimo?
+            list_remove_by_condition(suspended_blocked, esIgualACarpincho); //ver fun es igaual a 
+            list_add(suspended_blocked, carpincho_a_suspender);
 
             pthread_mutex_unlock(&sem_cola_blocked);
             pthread_mutex_unlock(&sem_cola_suspended_blocked);
@@ -957,6 +978,7 @@ void suspender(){  //no hace falta pasarle el carpincho??
             
         }
     }
+    */ 
 }
 
 bool estan_las_condiciones_para_suspender(){
@@ -1093,12 +1115,12 @@ int calcular_milisegundos(){
 
     tiempo tiempo_calculado; 
 
-    tiempo_calculado->minutos = atoi(tiempo_formateado[0]);
-    tiempo_calculado->segundos = atoi(tiempo_formateado[1]);
-    tiempo_calculado->milisegundos = atoi(tiempo_formateado[2]);
+    tiempo_calculado.minutos = atoi(tiempo_formateado[0]);
+    tiempo_calculado.segundos = atoi(tiempo_formateado[1]);
+    tiempo_calculado.milisegundos = atoi(tiempo_formateado[2]);
 
         // paso todo a milisegundos para que sea mas facil despues sacar la diferencia
-    return tiempo_calculado->minutos * 60000 + tiempo_calculado->segundos * 60 + tiempo_calculado->milisegundos;
+    return tiempo_calculado.minutos * 60000 + tiempo_calculado.segundos * 60 + tiempo_calculado.milisegundos;
 }
 
 
@@ -1106,11 +1128,11 @@ int calcular_milisegundos(){
 
 void asignar_hilo_CPU(data_carpincho carpincho){
 
-    hilo_cpu hilo_cpu_disponible;
+    CPU hilo_cpu_disponible;
 
     bool buscar_disponible(void* hilo_cpu){
         int *valor;
-        sem_getvalue(cpu->semaforo, valor);
+        sem_getvalue(hilo_cpu->semaforo, valor);
         return valor == 1;
     }
 
@@ -1133,7 +1155,7 @@ void ejecuta(int id){
         sem_wait(&CPU_libre[id]); // indica que ya no está más libre ese cpu
         // mutex
         
-        sem_wait(&liberar_CPU[id]); // espera a que algun carpincho indique que quiere liberar el cpu
+       //descomentar sem_wait(&liberar_CPU[id]); // espera a que algun carpincho indique que quiere liberar el cpu
         
         //
         sem_post(&CPU_libre[id]); // indica que ya esta el cpu libre de nuevo
@@ -1350,8 +1372,9 @@ void agregando_a_lista_posible_deadlock(){
 */
 
 void solucionar_deadlock(t_list lista_en_deadlock){
+    int mayor_id_hasta_ahora = 0;
     for(int i= 0; i< contar_elementos(lista_en_deadlock); i++){
-        int mayor_id_hasta_ahora = 0;
+        
         data_carpincho carpincho= list_get(lista_en_deadlock, i);
         int id_actual = carpincho->id;
             if(id_actual < mayor_id_hasta_ahora){    
