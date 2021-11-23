@@ -633,8 +633,8 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
             tempPagina->frame = getNewEmptyFrame(processId);
             int pay_len = 2*sizeof(int);
             void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina);       
-            send_message_swamp(MEMORY_RECV_SWAP_SEND, payload, pay_len);
-            memcpy(memoria + (tempPagina->frame*tamanioDePagina), payload,tamanioDePagina);
+            void* response = send_message_swamp(MEMORY_RECV_SWAP_SEND, payload, pay_len);
+            memcpy(memoria + (tempPagina->frame*tamanioDePagina), response,tamanioDePagina);
             free(payload);
             tempPagina->bitPresencia=1;
             //pedirselo a gonza
