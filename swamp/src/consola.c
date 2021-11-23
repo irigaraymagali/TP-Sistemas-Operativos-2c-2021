@@ -66,7 +66,8 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             //////////////////////////////////////////////////////////////////////////////////////////////////////
             ///////////////////// VER SI ESTA BIEN EL CASTEO O HAY QUE CAMBIAR TODO A VOID //////////////////////
             ////////////////////////////////////////////////////////////////////////////////////////////////////
-            guardar_pagina(proceso, pagina, (char*) contenido);
+            sleep(retardo_swap);
+            guardar_pagina(proceso, pagina, contenido);
             //////////////////////////////////////////////////////////////////////////////////////////////////////
             ///////////////////// VER SI ESTA BIEN EL CASTEO O HAY QUE CAMBIAR TODO A VOID //////////////////////
             ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,9 +85,10 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             memcpy(&proceso, recibido->payload + offset, sizeof(int));
             offset += sizeof(int);
             memcpy(&pagina, recibido->payload + offset, sizeof(int));
-
+            
             void* pagina_leida =  obtener_pagina(proceso, pagina);
             if (pagina_leida != NULL) {
+                sleep(retardo_swap);
                 void* pagina_a_enviar = _serialize(swap_page_size, "%v", pagina_leida);
                 if (_send_message(socket_conexion, "SWP", MEMORY_RECV_SWAP_SEND, pagina_a_enviar, swap_page_size, log_file)) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
                     log_info(log_file, "Pagina %d del proceso %d enviada.", pagina, proceso);
