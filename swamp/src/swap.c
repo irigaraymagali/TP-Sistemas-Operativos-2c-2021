@@ -70,23 +70,25 @@ void inicializar_swap_files() {
     free(swap_file_names);
 }
 
-void guardar_pagina(int proceso, int pagina, void* contenido) {
+int guardar_pagina(int proceso, int pagina, void* contenido) {
     if (tipo_asignacion == ASIGNACION_FIJA) {
-        guardar_pagina_asignacion_fija(proceso, pagina, contenido);
+        return guardar_pagina_asignacion_fija(proceso, pagina, contenido);
     }
 
     else if (tipo_asignacion == ASIGNACION_DINAMICA) {
-        guardar_pagina_asignacion_dinamica(proceso, pagina, contenido);
+        return guardar_pagina_asignacion_dinamica(proceso, pagina, contenido);
     }
 
     else {
         log_error(log_file, "El tipo de asignacion de frames no fue definido.");
+        return 0;
     }
 }
 
-void guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
+int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
     char* string_proceso = string_itoa(proceso);
     t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso); // Devuelve un puntero al t_list que representa a la tabla de paginas del archivo de swap que esta utilizando
+    free(string_proceso);
     if (tabla_paginas == NULL) { // Si es la primera pagina del proceso que se va a guardar en swap
         nodo_swap_list* swap_file_asignado = swap_file_menos_ocupado();
         int swap_file_frames_count;
@@ -98,10 +100,12 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
 
         if (swap_file_asignado == NULL) { // Si no hay frames disponibles en ningun archivo de swap
             log_error(log_file, "No hay espacio disponible en swap.");
+            return 0;
         }
         
         else if (marcos_por_carpincho > swap_file_frames_count - swap_file_used_frames) { // Si el archivo de swap con mas frames disponibles no tiene suficientes para satisfacer los marcos por carpincho
             log_error(log_file, "No hay espacio disponible en swap.");
+            return 0;
         }
 
         else { // Si hay un archivo de swap que tenga suficientes frames disponibles para satisfacer los marcos por carpincho
@@ -169,6 +173,8 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
             //////////////////////////////////////////////////////////////////////////////////////////////////////
             ////////////////////////////// RECONTRA BETA VERSION HAY QUE PROBARLO ///////////////////////////////
             ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            return 1;
         }
     }
 
@@ -191,6 +197,8 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
             close(swap_file_fd);
             free(swap_file_path);
             free(nuevo);
+
+            return 1;
         }
 
         else { // Si tengo que guardar una pagina nueva
@@ -207,6 +215,11 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
             int frame_asignado = get_frame_number(nuevo);
             if (frame_asignado == tabla_paginas_size(tabla_paginas)) {
                 log_error(log_file, "El proceso %d no posee frames libres en el archivo %s.", proceso, swap_file_name);
+                munmap(swap_file_map, swap_file_size);
+                close(swap_file_fd);
+                free(swap_file_path);
+                free(nuevo);
+                return 0;
             }
             else {
                 memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
@@ -214,24 +227,26 @@ void guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
                 nuevo->proceso = proceso;
                 nuevo->pagina = pagina;
                 list_replace_and_destroy_element(tabla_paginas, frame_asignado, (void*) nuevo, fila_tabla_paginas_destroy);
+                munmap(swap_file_map, swap_file_size);
+                close(swap_file_fd);
+                free(swap_file_path);
+                free(nuevo);
+                return 1;
             }
-            munmap(swap_file_map, swap_file_size);
-            close(swap_file_fd);
-            free(swap_file_path);
-            free(nuevo);
         }
     }
-    free(string_proceso);
 }
 
 
-void guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido) {
+int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido) {
     char* string_proceso = string_itoa(proceso);
     t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso); // Devuelve un puntero al t_list que representa a la tabla de paginas del archivo de swap que esta utilizando
+    free(string_proceso);
     if (tabla_paginas == NULL) { // Si es la primera pagina del proceso que se va a guardar en swap
         nodo_swap_list* swap_file_asignado = swap_file_menos_ocupado();
         if (swap_file_asignado == NULL) { // Si no hay frames disponibles en ningun archivo de swap
             log_error(log_file, "No hay espacio disponible en swap.");
+            return 0;
         }
 
         else { // Si hay un archivo de swap que tenga al menos un marco disponible
@@ -272,6 +287,8 @@ void guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido
             munmap(swap_file_map, swap_file_size);
             close(swap_file_fd);
             free(swap_file_path);
+
+            return 1;
         }
     }
 
@@ -294,15 +311,19 @@ void guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido
             close(swap_file_fd);
             free(swap_file_path);
             free(nuevo);
+
+            return 1;
         }
 
         else { // Si tengo que guardar una pagina nueva
             if (tabla_paginas_size(tabla_paginas) == swap_file_size / swap_page_size) { // Si todos los frames estan ocupados
                 log_error(log_file, "No hay frames disponibles en el archivo %s correspondiente al proceso %d.", get_swap_file_name(tabla_paginas), proceso);
+                return 0;
             }
 
             else if (tabla_paginas_size(tabla_paginas) > swap_file_size / swap_page_size) {
                 log_error(log_file, "Se rompio todo.");
+                return 0;
             }
 
             else { // Si quedan frames libres en el archivo de swap utilizado por el proceso que quiere guardar una pagina
@@ -324,10 +345,11 @@ void guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido
                 munmap(swap_file_map, swap_file_size);
                 close(swap_file_fd);
                 free(swap_file_path);
+
+                return 1;
             }
         }
     }
-    free(string_proceso);
 }
 
 void* obtener_pagina(int proceso, int pagina) {

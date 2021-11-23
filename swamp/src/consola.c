@@ -64,8 +64,19 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             offset += 2 * sizeof(int); // Lo avanzo dos veces ya que el proximo es el tamaño del void* que tiene el contenido de la pagina y no me interesa porque se que es igual al swap_page_size.
             memcpy(contenido, recibido->payload + offset, swap_page_size);
 
-            sleep(retardo_swap);
-            guardar_pagina(proceso, pagina, contenido);
+            int resultado = guardar_pagina(proceso, pagina, contenido);
+            void* resultado_a_enviar = _serialize(swap_page_size, "%d", resultado);
+            if(resultado) {
+                sleep(retardo_swap);
+            }
+            if (_send_message(socket_conexion, "SWP", MEMORY_SEND_SWAP_RECV, resultado_a_enviar, sizeof(int), log_file)) {
+                log_info(log_file, "Pagina %d del proceso %d enviada.", pagina, proceso);
+            }
+
+            else {
+                log_error(log_file, "Error al enviar la pagina %d del proceso %d.", pagina, proceso);
+            }
+            free(resultado_a_enviar);
         }
 
         else {
