@@ -53,7 +53,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
         }
     }
 
-    else if (recibido->command == MEMORY_SEND_SWAP_RECV) { // Ejemplo: GUARDAR_PAGINA PROCESO NUMERO_PAGINA CONTENIDO
+    else if (recibido->command == MEMORY_SEND_SWAP_RECV) { // Ejemplo: GUARDAR_PAGINA PROCESO NUMERO_PAGINA TAMAÑO_PAGINA CONTENIDO_PAGINA
         if (recibido->pay_len == 3 * sizeof(int) + swap_page_size) {
             int offset = 0;
             int proceso, pagina;
@@ -64,14 +64,8 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             offset += 2 * sizeof(int); // Lo avanzo dos veces ya que el proximo es el tamaño del void* que tiene el contenido de la pagina y no me interesa porque se que es igual al swap_page_size.
             memcpy(contenido, recibido->payload + offset, swap_page_size);
 
-            //////////////////////////////////////////////////////////////////////////////////////////////////////
-            ///////////////////// VER SI ESTA BIEN EL CASTEO O HAY QUE CAMBIAR TODO A VOID //////////////////////
-            ////////////////////////////////////////////////////////////////////////////////////////////////////
             sleep(retardo_swap);
             guardar_pagina(proceso, pagina, contenido);
-            //////////////////////////////////////////////////////////////////////////////////////////////////////
-            ///////////////////// VER SI ESTA BIEN EL CASTEO O HAY QUE CAMBIAR TODO A VOID //////////////////////
-            ////////////////////////////////////////////////////////////////////////////////////////////////////
         }
 
         else {
@@ -87,20 +81,32 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             offset += sizeof(int);
             memcpy(&pagina, recibido->payload + offset, sizeof(int));
             
-            void* pagina_leida =  obtener_pagina(proceso, pagina);
+            void* pagina_leida = obtener_pagina(proceso, pagina);
             if (pagina_leida != NULL) {
-                void* pagina_a_enviar = _serialize(swap_page_size, "%v", pagina_leida);
+                void* pagina_a_enviar = _serialize(swap_page_size, "%d%v", 1, pagina_leida);
                 sleep(retardo_swap);
-                if (_send_message(socket_conexion, "SWP", MEMORY_RECV_SWAP_SEND, pagina_a_enviar, swap_page_size, log_file)) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
+                if (_send_message(socket_conexion, "SWP", MEMORY_RECV_SWAP_SEND, pagina_a_enviar, sizeof(int) + swap_page_size, log_file)) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
                     log_info(log_file, "Pagina %d del proceso %d enviada.", pagina, proceso);
                 }
 
                 else {
                     log_error(log_file, "Error al enviar la pagina %d del proceso %d.", pagina, proceso);
                 }
-                free(pagina_leida);
                 free(pagina_a_enviar);
             }
+
+            else {
+                void* codigo_error = _serialize(swap_page_size, "%d", 0);
+                if (_send_message(socket_conexion, "SWP", MEMORY_RECV_SWAP_SEND, codigo_error, sizeof(int), log_file)) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
+                    log_info(log_file, "Pagina %d del proceso %d enviada.", pagina, proceso);
+                }
+
+                else {
+                    log_error(log_file, "Error al enviar la pagina %d del proceso %d.", pagina, proceso);
+                }
+                free(codigo_error);
+            }
+            free(pagina_leida);
         }
 
         else {
