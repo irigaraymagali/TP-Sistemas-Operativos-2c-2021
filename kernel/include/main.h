@@ -21,6 +21,7 @@
 #include "shared_utils.h"
 #include "serialization.h"
 #include <commons/string.h>
+#include <assert.h>
 
 #endif
 
@@ -130,9 +131,9 @@ sem_t cola_exec_con_elementos;
 sem_t cola_blocked_con_elementos;
 sem_t cola_suspended_blocked_con_elementos;
 sem_t cola_suspended_ready_con_elementos;
-sem_t* liberar_CPU;
-sem_t* CPU_libre;
-sem_t* usar_CPU;  
+sem_t liberar_CPU;
+sem_t CPU_libre;
+sem_t usar_CPU;  
 sem_t sem_programacion_lleno;
 sem_t sem_procesamiento_lleno;
 sem_t sem_hay_bloqueados;
