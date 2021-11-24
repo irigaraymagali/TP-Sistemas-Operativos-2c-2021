@@ -21,7 +21,7 @@ int main(int argc, char ** argv){
     tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
 
 
-    // descomentar  int id_carpincho = 1;
+    // descomentar  int id_carpincho = 1; o *?
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
     semaforos_carpinchos = list_create(); // crear lista para ir guardando los semaforos
@@ -627,7 +627,7 @@ void mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size, i
         log_info(logger,"no se pudo realizar el memread");
         void *payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-
+    }
 }
 
 void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, int fd){
@@ -670,6 +670,7 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
         void *payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
 
+}
 }
 
 
@@ -1173,23 +1174,23 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
             break;
             case MATE_SEM_INIT: 
                 estructura_interna = deserializar(payload);
-                mate_sem_init(*estructura_interna->id, *estructura_interna->semaforo, *estructura_interna->valor_semaforo, fd);            
+                mate_sem_init(*estructura_interna->id, estructura_interna->semaforo, *estructura_interna->valor_semaforo, fd);            
             break;
             case MATE_SEM_WAIT: 
                 estructura_interna = deserializar(payload);
-                mate_sem_wait(*estructura_interna->id, *estructura_interna->semaforo, fd);            
+                mate_sem_wait(*estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_SEM_POST: 
                 estructura_interna = deserializar(payload);
-                mate_sem_post(*estructura_interna->id, *estructura_interna->semaforo, fd);            
+                mate_sem_post(*estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_SEM_DESTROY:
                 estructura_interna = deserializar(payload);
-                mate_sem_destroy(*estructura_interna->id, *estructura_interna->semaforo, fd);            
+                mate_sem_destroy(*estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_CALL_IO:
                 estructura_interna = deserializar(payload);
-                mate_call_io(*estructura_interna->id, *estructura_interna->dispositivo_io, fd);  
+                mate_call_io(*estructura_interna->id, estructura_interna->dispositivo_io, fd);  
             break;
             // ver qué tengo que pasar acá          
             case MATE_MEMALLOC: 
@@ -1258,12 +1259,12 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 
 ////////////////////////////// DEADLOCK ////////////////////////////////
 
-
+/* 
 
 void detectar_deadlock(){ //pag 250 libro silberschats --> https://www.utnianos.com.ar/foro/attachment.php?aid=5321
 //cosas a tener en cuenta: https://docs.google.com/document/d/14-7RvGDeBjIGaqG7fMPsrrvUZuoIiAIYrbaHGf1q2Bg/edit
 
-/* 
+
     int available[m]; //num de sems disponibles
     int allocation[n][m]; //asignacion: semaforos asignados a cada carpincho
     int request[n][m]; //solicitud: waits hechos por cada carpincho
@@ -1291,10 +1292,8 @@ void detectar_deadlock(){ //pag 250 libro silberschats --> https://www.utnianos.
         }
     }
     
-
-*/
 }
-
+*/
 
 
 
@@ -1347,13 +1346,13 @@ void agregando_a_lista_posible_deadlock(){
                 list_add(lista_posibles, carpincho); //crearla
         }
     }
-}
-
+  }
 */
 
+/*
 void solucionar_deadlock(t_list* lista_en_deadlock){
     int mayor_id_hasta_ahora = 0;
-    for(int i= 0; i< list_size(lista_en_deadlock)/* o contar_elementos? */; i++){
+    for(int i= 0; i< list_size(lista_en_deadlock); i++){
         
         data_carpincho *carpincho = list_get(lista_en_deadlock, i);
         int id_actual = *carpincho->id;
@@ -1362,7 +1361,7 @@ void solucionar_deadlock(t_list* lista_en_deadlock){
             }
     }
 
-/* 
+ 
    data_carpincho *carpincho_a_eliminar = encontrar_estructura_segun_id(mayor_id_hasta_ahora);
 
    //simular mate_close para carpincho_a_eliminar
@@ -1372,10 +1371,10 @@ void solucionar_deadlock(t_list* lista_en_deadlock){
     for(int i=0; i<list_size(*carpincho_a_eliminar->retenidos); i++){
         sem_post(&(list_get(carpincho_a_eliminar->retenidos), i));
     }
-    */
+    
     //cerrar socket
 }
-
+*/
 
 
 
