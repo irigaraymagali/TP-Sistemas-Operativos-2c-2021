@@ -13,5 +13,10 @@ void replace_tlb_fifo();
 void replace_tlb_lru();
 void fetch_instance();
 void not_fetch_instance();
+void ok_delete_process();
+void ok_suspend_process();
+void ok_print_carpinchos_metrics();
+void ok_print_dump();
+void ok_clean_tlb();
 
 #endif

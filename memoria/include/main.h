@@ -9,6 +9,8 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <pthread.h>
+#include <dirent.h>
+#include <errno.h>
 #include "server.h"
 #include "tests.h"
 #include "shared_utils.h"
@@ -48,6 +50,7 @@ void deserialize_mem_free(int* pid, int* dir_logica, void* payload);
 void deserialize_mem_read(int* pid, int* dir_logica, int* size, void* payload);
 void deserialize_mem_write(int* pid, int* dir_logica, int* size, void* info,  void* payload);
 void print_carpinchos_metrics();
+void create_folder_dump(char* path);
 void init_swamp_connection();
 void free_memory();
 

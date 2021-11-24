@@ -3,7 +3,7 @@ int main(int argc, char ** argv){
     if(argc > 1 && strcmp(argv[1],"-test") == 0){
         return run_tests();
     }
-    
+
     logger = log_create(LOG_PATH, PROGRAM, true, LOG_LEVEL_INFO);
     config = config_create(CONFIG_PATH);
 
@@ -69,6 +69,9 @@ void print_dump(){
     dump_timestamp = temporal_get_string_time("%d-%m-%y-%H:%M:%S");
 
     char *filename = string_new();
+    /* char* dump_path = config_get_string_value(config, "PATH_DUMP_TLB");
+    create_folder_dump(dump_path);*/
+
     string_append(&filename, "./dump_");
     string_append(&filename, dump_timestamp);
     string_append(&filename, ".dmp");
@@ -113,7 +116,7 @@ void print_dump(){
             string_append(&dump->frame, "-");
         }
 
-        char* record = string_from_format("Entrada: %d\tEstado: %s\tCarpincho: %s\tPagina: %s\tMarco: %s\n", dump->entrada, dump->status, tlb->pid, tlb->pagina, tlb->frame);
+        char* record = string_from_format("Entrada: %d\tEstado: %s\tCarpincho: %s\tPagina: %s\tMarco: %s\n", dump->entrada, dump->status, dump->pid, dump->page, dump->frame);
         write_dump(dump_file, record);
         write_dump(dump_file, "---------------------------------------------------------------------------------------------------\n");
 
@@ -130,6 +133,24 @@ void print_dump(){
     txt_close_file(dump_file);
     free(filename);
     free(dump_timestamp);
+    // free(dump_path);
+}
+
+void create_folder_dump(char* path){
+    char** div_path = string_split(path, "/");
+    char* concat_path = string_new();
+
+    while (*div_path != NULL) {
+        string_append_with_format(&concat_path, "/%s", div_path);
+
+		DIR* dir = opendir(concat_path);
+        if (dir) {
+            closedir(dir);
+        }
+
+        mkdir(concat_path, 0777);
+        div_path++;
+	}
 }
 
 void write_dump(FILE* file, char* record){

@@ -9,6 +9,11 @@ int run_tests(){
     CU_add_test(tests, "Reemplazo TLB con LRU", replace_tlb_lru);
     CU_add_test(tests, "Obtener Entrada de TLB", fetch_instance);
     CU_add_test(tests, "FAIL Intentar obtener Entrada de TLB", not_fetch_instance);
+    CU_add_test(tests, "OK Delete process", ok_delete_process);
+    CU_add_test(tests, "OK Suspend process", ok_suspend_process);
+    //CU_add_test(tests, "OK PRINT METRICS", ok_print_carpinchos_metrics); /* EL TEST PASA: EL PROBLEMA ES EL FREE MEMORY QUE ROMPE PORQUE NO INSTANCIA TODO EL TEST.*/
+    CU_add_test(tests, "OK PRINT DUMP", ok_print_dump);
+    CU_add_test(tests, "OK Clean TLB", ok_clean_tlb);
 
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();
@@ -165,4 +170,92 @@ void not_fetch_instance(){
     TLB* tlb = fetch_entrada_tlb(0, UINT32_MAX);
 
     CU_ASSERT_PTR_NULL(tlb);
+}
+
+void ok_delete_process(){
+    int exp_res = 1;
+    logger = create_log_test();
+    config = config_create(CONFIG_PATH);
+
+    initPaginacion();
+    inicializarUnProceso(1);
+    inicializarUnProceso(2);
+    inicializarUnProceso(3);
+
+    memalloc(1, 30);
+    memalloc(2, 30);
+    memalloc(3, 30);
+
+    int res = delete_process(1);
+
+    CU_ASSERT_EQUAL(res, exp_res);
+}
+
+void ok_suspend_process(){
+    int exp_res = 1;
+    logger = create_log_test();
+    config = config_create(CONFIG_PATH);
+    initPaginacion();
+    inicializarUnProceso(1);
+    inicializarUnProceso(2);
+    inicializarUnProceso(3);
+    memalloc(1, 30);
+    memalloc(2, 30);
+    memalloc(3, 30);
+
+
+    int res = suspend_process(1);
+
+    CU_ASSERT_EQUAL(res, exp_res);
+}
+
+void ok_print_carpinchos_metrics(){
+    logger = create_log_test();
+    config = config_create(CONFIG_PATH);
+    initPaginacion();
+    inicializarUnProceso(1);
+    inicializarUnProceso(2);
+    inicializarUnProceso(3);
+    memalloc(1, 30);
+    memalloc(2, 30);
+    memalloc(3, 30);
+    memwrite(1, 0, "HOLA", 4);
+
+    print_metrics();
+
+    CU_ASSERT_TRUE(true);
+}
+
+void ok_print_dump(){
+    logger = create_log_test();
+    config = config_create(CONFIG_PATH);
+    initPaginacion();
+    inicializarUnProceso(1);
+    inicializarUnProceso(2);
+    inicializarUnProceso(3);
+    memalloc(1, 30);
+    memalloc(2, 30);
+    memalloc(3, 30);
+
+    print_dump();
+
+    CU_ASSERT_TRUE(true);
+}
+
+void ok_clean_tlb(){
+    logger = create_log_test();
+    config = config_create(CONFIG_PATH);
+    initPaginacion();
+    int pid = 0, page = 1, frame = 1;
+
+    for (int i = 0; i < max_entradas_tlb; i++) {
+        add_entrada_tlb(pid, page, frame);
+        pid++;
+        page++;
+        frame++;
+    }
+
+    clean_tlb();
+
+    CU_ASSERT_EQUAL(list_size(tlb_list), 0);
 }

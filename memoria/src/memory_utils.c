@@ -218,8 +218,7 @@ int suspend_process(int pid) {
         free(mem_aux);
         free(v_res);
         free(payload);
-        log_info(logger, "Pagina %d suspendida con exito!", page->pagina, pid);
-
+        log_info(logger, "Pagina %d suspendida con exito!", page->pagina);
     }
     
     list_iterator_destroy(iterator);
@@ -300,6 +299,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
         dirAllocActual = heap->nextAlloc;
     }
 
+    log_info(logger, "Lectura realizada con exito");
     return read;
 } 
 
@@ -1016,6 +1016,7 @@ void inicializarUnProceso(int idDelProceso){
 }
 
 int delete_process(int pid){
+    log_info(logger, "Buscando la tabla de paginas del Proceso %d", pid);
     TablaDePaginasxProceso* table = get_pages_by(pid);
     if (table->id != pid) {
         log_error(logger, "El carpincho %d no posee tabla de paginas", pid);
@@ -1570,10 +1571,11 @@ void* send_message_swamp(int command, void* payload, int pay_len){
     pthread_mutex_lock(&swamp_mutex);
     if (_send_message(swamp_fd, ID_MEMORIA, command, payload, pay_len, logger) < 0){
         log_error(logger, "Error al enviar mensaje a Swamp");
-        return NULL;
+        void* err_msg = _serialize(sizeof(int), "%d", -1);
+        return err_msg;
     }
 
-    if(command == MEMORY_RECV_SWAP_SEND){
+    if(command == MEMORY_RECV_SWAP_SEND || command == MEMORY_SEND_SWAP_RECV){
         t_mensaje* msg = _receive_message(swamp_fd, logger);
         void* payload = msg->payload;
         free(msg->identifier);
