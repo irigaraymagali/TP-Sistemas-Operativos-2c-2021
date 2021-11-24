@@ -61,6 +61,7 @@ int memalloc(int processId, int espacioAReservar){
             2- si no cabe en las páginas ya reservadas se deberá solicitar más
          */
 
+        
         TablaDePaginasxProceso* temp = get_pages_by(processId);
 
         tempLastHeap = temp->lastHeap;
@@ -117,16 +118,11 @@ int memalloc(int processId, int espacioAReservar){
             paginaFInalEncontrada->bitUso = 1 ;
 
             temp->lastHeap = tempLastHeap + espacioAReservar;
+            
 
             return (tempLastHeap + HEAP_METADATA_SIZE);
         } else {
-            /* 
-                    como me da paja de hacerlo ahora esto basicamente es pedir una pagina nueva copiar esas ultimas paginas en un auxiliar
-                    hacer lo de arriba en un auxiliar 
-                    y pegar las n paginas  de una en la memoria
-            */
-
-           //FALTA CAMBIARLE EL ISFREE DE LA PAG
+            
            agregarXPaginasPara(processId, (espacioAReservar-espacioFinalDisponible));
 
             int espacioDePaginasAux = (((espacioAReservar - espacioFinalDisponible) / tamanioDePagina) + 1)* tamanioDePagina;
@@ -333,6 +329,10 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
             
             Pagina *tempPag = (Pagina*) list_iterator_next(iterator);
 
+            if(tempPag->bitPresencia==0){
+                getFrameDeUn(processId, tempPag->pagina);
+            }
+
             void *paginaAux = malloc(tamanioDePagina);
 
             HeapMetaData* unHeap = malloc(sizeof(HeapMetaData));
@@ -348,36 +348,63 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
             while (nextAllocAux <= dirPaginaSiguiente)
             {
                 int offset = 0;
-                if(nextAllocAux == 0){
-                    memcpy(&unHeap->prevAlloc, paginaAux, sizeof(uint32_t));
-                    offset += sizeof(uint32_t);
-                    memcpy(&unHeap->nextAlloc, paginaAux + offset, sizeof(uint32_t));
-                    nextAllocAux = unHeap->nextAlloc;
-                    offset += sizeof(uint32_t);
+                int paginaPrincipioAlloc=(allocActual/tamanioDePagina)+1;
+                int paginaFinalDelAlloc= (allocActual+ HEAP_METADATA_SIZE/tamanioDePagina)+1;
+                
+                if(paginaPrincipioAlloc == paginaFinalDelAlloc){
+                    if(nextAllocAux == 0){
+                        memcpy(&unHeap->prevAlloc, paginaAux, sizeof(uint32_t));
+                        offset += sizeof(uint32_t);
+                        memcpy(&unHeap->nextAlloc, paginaAux + offset, sizeof(uint32_t));
+                        nextAllocAux = unHeap->nextAlloc;
+                        offset += sizeof(uint32_t);
 
-                    memcpy(&unHeap->isfree, paginaAux + offset, sizeof(uint8_t));
+                        memcpy(&unHeap->isfree, paginaAux + offset, sizeof(uint8_t));
 
-                } else {
-                   offset = (nextAllocAux - dirPaginaActual);
+                    } else {
+                        offset = (nextAllocAux - dirPaginaActual);
+                        memcpy(&unHeap->prevAlloc, paginaAux + offset, sizeof(uint32_t));
+                        allocActual = unHeap->prevAlloc;
+                        offset += sizeof(uint32_t); 
+
+                        memcpy(&unHeap->nextAlloc, paginaAux + offset, sizeof(uint32_t));
+                        nextAllocAux = unHeap->nextAlloc;
+                        offset += sizeof(uint32_t);
+
+                        memcpy(&unHeap->isfree, paginaAux + offset, sizeof(uint8_t));
+                    }
+                }else
+                {
+                    void *paginasAuxiliares = malloc(2*tamanioDePagina);
+
+                    int offsetDeMemoria = getFrameDeUn(processId,tempPag->pagina);
+
+                    memcpy(paginasAuxiliares, memoria + offsetDeMemoria,tamanioDePagina);
+
+                    offsetDeMemoria = getFrameDeUn(processId,(tempPag->pagina) + 1);
+
+                    memcpy(paginasAuxiliares + tamanioDePagina, memoria + offsetDeMemoria,tamanioDePagina);
+
+                    offset = (nextAllocAux - dirPaginaActual);
                     memcpy(&unHeap->prevAlloc, paginaAux + offset, sizeof(uint32_t));
-                    allocActual = unHeap->nextAlloc;
+                    allocActual = unHeap->prevAlloc;
                     offset += sizeof(uint32_t); 
-
                     memcpy(&unHeap->nextAlloc, paginaAux + offset, sizeof(uint32_t));
                     nextAllocAux = unHeap->nextAlloc;
                     offset += sizeof(uint32_t);
-
                     memcpy(&unHeap->isfree, paginaAux + offset, sizeof(uint8_t));
                 }
                 
+                
                 if (unHeap->nextAlloc == NULL_ALLOC)
                 {
+                    
                     return -1;
                 }
                 
 
                 if(unHeap->isfree == FREE && (unHeap->nextAlloc - allocActual - HEAP_METADATA_SIZE) >= espacioAReservar){
-                    // falta separarlo y sumar 9 que es el valor de la estructura que iria al final
+                    
                     return allocActual;
                 }
             }
@@ -385,6 +412,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
         }
         list_iterator_destroy(iterator);
     }
+    
     return -1;
 }
 
