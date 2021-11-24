@@ -29,7 +29,7 @@
 //MATE ERRORS 
 #define MATE_FREE_FAULT  -5
 #define MATE_READ_FAULT  -6
-
+#define MATE_WRITE_FAULT -7
 
 #define TLB_MISS 0
 #define TLB_HIT  1

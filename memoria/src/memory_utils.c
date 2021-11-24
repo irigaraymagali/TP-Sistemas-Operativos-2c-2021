@@ -1047,7 +1047,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
     int dirAllocActual=0;
 
 
-    while((dirAllocActual <= direccionLogicaBuscada) && dirAllocFinal>=direccionLogicaBuscada){
+    while((dirAllocActual <= direccionLogicaBuscada) && dirAllocFinal>direccionLogicaBuscada){
         
         if (dirAllocActual == direccionLogicaBuscada)
         {
@@ -1146,7 +1146,8 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
         }
 
     }
-    return -1;
+    log_info(logger,"No se ha podido realizar la escritura");
+    return MATE_WRITE_FAULT;
 }
 
 void utilizarAlgritmoDeAsignacion(int processID){
