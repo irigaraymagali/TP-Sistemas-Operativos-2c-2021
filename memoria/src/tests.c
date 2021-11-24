@@ -14,6 +14,8 @@ int run_tests(){
     //CU_add_test(tests, "OK PRINT METRICS", ok_print_carpinchos_metrics); /* EL TEST PASA: EL PROBLEMA ES EL FREE MEMORY QUE ROMPE PORQUE NO INSTANCIA TODO EL TEST.*/
     CU_add_test(tests, "OK PRINT DUMP", ok_print_dump);
     CU_add_test(tests, "OK Clean TLB", ok_clean_tlb);
+    CU_add_test(tests, "OK Memread", ok_memread);
+    CU_add_test(tests, "OK Memread con alloc entre medio de dos paginas", ok_memread_alloc_between_two_pages);
 
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();
@@ -258,4 +260,50 @@ void ok_clean_tlb(){
     clean_tlb();
 
     CU_ASSERT_EQUAL(list_size(tlb_list), 0);
+}
+
+void ok_memread(){
+    char* exp_res = "HOLA";
+    char* c_res = string_new();
+    logger = create_log_test();
+    config = config_create(CONFIG_PATH);
+    initPaginacion();
+    inicializarUnProceso(1);
+    inicializarUnProceso(2);
+    inicializarUnProceso(3);
+    memalloc(1, 30);
+    memalloc(2, 30);
+    memalloc(3, 30);
+    memwrite(1, 0, "HOLA", 4);
+
+    void* v_res = memread(1, 0, 4);
+
+    memcpy(c_res, v_res, 4);
+    c_res[4] = '\0';
+
+    CU_ASSERT_TRUE(string_equals_ignore_case(c_res, exp_res));
+}
+
+void ok_memread_alloc_between_two_pages(){
+    char* exp_res = "HOLA";
+    char* c_res = string_new();
+    logger = create_log_test();
+    config = config_create(CONFIG_PATH);
+    initPaginacion();
+    inicializarUnProceso(1);
+    inicializarUnProceso(2);
+
+    memalloc(1, 30);
+    memalloc(1, 30);
+    memalloc(1, 30);
+    memalloc(2, 30);
+    memwrite(1, 39, "HOLA", 4);
+    memwrite(1, 117, "HOLA", 4);
+
+    void* v_res = memread(1, 117, 4);
+
+    memcpy(c_res, v_res, 4);
+    c_res[4] = '\0';
+
+    CU_ASSERT_TRUE(string_equals_ignore_case(c_res, exp_res));
 }

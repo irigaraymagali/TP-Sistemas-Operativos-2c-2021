@@ -18,5 +18,7 @@ void ok_suspend_process();
 void ok_print_carpinchos_metrics();
 void ok_print_dump();
 void ok_clean_tlb();
+void ok_memread();
+void ok_memread_alloc_between_two_pages();
 
 #endif
