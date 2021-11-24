@@ -114,22 +114,20 @@ void inicializar_semaforos(){ // Inicializacion de semaforos:
 
 void crear_hilos_CPU(){ // creación de los hilos CPU
 
+        sem_t liberar_CPU[grado_multiprocesaiento];
+        sem_t CPU_libre[grado_multiprocesamiento];
+        sem_t usar_CPU[grado_multiprocesamiento];
+
    
 	for(int i= 0; i< grado_multiprocesamiento; i++){
         
-       //descomentar sem_t liberar_CPU[i];
-        sem_t CPU_libre[i];
-        sem_t usar_CPU[i];
-
-       //descomentar  sem_init(&liberar_CPU[i], 0, 0);
+       
+        
+       sem_init(&liberar_CPU[i], 0, 0);
         sem_init(&CPU_libre[i], 0, 1); // ver si es 0 o 1 en el segundo argumento
         sem_init(&usar_CPU[i], 0, 0);       
 
-/* 
-        list_add(lista_liberar_CPU, liberar_CPU[i]); //CREAR LISTAS
-        list_add(lista_CPU_libre, CPU_libre[i]);
-        list_add(lista_usar_CPU, usar_CPU[i]); 
- */       
+       
         pthread_t hilo_CPU[i];
         pthread_create(&hilo_CPU[i], NULL, (void*) ejecuta, &i); 
         
@@ -701,8 +699,10 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
 void entrantes_a_ready(){
 
     data_carpincho *carpincho_a_mover;
-    int *valor;
+   /*  int *valor;
     valor = (int *) 1;
+    */
+   int valor = 1; 
 
     while(1){
         sem_wait(&hay_estructura_creada); // hacerle post en mate_init y cuando uno pasa a estar en suspended_ready
@@ -739,7 +739,7 @@ void entrantes_a_ready(){
         carpincho_a_mover->estado = READY;
         sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
 
-        sem_getvalue(&sem_grado_multiprogramacion_libre, valor);
+        int valor = sem_getvalue(&sem_grado_multiprogramacion_libre, &valor);
         if(valor == 0){ // si con este se llena el grado de multiprocesamiento, podria necesitarse suspender 
             sem_post(&sem_programacion_lleno);
         }
@@ -972,7 +972,7 @@ void suspender(){  //no hace falta pasarle el carpincho??
             pthread_mutex_unlock(&sem_cola_suspended_blocked);
 
             carpincho_a_suspender->estado = SUSPENDED_BLOCKED;
-            sem_post(liberar_CPU[carpincho_a_suspender->hilo_CPU_usado->id]);
+            sem_post(carpincho_a_suspender->hilo_CPU_usado->semaforo);
 
             payload = _serialize(sizeof(int), "%d", carpincho_a_suspender->id);
             _send_message(socket_memoria, ID_KERNEL, SUSPENDER, payload, sizeof(int), logger);  //avisar a mem para que libere
@@ -1112,7 +1112,7 @@ int calcular_milisegundos(){
 
     char* tiempo_sacado = temporal_get_string_time("%M:%S:%MS");
     
-    char** tiempo_formateado = str_split(tiempo_sacado,':');
+    char** tiempo_formateado = string_split(tiempo_sacado,":");
 
     tiempo tiempo_calculado; 
 
@@ -1126,27 +1126,29 @@ int calcular_milisegundos(){
 
 
 //////////////////////////// Funciones para exec ///////////////////////////////////
-bool obtener_valor_semaforo(CPU hilo_cpu){
-    int valor = sem_getvalue(&(hilo_cpu.semaforo), *valor);
+bool obtener_valor_semaforo(CPU* hilo_cpu){
+    
+    int valor = sem_getvalue(&(hilo_cpu->semaforo), &valor);
     return valor == 1;
 }
 
 
 void asignar_hilo_CPU(data_carpincho carpincho){
 
-    CPU hilo_cpu_disponible;
+    CPU *hilo_CPU_disponible;
 
     bool buscar_disponible(void* hilo_cpu){
-        //int valor = sem_getvalue(&(hilo_cpu->semaforo), *valor);
+        //int valor = sem_getvalue(&(hilo_cpu->semaforo), &valor);
         //return valor == 1;
-        return obtener_valor_semaforo((CPU )hilo_cpu);
+        CPU* otro_cpu = (CPU *) hilo_cpu;
+        return obtener_valor_semaforo(otro_cpu);
     }
 
-    hilo_CPU_disponible = list_find(hilos_CPU, buscar_disponible);
+    hilo_CPU_disponible = (CPU* ) list_find(hilos_CPU, buscar_disponible);
 
-    sem_post(&usar_CPU[hilo_CPU_disponible->id]);
+    // descomentar  sem_post(&(usar_CPU[hilo_CPU_disponible->id]);
 
-    carpincho.hilo_CPU_usado = hilo_CPU_disponible;
+    carpincho.hilo_CPU_usado = *hilo_CPU_disponible;
 
 }
 
@@ -1157,15 +1159,15 @@ void ejecuta(int id){
     while(1){
 
         //mutex
-        //descomentar       sem_wait(&usar_CPU[id]); // espera hasta que algun carpincho haga post para usar ese cpu
-        //descomentar       sem_wait(&CPU_libre[id]); // indica que ya no está más libre ese cpu
+        sem_wait(&usar_CPU[id]); // espera hasta que algun carpincho haga post para usar ese cpu
+        sem_wait(&CPU_libre[id]); // indica que ya no está más libre ese cpu
         // mutex
         
-       //descomentar sem_wait(&liberar_CPU[id]); // espera a que algun carpincho indique que quiere liberar el cpu
+        sem_wait(&liberar_CPU[id]); // espera a que algun carpincho indique que quiere liberar el cpu
         
         //
-        //descomentar   sem_post(&CPU_libre[id]); // indica que ya esta el cpu libre de nuevo
-        sem_post(&grado_multiprocesamiento_libre); // indica que ya hay algun cpu libre
+        sem_post(&CPU_libre[id]); // indica que ya esta el cpu libre de nuevo
+        sem_post(&sem_grado_multiprocesamiento_libre); // indica que ya hay algun cpu libre
         //
     }
 }

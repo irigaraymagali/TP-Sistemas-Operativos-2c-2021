@@ -53,7 +53,7 @@ typedef struct tiempo
     int milisegundos;
 } tiempo;
 
-typedef struct data_carpincho // la data que le importa tener al backend
+typedef struct data_carpincho // la data que le importa tener al backend, hacer todo punteros
 {
     int id;
     float rafaga_anterior; // para despues poder calcular la estimación siguiente --> inicializar en 0
@@ -189,5 +189,6 @@ void calculo_RR(data_carpincho *carpincho);
 int calcular_milisegundos();
 void asignar_hilo_CPU(data_carpincho carpincho);
 void ejecuta(int id);
+bool obtener_valor_semaforo(CPU hilo_cpu);
 
 void detectar_deadlock();
