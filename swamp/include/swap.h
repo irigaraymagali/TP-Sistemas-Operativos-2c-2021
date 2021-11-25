@@ -23,6 +23,7 @@ int swap_file_size;
 int swap_page_size;
 int marcos_por_carpincho;
 int tipo_asignacion;
+int retardo_swap;
 
 typedef struct {
     int proceso;
