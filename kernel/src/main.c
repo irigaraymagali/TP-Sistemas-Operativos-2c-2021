@@ -16,7 +16,7 @@ int main(int argc, char ** argv){
     t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
 
     crear_estructura_dispositivo();
-	inicializar_semaforos();
+    inicializar_semaforos();
 	inicializar_colas();
     crear_hilos_CPU();
 
@@ -473,7 +473,7 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     }
 }
 
-void crear_estructura_dispositivo(){ //deberia crearse al principio, no cuando lo piden
+void crear_estructura_dispositivo(){ //gonza -> si desde el main llamo a esta funcione, me da segmentation fault
 
     char** dispositivos_io = config_get_array_value(config, "DISPOSITIVOS_IO");
     char** duraciones_io = config_get_array_value(config, "DURACIONES_IO");
@@ -489,6 +489,7 @@ void crear_estructura_dispositivo(){ //deberia crearse al principio, no cuando l
 
             list_add(lista_dispositivos_io, dispositivo);
         }
+    
 }
 
 // free de nombre
