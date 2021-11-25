@@ -94,21 +94,6 @@ pthread_mutex_t sem_CPU_libres;
 // log
 t_log *logger;
 
-
-// configuración gonza -> con punteros o sin punteros?
-t_config* config;
-char *ip_memoria; 
-char *puerto_memoria;
-char *puerto_escucha;
-char *algoritmo_planificacion;
-float estimacion_inicial;
-float alfa;
-char **dispositivos_io; 
-char **duraciones_io; 
-int grado_multiprogramacion;
-int grado_multiprocesamiento;
-int tiempo_deadlock;
-
 t_list* ptr_dispositivos_io;
 t_list* ptr_duraciones_io;
 
