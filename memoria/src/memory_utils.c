@@ -543,6 +543,7 @@ int getNewEmptyFrame(int idProcess){
     }
     else
     {
+        pthread_mutex_lock(&list_pages_mutex);
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
 
         TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
@@ -562,9 +563,11 @@ int getNewEmptyFrame(int idProcess){
                     list_iterator_destroy(iterator);
                     list_iterator_destroy(iterator2);
                     add_entrada_tlb(idProcess, tempPagina->pagina, tempPagina->frame);
+                    pthread_mutex_unlock(&list_pages_mutex);
                     return tempPagina->frame;
                 }
         }
+        pthread_mutex_unlock(&list_pages_mutex);
         return -1;
     }
 
@@ -573,6 +576,7 @@ int getNewEmptyFrame(int idProcess){
 
 int estaOcupadoUn(int emptyFrame, int idProcess){
     int isfree = FREE;
+    pthread_mutex_lock(&list_pages_mutex);
     if(todasLasTablasDePaginas != NULL){
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
         while (list_iterator_has_next(iterator)) {
@@ -585,6 +589,7 @@ int estaOcupadoUn(int emptyFrame, int idProcess){
                 if(tempPagina->frame == emptyFrame ){
                     list_iterator_destroy(iterator);
                     list_iterator_destroy(iterator2);
+                    pthread_mutex_unlock(&list_pages_mutex);
                     return tempPagina->isfree;
                 }
             }
@@ -592,6 +597,7 @@ int estaOcupadoUn(int emptyFrame, int idProcess){
         }
     list_iterator_destroy(iterator);
     }
+    pthread_mutex_unlock(&list_pages_mutex);
     return isfree;
 }
 
@@ -639,6 +645,7 @@ int frameAsignado(int unFrame){
 int getFrameDeUn(int processId, int mayorNroDePagina){
 
     TablaDePaginasxProceso* temp = get_pages_by(processId);
+    
     Pagina *tempPagina;
 
     TLB* tlb = fetch_entrada_tlb(processId, mayorNroDePagina);
@@ -667,8 +674,10 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
             tempPagina->bitPresencia=1;
             //pedirselo a gonza
         }
+        pthread_mutex_lock(&list_pages_mutex);
         tempPagina->bitUso = 1;
-        
+        pthread_mutex_unlock(&list_pages_mutex);
+
         pthread_mutex_lock(&lru_mutex);
         lRUACTUAL++;
         tempPagina->lRU = lRUACTUAL;
@@ -677,6 +686,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         log_info(logger, "tomo el frame %d con Exito", tempPagina->frame);
 
         add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
+        
         return tempPagina->frame;
     }
 
@@ -886,6 +896,8 @@ void deletePagina(int idProcess,int paginaActual){
         log_info(logger, "Deleteo la pag %d con Exito", tlb->pagina);
         return;
     } else {
+    
+    pthread_mutex_lock(&list_pages_mutex);
     t_list_iterator* iterator = list_iterator_create(tablaDePags->paginas);
     
     tempPagina = list_iterator_next(iterator);
@@ -896,6 +908,7 @@ void deletePagina(int idProcess,int paginaActual){
     }
     
     list_iterator_remove(iterator);
+    pthread_mutex_unlock(&list_pages_mutex);
     log_info(logger, "Deleteo la pag %d con Exito", tempPagina->pagina);
 
     list_iterator_destroy(iterator);
