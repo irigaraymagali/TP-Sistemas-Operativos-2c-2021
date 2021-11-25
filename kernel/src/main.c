@@ -4,24 +4,7 @@
 
 int main(int argc, char ** argv){
 
-    int *algo;
-    algo = malloc(sizeof(int));
-    *algo = 4;
-    printf("%d", *algo);
-
     config = config_create("../cfg/kernel.conf");
-
-	ip_memoria = config_get_string_value(config, "IP_MEMORIA");
-	puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
-	puerto_escucha = config_get_string_value(config, "PUERTO_ESCUCHA");    
-    algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
-    estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL"); 
-    alfa = config_get_int_value(config, "ALFA");
-    dispositivos_io = config_get_array_value(config, "DISPOSITIVOS_IO");
-    duraciones_io = config_get_array_value(config, "DURACIONES_IO"); 
-    grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
-    grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
-    tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
 
     id_carpincho = 1; 
 
@@ -31,7 +14,6 @@ int main(int argc, char ** argv){
     lista_dispositivos_io = list_create(); // crear lista para ir guardando los dispositivios io
 
     t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
-
 
     crear_estructura_dispositivo();
 	inicializar_semaforos();
@@ -47,6 +29,7 @@ int main(int argc, char ** argv){
    //descomentar pthread_t deteccion_deadlock;
    //descomentar pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
     
+	char *puerto_escucha = config_get_string_value(config, "PUERTO_ESCUCHA");        
     _start_server(puerto_escucha, handler, logger);
 
     // esta bien esperar asi a los hilos? o cuando se va a terminar la conexion?
@@ -55,6 +38,7 @@ int main(int argc, char ** argv){
     pthread_join ( planficador_mediano_plazo , NULL ) ;    
 
     free_memory();
+
 }
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
@@ -86,6 +70,9 @@ void inicializar_colas(){ // Colas estados y sus mutex:
 }
 
 void inicializar_semaforos(){ // Inicializacion de semaforos:
+    int grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
+    int grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
+
     sem_init(&sem_grado_multiprogramacion_libre,0,grado_multiprogramacion);  
 	sem_init(&sem_grado_multiprocesamiento_libre, 0,grado_multiprocesamiento); 
     sem_init(&hay_estructura_creada,0,0);
@@ -101,6 +88,8 @@ void inicializar_semaforos(){ // Inicializacion de semaforos:
 
 
 void crear_hilos_CPU(){ // creación de los hilos CPU
+
+    int grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
 
 	for(int i= 0; i< grado_multiprocesamiento; i++){
         
@@ -225,7 +214,7 @@ void mate_init(int fd){
     carpincho->id = id_carpincho;
     carpincho->rafaga_anterior = 0;
     carpincho->estimacion_anterior = 0;
-    carpincho->estimacion_siguiente = estimacion_inicial; // viene por config
+    carpincho->estimacion_siguiente =  config_get_int_value(config, "ESTIMACION_INICIAL"); // viene por config
     carpincho->estado = NEW;
     carpincho->fd = fd; 
 
@@ -233,7 +222,7 @@ void mate_init(int fd){
     payload =  _serialize(sizeof(int), "%d", carpincho->id);
 
     int socket_memoria;
-    socket_memoria = _connect(ip_memoria, puerto_memoria, logger);
+    socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
 
     // hacer esto para todas
     // tendria que chequear que se cree bien la conexión?
@@ -486,6 +475,9 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
 void crear_estructura_dispositivo(){ //deberia crearse al principio, no cuando lo piden
 
+    char** dispositivos_io = config_get_array_value(config, "DISPOSITIVOS_IO");
+    char** duraciones_io = config_get_array_value(config, "DURACIONES_IO");
+
     for(int i= 0; i < contar_elementos(dispositivos_io); i++){
 
             dispositivo_io *dispositivo;
@@ -527,6 +519,8 @@ void mate_memalloc(int id_carpincho, int size, int fd){  // hay que revisar lo q
                                     carpincho->id, 
                                     size 
                                 );
+    int socket_memoria;
+    socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
 
     _send_message(socket_memoria, 
                     ID_KERNEL, 
@@ -536,10 +530,12 @@ void mate_memalloc(int id_carpincho, int size, int fd){  // hay que revisar lo q
                     logger);   
 
     //recibir mensaje de memoria
-    void *buffer;
+    t_mensaje *buffer;
     int respuesta_memoria;
     buffer = _receive_message(socket_memoria, logger);
-    memcpy((void*)respuesta_memoria, buffer, sizeof(int));
+    memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+
+    close(socket_memoria);
 
     if(respuesta_memoria >= 0){
         // mandar mensaje de que todo ok a lib
@@ -565,7 +561,8 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
                                     carpincho->id, 
                                     addr 
                                 );
-
+    int socket_memoria;
+    socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
     _send_message(socket_memoria, 
                     ID_KERNEL, 
                     MATE_MEMFREE,
@@ -574,10 +571,12 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
                     logger);   
 
     // recibir mensaje de memoria
-    void *buffer;
+    t_mensaje *buffer;
     int respuesta_memoria;
     buffer = _receive_message(socket_memoria, logger);
-    memcpy((void*)respuesta_memoria, buffer, sizeof(int));
+    memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+    
+    close(socket_memoria);
 
     if(respuesta_memoria >= 0){
         // mandar mensaje de que todo ok a lib
@@ -606,6 +605,8 @@ void mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size, i
                                     dest,
                                     size
                                 );
+    int socket_memoria;
+    socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
 
     _send_message(socket_memoria, 
                     ID_KERNEL, 
@@ -615,11 +616,13 @@ void mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size, i
                     logger);   
 
     // recibir mensaje de memoria
-    void *buffer;
+    t_mensaje *buffer;
     int respuesta_memoria;
     buffer = _receive_message(socket_memoria, logger);
-    memcpy((void*)respuesta_memoria, buffer, sizeof(int));
+    memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
 
+    close(socket_memoria);
+    
     if(respuesta_memoria >= 0){
         // mandar mensaje de que todo ok a lib
         log_info(logger,"el memread se realizó correctamente");
@@ -649,6 +652,9 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
                                         size
                                 );
 
+    int socket_memoria;
+    socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
+
     _send_message(socket_memoria, 
                     ID_KERNEL, 
                     MATE_MEMWRITE,
@@ -657,10 +663,12 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
                     logger);   
 
     // recibir mensaje de memoria
-    void *buffer;
+    t_mensaje *buffer;
     int respuesta_memoria;
     buffer = _receive_message(socket_memoria, logger);
-    memcpy((void*)respuesta_memoria, buffer, sizeof(int));
+    memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+
+    close(socket_memoria);
 
     if(respuesta_memoria >= 0){
         // mandar mensaje de que todo ok a lib
@@ -675,8 +683,6 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
 
     }
 }
-
-
 
 void entrantes_a_ready(){
 
@@ -739,7 +745,7 @@ void ready_a_exec(){
 
     // Depende del algoritmo en el config:
     
-        if(string_equals_ignore_case(algoritmo_planificacion, "SJF")){
+        if(string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_PLANIFICACION"), "SJF")){
             carpincho_a_mover = ready_a_exec_SJF();  //a chequear
         }
         else{
@@ -825,12 +831,17 @@ void exec_a_exit(int id_carpincho, int fd){
     }
 
     payload = _serialize(sizeof(int), "%d", id_carpincho);
+
+    int socket_memoria;
+    socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
     _send_message(socket_memoria, ID_KERNEL, MATE_CLOSE, payload, sizeof(int), logger);  //avisar a mem para que libere
 
-    void *buffer;
+    t_mensaje *buffer;
     int respuesta_memoria;
     buffer = _receive_message(socket_memoria, logger);
-    memcpy((void*)respuesta_memoria, buffer, sizeof(int));
+    memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+
+    close(socket_memoria);
 
     pthread_mutex_lock(&sem_cola_exec); 
     list_remove_by_condition(exec, es_el_mismo);
@@ -1024,6 +1035,7 @@ data_carpincho* ready_a_exec_HRRN(){
 
 void calculo_estimacion_siguiente(data_carpincho *carpincho){ 
     calculo_rafaga_anterior(carpincho);
+    float alfa = config_get_int_value(config, "ALFA");
     carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa); // gonza -> invalid operands to binary * (have ‘float *’ and ‘int’) (le agregue *)
 }
 
@@ -1255,6 +1267,8 @@ void detectar_deadlock(){ //pag 250 libro silberschats --> https://www.utnianos.
 // INTENTO CON LISTAS:
 
 void detectar_deadlock(){
+
+    int tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
 
     usleep(tiempo_deadlock);
 
