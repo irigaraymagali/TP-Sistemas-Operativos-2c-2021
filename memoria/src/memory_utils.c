@@ -279,13 +279,13 @@ void* memread(uint32_t pid, int dir_logica, int size){
             
             int alloc_on_frame = abs((dirAllocActual) - ((act_page-1) * tamanioDePagina));
 
-            memcpy(heap->prevAlloc, page_aux + alloc_on_frame, sizeof(uint32_t));
+            memcpy(&heap->prevAlloc, page_aux + alloc_on_frame, sizeof(uint32_t));
             int offset = alloc_on_frame + sizeof(uint32_t);
            
-            memcpy(heap->nextAlloc, page_aux + offset, sizeof(uint32_t));
+            memcpy(&heap->nextAlloc, page_aux + offset, sizeof(uint32_t));
             offset += sizeof(uint32_t);
 
-            memcpy(heap->isfree, page_aux + offset, sizeof(uint8_t));
+            memcpy(&heap->isfree, page_aux + offset, sizeof(uint8_t));
             
             free(page_aux);
         }else {
