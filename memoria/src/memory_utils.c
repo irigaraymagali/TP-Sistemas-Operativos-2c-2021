@@ -120,7 +120,7 @@ int memalloc(int processId, int espacioAReservar){
             temp->lastHeap = tempLastHeap + espacioAReservar;
             
 
-            return (tempLastHeap + HEAP_METADATA_SIZE);
+            return (tempLastHeap );
         } else {
             
            agregarXPaginasPara(processId, (espacioAReservar-espacioFinalDisponible));
@@ -172,7 +172,7 @@ int memalloc(int processId, int espacioAReservar){
             free(espacioAuxiliar);
         }
         temp->lastHeap = tempLastHeap + espacioAReservar;
-        return (tempLastHeap + HEAP_METADATA_SIZE );    
+        return (tempLastHeap);    
     }
     
     return entra;
