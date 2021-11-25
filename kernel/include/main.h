@@ -94,6 +94,8 @@ pthread_mutex_t sem_CPU_libres;
 // log
 t_log *logger;
 
+t_config* config;
+
 t_list* ptr_dispositivos_io;
 t_list* ptr_duraciones_io;
 
