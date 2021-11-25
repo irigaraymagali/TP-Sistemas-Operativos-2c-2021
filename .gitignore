@@ -55,3 +55,6 @@ dkms.conf
 # Logsfiles and obj folder 
 *.log
 obj
+
+#Dump files
+*.dmp
