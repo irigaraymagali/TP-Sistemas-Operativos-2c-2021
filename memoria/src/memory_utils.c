@@ -203,7 +203,7 @@ int suspend_process(int pid) {
         void* v_res = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);        // SI SWAMP NO TIENE MAS ESPACIO DEBERIAMOS RECIBIR ALGO.
         
         memcpy(&res, v_res, sizeof(int));
-        if(res == -1){
+        if(res == 0){
             log_error(logger, "Swamp no pudo setear la pagina %d en disco", page->pagina);
             return -1;
         }
@@ -669,8 +669,13 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
             int pay_len = 2*sizeof(int);
             void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina);       
             void* response = send_message_swamp(MEMORY_RECV_SWAP_SEND, payload, pay_len);
-            memcpy(memoria + (tempPagina->frame*tamanioDePagina), response,tamanioDePagina);
+            void* swamp_mem = malloc(tamanioDePagina);
+
+            memcpy(swamp_mem, response + sizeof(int), tamanioDePagina);
+            
+            memcpy(memoria + (tempPagina->frame*tamanioDePagina), swamp_mem, tamanioDePagina);
             free(payload);
+            free(response);
             tempPagina->bitPresencia=1;
             //pedirselo a gonza
         }
@@ -1271,7 +1276,14 @@ void seleccionLRU(int processID){
     void* paginaAEnviar = malloc(tamanioDePagina);
     memcpy(paginaAEnviar,memoria + (frameVictima*tamanioDePagina),tamanioDePagina);
     void* payload = _serialize(pay_len, "%d%d%d%v", processID, numeroDePagVictima,tamanioDePagina,paginaAEnviar);       
-    send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+    void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+    int iresp;
+
+    memcpy(&iresp, resp, sizeof(int));
+    if(iresp == 0){
+        log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", processID);
+    }
+    free(resp);
     free(payload);
     free(paginaAEnviar);
 
@@ -1304,7 +1316,13 @@ void seleccionClockMejorado(){
             void* paginaAEnviar = malloc(tamanioDePagina);
             memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
             void* payload = _serialize(pay_len, "%d%d%d%v", getProcessIdby(paginaEncontrada->frame), paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);       
-            send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+            void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+            int iresp;
+            memcpy(&iresp, resp, sizeof(int));
+            if(iresp == 0){
+                log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+            }
+            free(resp);
             free(payload);
             free(paginaAEnviar);
             liberarFrame(paginaEncontrada->frame);
@@ -1329,7 +1347,13 @@ void seleccionClockMejorado(){
             void* paginaAEnviar = malloc(tamanioDePagina);
             memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
             void* payload = _serialize(pay_len, "%d%d%d%v", getProcessIdby(paginaEncontrada->frame), paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);       
-            send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+            void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+            int iresp;
+            memcpy(&iresp, resp, sizeof(int));
+            if(iresp == 0){
+                log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+            }
+            free(resp);
             free(payload);
             free(paginaAEnviar);
 
@@ -1613,7 +1637,7 @@ void* send_message_swamp(int command, void* payload, int pay_len){
     pthread_mutex_lock(&swamp_mutex);
     if (_send_message(swamp_fd, ID_MEMORIA, command, payload, pay_len, logger) < 0){
         log_error(logger, "Error al enviar mensaje a Swamp");
-        void* err_msg = _serialize(sizeof(int), "%d", -1);
+        void* err_msg = _serialize(sizeof(int), "%d", 0);
         return err_msg;
     }
 
