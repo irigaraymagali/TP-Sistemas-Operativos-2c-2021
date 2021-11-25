@@ -288,7 +288,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
             memcpy(&heap->isfree, page_aux + offset, sizeof(uint8_t));
             
             free(page_aux);
-        }else {
+        } else {
             heap = get_heap_metadata(dirAllocActual);
         }
 
