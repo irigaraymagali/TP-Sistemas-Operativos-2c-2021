@@ -741,7 +741,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
             }else{
                 void* paginasAuxiliares = malloc(tamanioDePagina*2);
 
-                memcpy(paginasAuxiliares, memoria + frameBuscado, tamanioDePagina);
+                memcpy(paginasAuxiliares, memoria + frameBuscado*tamanioDePagina, tamanioDePagina);
 
                 int frameFinal = getFrameDeUn(idProcess, paginaActual + 1);
 
@@ -755,7 +755,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 
                 memcpy(paginasAuxiliares + allocDentroDelFrame + 2*sizeof(uint32_t), &libre, sizeof(uint8_t));
 
-                memcpy(memoria + frameBuscado, paginasAuxiliares, tamanioDePagina);
+                memcpy(memoria + frameBuscado*tamanioDePagina, paginasAuxiliares, tamanioDePagina);
 
                 memcpy(memoria + frameFinal, paginasAuxiliares+tamanioDePagina, tamanioDePagina);
 
@@ -868,11 +868,11 @@ int memfree(int idProcess, int direccionLogicaBuscada){
             }else{
                 void* paginasAuxiliares = malloc(tamanioDePagina*2);
 
-                memcpy(paginasAuxiliares, memoria + frameBuscado, tamanioDePagina);
+                memcpy(paginasAuxiliares, memoria + frameBuscado*tamanioDePagina, tamanioDePagina);
 
                 frameBuscado = getFrameDeUn(idProcess, paginaActual + 1);
 
-                memcpy(paginasAuxiliares + tamanioDePagina, memoria + frameBuscado, tamanioDePagina);
+                memcpy(paginasAuxiliares + tamanioDePagina, memoria + frameBuscado*tamanioDePagina, tamanioDePagina);
 
                 int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
 
@@ -1176,11 +1176,11 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
             }else{
                 void* paginasAuxiliares = malloc(tamanioDePagina*2);
 
-                memcpy(paginasAuxiliares, memoria + frameBuscado, tamanioDePagina);
+                memcpy(paginasAuxiliares, memoria + frameBuscado*tamanioDePagina, tamanioDePagina);
 
                 frameBuscado = getFrameDeUn(idProcess, paginaActual + 1);
 
-                memcpy(paginasAuxiliares + tamanioDePagina, memoria + frameBuscado, tamanioDePagina);
+                memcpy(paginasAuxiliares + tamanioDePagina, memoria + frameBuscado*tamanioDePagina, tamanioDePagina);
 
                 int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
 
