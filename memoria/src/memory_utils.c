@@ -225,7 +225,7 @@ int suspend_process(int pid) {
 void* memread(uint32_t pid, int dir_logica, int size){
     void* read = malloc(size);
     int size_to_read, offset_to_read;
-    int paginaActual = 1;
+    int act_page = 1;
     int dirAllocActual = dir_logica;
     HeapMetaData* heap;
     int read_len = 0;
@@ -260,17 +260,38 @@ void* memread(uint32_t pid, int dir_logica, int size){
     while(read_len < size){
         int div_heap = 0;
 
-        paginaActual = (dirAllocActual / tamanioDePagina) + 1;       
-        getFrameDeUn(pid, paginaActual);
-        int page_len = paginaActual*(tamanioDePagina);
+        act_page = (dirAllocActual / tamanioDePagina) + 1;       
+        int act_frame = getFrameDeUn(pid, act_page);
+        int page_len = act_page*(tamanioDePagina);
 
         int size_all_heap = (((dirAllocActual + HEAP_METADATA_SIZE)/ tamanioDePagina) + 1);
-        if(paginaActual != size_all_heap){
-            getFrameDeUn(pid, paginaActual + 1);
+        if(act_page != size_all_heap){
             div_heap = 1;
+            int first_alloc_act_page = (act_frame * tamanioDePagina);
+
+            void* page_aux = malloc(tamanioDePagina*2);
+            memcpy(page_aux, memoria + first_alloc_act_page, tamanioDePagina);
+            
+            int next_frame = getFrameDeUn(pid, act_page + 1);
+            int first_alloc_next_page = (next_frame * tamanioDePagina);
+
+            memcpy(page_aux + tamanioDePagina, memoria + first_alloc_next_page, tamanioDePagina);
+            
+            int alloc_on_frame = abs((dirAllocActual) - ((act_page-1) * tamanioDePagina));
+
+            memcpy(heap->prevAlloc, page_aux + alloc_on_frame, sizeof(uint32_t));
+            int offset = alloc_on_frame + sizeof(uint32_t);
+           
+            memcpy(heap->nextAlloc, page_aux + offset, sizeof(uint32_t));
+            offset += sizeof(uint32_t);
+
+            memcpy(heap->isfree, page_aux + offset, sizeof(uint8_t));
+            
+            free(page_aux);
+        }else {
+            heap = get_heap_metadata(dirAllocActual);
         }
 
-        heap = get_heap_metadata(dirAllocActual);
         offset_to_read = dirAllocActual + HEAP_METADATA_SIZE;
         int alloc_len = abs(heap->nextAlloc - offset_to_read);
         size_to_read = alloc_len;
@@ -285,8 +306,8 @@ void* memread(uint32_t pid, int dir_logica, int size){
             int nxt_long_alloc = page_len - heap->nextAlloc;
             int act_long_alloc = alloc_len - nxt_long_alloc;
 
-            if (size_to_read > act_long_alloc && !div_heap){
-                getFrameDeUn(pid, paginaActual + 1);
+            if (size_to_read > act_long_alloc && div_heap == 0){
+                getFrameDeUn(pid, act_page + 1);
             }
         }
 
