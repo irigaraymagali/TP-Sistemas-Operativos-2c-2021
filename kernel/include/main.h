@@ -54,14 +54,20 @@ typedef struct data_carpincho // la data que le importa tener al backend, hacer 
     float estimacion_anterior; // idem --> inicializar segun config
     float estimacion_siguiente; // para poder ir guardando acá la estimación cuando se haga
     float llegada_a_ready; //para guardar cuándo llego a ready para usar en HRRN
-    float RR; //para HRRN -> fijarnos si es necesario o no
-    char estado; // => ir cambiandole el estado
+    float RR; //para HRRN 
+    char estado; 
     int CPU_en_uso;
     int tiempo_entrada_a_exec; // para calcular milisegundos en exec
     int fd; // para saber a quien le tiene que responder
     char *semaforo; // guarda el char porque es lo que nos manda el carpincho
     int valor_semaforo; // guarda int porque es lo que nos guarda el carpincho
     char *dispositivo_io; 
+
+    char *nombre_semaforo_por_el_que_se_bloqueo; //nombre del semaforo por el que se bloqueo --> sacarlo cuando se desbloquee
+    t_list *semaforos_retenidos; //nombre de los semaforos a los que paso su wait --> lista de semaforos
+    // si le hace el post sacarlo
+    int tiene_su_espera; //id del carpincho que tiene retenido al semaforo que el esta esperando
+
 } data_carpincho;
 
 // Estados
@@ -80,6 +86,10 @@ t_list* semaforos_carpinchos;
 t_list* lista_carpinchos;   
 t_list* lista_dispositivos_io;
 
+//t_list* semaforos_retenidos; 
+t_list* lista_posibles;
+t_list* lista_conectados;
+t_list* ciclo_deadlock;
 
 // Mutex para modificar las colas:
 pthread_mutex_t sem_cola_new;
@@ -114,6 +124,7 @@ sem_t cola_suspended_ready_con_elementos;
 sem_t sem_programacion_lleno;
 sem_t sem_procesamiento_lleno;
 sem_t sem_hay_bloqueados;
+sem_t hay_bloqueados_para_deadlock;
     sem_t liberar_CPU[1000];
     sem_t CPU_libre[1000];
     sem_t usar_CPU[1000];
@@ -169,3 +180,5 @@ void asignar_hilo_CPU(data_carpincho *carpincho);
 void ejecuta(void *id_cpu);
 
 void detectar_deadlock();
+bool formar_ciclo();
+void solucionar_deadlock();

@@ -84,6 +84,7 @@ void inicializar_semaforos(){ // Inicializacion de semaforos:
     sem_init(&sem_programacion_lleno,0,0);
     sem_init(&sem_procesamiento_lleno,0,0);
     sem_init(&sem_hay_bloqueados,0,0);
+    sem_init(&hay_bloqueados_para_deadlock,0,0);
 }
 
 
@@ -130,6 +131,7 @@ void free_memory(){
     sem_destroy(&cola_ready_con_elementos);
     sem_destroy(&cola_exec_con_elementos);
     sem_destroy(&cola_blocked_con_elementos);
+    sem_destroy(&hay_bloqueados_para_deadlock);
     sem_destroy(&cola_suspended_blocked_con_elementos);
     sem_destroy(&cola_suspended_ready_con_elementos); 
 
@@ -217,6 +219,7 @@ void mate_init(int fd){
     carpincho->estimacion_siguiente =  config_get_int_value(config, "ESTIMACION_INICIAL"); // viene por config
     carpincho->estado = NEW;
     carpincho->fd = fd; 
+    carpincho->semaforos_retenidos = list_create();
 
     void *payload;
     payload =  _serialize(sizeof(int), "%d", carpincho->id);
@@ -330,11 +333,13 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
         if(semaforo_wait->valor<1){
             log_info(logger, "Se hizo un wait de un semaforo menor a 1, se bloquea el carpincho");
+            carpincho->nombre_semaforo_por_el_que_se_bloqueo = nombre_semaforo;
             exec_a_block(id_carpincho); 
             queue_push(semaforo_wait->en_espera, carpincho); //queda esperando para que lo desbloqueen, es el primero. 
         }
         else
         {
+            list_add(carpincho->semaforos_retenidos, nombre_semaforo); //paso el wait => le agreo ese semaforo a sus retenidos
             void* payload;
             payload = _serialize(sizeof(int), "%d", 0);
             log_info(logger, "Se hizo un wait de un semaforo mayor a 1, carpincho puede seguir");        
@@ -372,6 +377,12 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
             data_carpincho *carpincho_a_desbloquear;
             carpincho_a_desbloquear = queue_peek(semaforo_post->en_espera);
             queue_pop(semaforo_post->en_espera);
+            carpincho_a_desbloquear->nombre_semaforo_por_el_que_se_bloqueo = NULL;
+            data_carpincho *carpincho_que_hizo_post = encontrar_estructura_segun_id(id_carpincho);
+            if(list_any_satisfy(carpincho_que_hizo_post->semaforos_retenidos,(void *)esIgualA)){
+                   list_remove_by_condition(carpincho_que_hizo_post->semaforos_retenidos,(void *)esIgualA);
+            }
+            //ver caso en que mas de carpincho este siendo bloqueado por el que hace un post
 
             if(carpincho_a_desbloquear->estado == BLOCKED){ 
                 carpincho_a_desbloquear->estado = READY;
@@ -443,7 +454,7 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     if(list_any_satisfy(lista_dispositivos_io, igual_a)){  
         
         dispositivo_io *dispositivo_pedido; 
-       // exec_a_block(id_carpincho);
+        exec_a_block(id_carpincho);
         data_carpincho *carpincho;
         carpincho = encontrar_estructura_segun_id(id_carpincho);
         carpincho->estado = BLOCKED;
@@ -812,6 +823,7 @@ void exec_a_block(int id_carpincho){
     sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); 
 
     sem_post(&sem_hay_bloqueados);
+    sem_post(&hay_bloqueados_para_deadlock);
 }
 
 void exec_a_exit(int id_carpincho, int fd){
@@ -1224,125 +1236,128 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 
 ////////////////////////////// DEADLOCK ////////////////////////////////
 
-/* 
 
-void detectar_deadlock(){ //pag 250 libro silberschats --> https://www.utnianos.com.ar/foro/attachment.php?aid=5321
-//cosas a tener en cuenta: https://docs.google.com/document/d/14-7RvGDeBjIGaqG7fMPsrrvUZuoIiAIYrbaHGf1q2Bg/edit
+void agregando_a_lista_posible_deadlock(){
 
+    lista_posibles = list_create();
+    lista_conectados = list_create();
+            
+    for(int i= 0; i< list_size(lista_carpinchos); i++){ 
+        data_carpincho *carpincho = list_get(lista_carpinchos,i);
 
-    int available[m]; //num de sems disponibles
-    int allocation[n][m]; //asignacion: semaforos asignados a cada carpincho
-    int request[n][m]; //solicitud: waits hechos por cada carpincho
-    bool work[m];
-    bool finish[n];
-
-    work[i]=true; //al inicio
-
-    if(allocation != 0){ //ver
-        finish[i]==false;
-    }
-    else{
-        finish[i]==true;
-    }
-    
-    for(int i, ????? , i++){
-        if(finish[i]==false && request<=work){
-            work = work + allocation;
-            finish[i]==true;
-        }
-        else{
-            if(finish[i]==false){
-                // => HAY DEADLOCK
-            }
+        bool cumple_estado = carpincho->estado==BLOCKED || carpincho->estado==SUSPENDED_BLOCKED; // los carpinchos pueden estar en bloq suspended tamb para ser un posible?
+        bool cumple_retencion = !list_is_empty(carpincho->semaforos_retenidos);
+        bool cumple_bloqueo = carpincho->nombre_semaforo_por_el_que_se_bloqueo !=NULL; //cuando se desbloquee cambiarlo a null
+        if(cumple_estado && cumple_retencion && cumple_bloqueo){
+            list_add(lista_posibles, carpincho);
         }
     }
-    
+
 }
-*/
 
-
-
-
-/* 
-// INTENTO CON LISTAS:
 
 void detectar_deadlock(){
 
     int tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
+    data_carpincho *c1;
+    data_carpincho *c2;
+    while(1){
+        sem_wait(&hay_bloqueados_para_deadlock); 
+        sleep(tiempo_deadlock);
 
-    usleep(tiempo_deadlock);
+        agregando_a_lista_posible_deadlock();
 
-    //while(1){}
-    // sem_wait(hay_bloqueados_para_deadlock); --> post cuando 1 se bloquea como el ed cola_bloqueados_con elementos, falta inicializarlo este
-    
-    //agarro carpincho1 de la lista de posibles
-        for(int i= 0; i< contar_elementos(lista_disponibles); i++){
-            data_carpincho carpincho_a_chequear = list_get(lista_disponibles, i);
-    //agarro un semaforo1 que ese carpincho tiene retenido
-            semaforo semaforo_a_evaluar = carpincho_a_evaluar->retenidos[i]; //ver estructura
-    
-    //a ese semaforo1 veo si tiene en espera a algun carpincho que pertenezca a la lista de posibles
-           if(list_any_satisfy(lista_disponibles, semaforo_a_evaluar->esperando)){
-    // si => agarro ese carpincho2
-                data_carpincho otro_carpincho_a_evaluar = ese carpincho que saque
-           } 
-    //agarro un semaforo2 que ese carpincho2 tiene retenido
-            semaforo otro_semaforo_a_evaluar = list_get(otro_carpincho_a_evaluar->retenidos, i);
-    //a ese semaforo2 veo si tiene en espera a algun carpincho que pertenezca a la lista de posibles
-            if(list_any_satisfy(lista_disponibles, semaforo_a_evaluar->esperando)){
-                data_carpincho ultimo_carpincho_a_evaluar = ese carpincho que saque
-           } 
-    // si => es carpincho_a_evaluar?
-            if(ultimo_carpincho_a_evaluar->id == carpincho_a_evaluar->id){
-                list_add(lista_en_deadlock, ultimo_carpincho_a_evaluar);
-                list_add(lista_en_deadlock, otro_carpincho_a_evaluar);
-    // si => deadlock => eliminar > id y hacerle post a los sem que tiene retenido
-                solucionar_deadlock(lista_en_deadlock);
-            }
+        for(int i= 0; i< list_size(lista_posibles); i++){
+            c1 = list_get(lista_posibles, i);
+            for(int k= 0; k< list_size(lista_posibles); k++){
+                
+                c2 = list_get(lista_posibles, k);
+
+                bool mismo_que_c2_espera(void* nombre_sem_retenido_c1){
+                    return strcmp(nombre_sem_retenido_c1, c2->nombre_semaforo_por_el_que_se_bloqueo) ==0;
+                }
+
+                if(i!=k){
+                    if(list_any_satisfy(c1->semaforos_retenidos, mismo_que_c2_espera)){
+                        c2->tiene_su_espera = c1->id;
+                        list_add(lista_conectados,c2);
+                    }
+                }       
+            }    //A tiene s1 s3 s4 bloq s2
+                //B tiene s2 bloq s1
         }
+    }
 
+    if(formar_ciclo()){
+        solucionar_deadlock();
+    }
+
+    list_clean(lista_posibles);
+    list_clean(lista_conectados);
+        
 }
 
 
-void agregando_a_lista_posible_deadlock(){
+ // s1 de la lista de conectados: c1 -> lo tiene c2 -> lo tiene c3 -> lo tiene c1 => deadlock
+    bool formar_ciclo(){
 
-    // los carpinchos tienen que estar en bloq o bloq suspended
-   
-    for(int i= 0; i< lista_carpinchos; i++){ //era asi la lista?
-        if(carpincho->retenido !=NULL && carpincho->espera !=NULL){ //ver nombres
-                list_add(lista_posibles, carpincho); //crearla
-        }
-    }
-  }
-*/
+        int carpincho_base = 0;
+        int id_carpincho_bloquiante;
+        data_carpincho *carpincho_B;
+        data_carpincho *carpincho_A;
 
-/*
-void solucionar_deadlock(t_list* lista_en_deadlock){
-    int mayor_id_hasta_ahora = 0;
-    for(int i= 0; i< list_size(lista_en_deadlock); i++){
+
+
+    while(carpincho_base!=(list_size(lista_conectados)-1)){
+
+        carpincho_A = list_get(lista_conectados, carpincho_base); 
+        carpincho_B = carpincho_A->tiene_su_espera;
         
-        data_carpincho *carpincho = list_get(lista_en_deadlock, i);
-        int id_actual = *carpincho->id;
+            
+        id_carpincho_bloquiante = carpincho_B->tiene_su_espera; 
+        list_add(ciclo_deadlock,(void*)carpincho_B->id);
+        list_add(ciclo_deadlock,(void*)id_carpincho_bloquiante);
+                
+                if(carpincho_A->id == id_carpincho_bloquiante){
+                 return true;               
+                }
+
+                
+              
+        carpincho_base = id_carpincho_bloquiante;
+        
+        list_clean(ciclo_deadlock);
+    }
+        
+        return false;
+    }
+
+/* 
+void solucionar_deadlock(){
+
+    int mayor_id_hasta_ahora = 0;
+    for(int i= 0; i< list_size(ciclo_deadlock); i++){
+        
+        data_carpincho *carpincho = list_get(ciclo_deadlock, i);
+        int id_actual = carpincho->id;
             if(id_actual < mayor_id_hasta_ahora){    
                 mayor_id_hasta_ahora = id_actual;
             }
     }
 
- 
    data_carpincho *carpincho_a_eliminar = encontrar_estructura_segun_id(mayor_id_hasta_ahora);
 
    //simular mate_close para carpincho_a_eliminar
 
-   //simular post a los semaforos que tenia retenido ese carpincho
-   
-    for(int i=0; i<list_size(*carpincho_a_eliminar->retenidos); i++){
-        sem_post(&(list_get(carpincho_a_eliminar->retenidos), i));
+    for(int i=0; i<list_size(carpincho_a_eliminar->semaforos_retenidos); i++){ //simular post a los semaforos que tenia retenido ese carpincho
+        sem_t semaforo = list_get((carpincho_a_eliminar->semaforos_retenidos, i);
+        sem_post(&semaforo);
     }
     
     //cerrar socket
 }
+
+
+
 */
-
-
-
 
