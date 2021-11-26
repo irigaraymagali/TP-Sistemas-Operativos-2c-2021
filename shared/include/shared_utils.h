@@ -44,9 +44,11 @@
 #define SUSPENDED_READY 'Y'
 #define EXIT 'X'
 
-
-
-
+enum mate_errors {
+    MATE_FREE_FAULT = -5,
+    MATE_READ_FAULT = -6,
+    MATE_WRITE_FAULT = -7
+};
 
 typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
 {

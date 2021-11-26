@@ -5,7 +5,7 @@ int id_carpincho;
 
 int armar_socket_desde_archivo(char* config,t_log* logger){
    
-    // hacer => leer archivo 
+    // hacer => leer archivo -> puede ser un .conf y lo hacemos como querramos
 
     char *ip;
     char *puerto;
@@ -93,7 +93,10 @@ int mate_init(mate_instance *lib_ref, char *config)
         t_mensaje* buffer = _receive_message(socket_backend, logger);
         id_recibido = deserializar_numero(buffer);
         estructura_interna->id = id_recibido;
-        //&lib_ref->group_info = (void*)estructura_interna; martin => ver esto y cambiar en todas las funciones
+
+
+        lib_ref->group_info = (void*)estructura_interna; 
+        
         return 0;
     }  
 }
@@ -146,7 +149,7 @@ int mate_call_io(mate_instance *lib_ref, mate_io_resource io, void *msg)
 }
 
 // Funciones módulo memoria ------------------------------------------------------------------
-
+// hacer => agregar para que devuelva los erroes que meti en las shared
 mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 {
     mate_pointer conexion_con_backend;

@@ -220,16 +220,16 @@ void mate_init(int fd){
         buffer = _receive_message(socket_memoria, logger);
         memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
         
-        close(socket_memoria); // martin => el close iria aca o, por mas que no se pueda conectar, hay que hacerselo?
+        close(socket_memoria); 
+        free(buffer->identifier);
+        free(buffer->payload);
+        free(buffer);
     }
     else{
         log_error(logger, "no se pudo conectar con el módulo memoria");
     }
 
-    // martin => hace falta hacer free de socket memoria?
-    
     if(respuesta_memoria >= 0){  
-            
         log_info(logger, "La estructura del carpincho %d se creó correctamente en memoria", id_carpincho);
         list_add(lista_carpinchos, (void *) carpincho);
         sem_post(&hay_estructura_creada);
@@ -239,6 +239,8 @@ void mate_init(int fd){
         log_info(logger, "El módulo memoria no pudo crear la estructura");
     }
     id_carpincho += 2; 
+    free(payload);
+
 }
 
 void mate_close(int id_carpincho, int fd){
@@ -272,7 +274,7 @@ void mate_close(int id_carpincho, int fd){
 
     // post pruebas => chequear si es necesario que se haga post a todos los semaforos que tenia retenido el carpincho
     log_info(logger, "La estructura del carpincho %d se eliminó correctamente", id_carpincho);
-
+    // eliminar file descriptor
 }
 
 //////////////// FUNCIONES SEMAFOROS ///////////////////
