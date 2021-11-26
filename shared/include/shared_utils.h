@@ -51,9 +51,9 @@
 typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
 {
     int id;
-    char semaforo; 
+    char *semaforo; 
     int valor_semaforo; 
-    char dispositivo_io; 
+    char *dispositivo_io; 
 } mate_inner_structure;
 
 typedef char *mate_io_resource;

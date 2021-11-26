@@ -21,22 +21,13 @@
 #include <pthread.h>
 
 
-typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
-{
-    int id;
-    char semaforo; 
-    int valor_semaforo; 
-    char dispositivo_io; 
-} mate_inner_structure;
-
-
 //-------------------Type Definitions----------------------/
 typedef struct mate_instance
 {
     void *group_info; // un puntero a algun tipo de estructura que vamos a llenar despues con todas las referencias necesarias para mantener vivas las conexiones y para operar con la misma
 } mate_instance;
 
-
+int socket_backend;
 
 // TODO: Docstrings
 
