@@ -21,26 +21,16 @@
 #include <pthread.h>
 
 
-typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
-{
-    int id;
-    char semaforo; 
-    int valor_semaforo; 
-    char dispositivo_io; 
-} mate_inner_structure;
-
-
 //-------------------Type Definitions----------------------/
 typedef struct mate_instance
 {
     void *group_info; // un puntero a algun tipo de estructura que vamos a llenar despues con todas las referencias necesarias para mantener vivas las conexiones y para operar con la misma
 } mate_instance;
 
-typedef char *mate_io_resource;
+int socket_backend;
+t_log* logger;
+int id_carpincho;
 
-typedef char *mate_sem_name;
-
-typedef int32_t mate_pointer;
 
 // TODO: Docstrings
 
@@ -71,6 +61,5 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr);
 int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int size);
 
 int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int size);
-
 
 #endif
