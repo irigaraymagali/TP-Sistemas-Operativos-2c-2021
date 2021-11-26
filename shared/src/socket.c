@@ -160,8 +160,6 @@ int _send_message(int socket, char *identifier, int command, void *payload, int 
 
 t_mensaje *_receive_message(int socket, t_log *logger) {
 
-	log_info(logger, "Recibi el siguiente mensaje..");
-
 	t_mensaje *temp = malloc(sizeof(t_mensaje));
   
 	temp -> identifier = malloc(4);
@@ -184,6 +182,8 @@ t_mensaje *_receive_message(int socket, t_log *logger) {
 		memset(temp -> payload + temp -> pay_len, '\0', 1);
 		log_info(logger, "Recibi: String: %s", temp -> payload);
 	}
+
+	log_info(logger, "Recibi un mensaje..");
 
 	return temp;
 }

@@ -13,7 +13,7 @@ int main(int argc, char ** argv){
     hilos_CPU = list_create(); // crear lista para ir guardando los hilos cpus
     lista_dispositivos_io = list_create(); // crear lista para ir guardando los dispositivios io
 
-    t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
+    t_log* logger = log_create("./cfg/kernel.log", "KERNEL", true, LOG_LEVEL_INFO);
 	char *puerto_escucha = config_get_string_value(config, "PUERTO_ESCUCHA");        
     
     crear_estructura_dispositivo();
@@ -187,13 +187,16 @@ data_carpincho* deserializar(void* buffer){
 
     memcpy(&str_len, buffer + offset, sizeof(int));
     offset += sizeof(int);
-    memcpy(&estructura_interna->semaforo, buffer + offset, str_len);
 
-    memcpy(&estructura_interna->valor_semaforo, buffer, sizeof(int));
+    memcpy(&estructura_interna->semaforo, buffer + offset, str_len);
+    offset += str_len;
+
+    memcpy(&estructura_interna->valor_semaforo, buffer + offset, sizeof(int));
     offset += sizeof(int);
 
     memcpy(&str_len, buffer + offset, sizeof(int));
     offset += sizeof(int);
+
     memcpy(&estructura_interna->dispositivo_io, buffer + offset, str_len);
 
     return estructura_interna;
@@ -210,13 +213,13 @@ void mate_init(int fd){
     carpincho->id = id_carpincho;
     carpincho->rafaga_anterior = 0;
     carpincho->estimacion_anterior = 0;
-    carpincho->estimacion_siguiente =  config_get_int_value(config, "ESTIMACION_INICIAL");
+    carpincho->estimacion_siguiente = config_get_int_value(config, "ESTIMACION_INICIAL");
     carpincho->estado = NEW;
     carpincho->fd = fd; 
     carpincho->semaforos_retenidos = list_create();
 
     void *payload;
-    payload =  _serialize(sizeof(int), "%d", carpincho->id);
+    payload = _serialize(sizeof(int), "%d", carpincho->id);
 
     int socket_memoria;
     socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
@@ -1029,7 +1032,7 @@ data_carpincho* ready_a_exec_HRRN(){
 
 void calculo_estimacion_siguiente(data_carpincho *carpincho){ 
     calculo_rafaga_anterior(carpincho);
-    float alfa = config_get_int_value(config, "ALFA");
+    float alfa = (float) config_get_double_value(config, "ALFA"); // hacer: ver que alfa no es un valor entero entonces la funcion get_int_value no lo va a entender
     carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa); // gonza -> invalid operands to binary * (have ‘float *’ and ‘int’) (le agregue *)
 }
 
@@ -1109,7 +1112,7 @@ void ejecuta(void *id_cpu){
 
 void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     
-    log_info(logger, "Recibí un mensaje");
+    log_info(logger, "Kernel, mensaje recibido");
     data_carpincho* estructura_interna = deserializar(payload);
     int id_carpincho;
     int size_memoria;

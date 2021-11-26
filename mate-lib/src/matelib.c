@@ -69,8 +69,6 @@ int mate_init(mate_instance *lib_ref, char *config)
     printf("socket: %d\n", socket_backend);
 
 
-    free(payload);
-
     if(socket_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
         printf("\nestoy aca\n");
@@ -86,7 +84,7 @@ int mate_init(mate_instance *lib_ref, char *config)
     //post pruebas => podríamos revisar aca que onda que solo esta vez les pasamos la referencia
         lib_ref->group_info = malloc(sizeof(mate_inner_structure));
         lib_ref->group_info = (void*)estructura_interna; 
-        
+        free(payload);
         return 0;
     }  
 }
