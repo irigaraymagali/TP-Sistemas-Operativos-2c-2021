@@ -1312,7 +1312,7 @@ void detectar_deadlock(){
 
         carpincho_A = list_get(lista_conectados, carpincho_base); 
         carpincho_B = carpincho_A->tiene_su_espera;
-        
+
             
         id_carpincho_bloquiante = carpincho_B->tiene_su_espera; 
         list_add(ciclo_deadlock,(void*)carpincho_B->id);
@@ -1322,7 +1322,7 @@ void detectar_deadlock(){
                  return true;               
                 }
 
-                
+            
               
         carpincho_base = id_carpincho_bloquiante;
         
