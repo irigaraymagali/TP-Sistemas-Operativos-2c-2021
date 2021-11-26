@@ -255,8 +255,7 @@ void mate_close(int id_carpincho, int fd){
     list_remove_by_condition(lista_carpinchos, es_el_carpincho);
     
     if(carpincho_a_cerrar->estado == EXEC){
-        exec_a_exit(id_carpincho, fd); // acá se encarga de avisar a memoria y responder al fd
-
+        exec_a_exit(id_carpincho, fd); 
     }
     else if(carpincho_a_cerrar->estado == BLOCKED) 
     { // hacer
@@ -354,7 +353,6 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     }
 
 }
-
 
 void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     
@@ -474,12 +472,12 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     else
     {
         log_info(logger, "Se pidio un dispositivo IO que no existe");
-         payload = _serialize(sizeof(int), "%d", -1); // => esto habria que hacerlo a todos los msjs
+         payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
 }
 
-void crear_estructura_dispositivo(){ //gonza -> si desde el main llamo a esta funcione, me da segmentation fault
+void crear_estructura_dispositivo(){ 
     
     char** dispositivos_io = config_get_array_value(config, "DISPOSITIVOS_IO");
     char** duraciones_io = config_get_array_value(config, "DURACIONES_IO");
@@ -497,12 +495,6 @@ void crear_estructura_dispositivo(){ //gonza -> si desde el main llamo a esta fu
         }
 }
 
-// free de nombre
-// destruir queue y elemntos
-// free estructura
-// destruir lista_dispositivos_io
-
-
 int contar_elementos(char** elementos) {
     int i = 0;
     while (elementos[i] != NULL) {
@@ -513,12 +505,11 @@ int contar_elementos(char** elementos) {
 
 //////////////// FUNCIONES MEMORIA ///////////////////
 
-void mate_memalloc(int id_carpincho, int size, int fd){  // hay que revisar lo que le mandamos a la lib, porque espera que le devolvamos al carpincho un mate_pointer
+void mate_memalloc(int id_carpincho, int size, int fd){  // martin => hay que revisar lo que le mandamos a la lib, porque espera que le devolvamos al carpincho un mate_pointer
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
 
-    // mandar mensaje a memoria
     void *payload = _serialize(    sizeof(int) * 2, 
                                     "%d%d", 
                                     carpincho->id, 
@@ -532,7 +523,6 @@ void mate_memalloc(int id_carpincho, int size, int fd){  // hay que revisar lo q
     if(socket_memoria >= 0){
         _send_message(socket_memoria, ID_KERNEL, MATE_MEMALLOC, payload,sizeof(int)*2,logger);   
 
-        //recibir mensaje de memoria
         t_mensaje *buffer;
         buffer = _receive_message(socket_memoria, logger);
         memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
@@ -544,7 +534,6 @@ void mate_memalloc(int id_carpincho, int size, int fd){  // hay que revisar lo q
     }
 
     if(respuesta_memoria >= 0){
-        // mandar mensaje de que todo ok a lib
         log_info(logger,"el memalloc se realizó correctamente");
         void *payload = _serialize(sizeof(int), "%d", 0);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
@@ -561,7 +550,6 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
 
-    // mandar mensaje a memoria
     void *payload = _serialize(    sizeof(int) + sizeof(mate_pointer), 
                                     "%d%d", 
                                     carpincho->id, 
@@ -575,7 +563,6 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
     if(socket_memoria >= 0){
         _send_message(socket_memoria,  ID_KERNEL, MATE_MEMFREE,payload,sizeof(int) + sizeof(mate_pointer),logger);   
 
-        // recibir mensaje de memoria
         t_mensaje *buffer;
         buffer = _receive_message(socket_memoria, logger);
         memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
@@ -587,7 +574,6 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
     }
 
     if(respuesta_memoria >= 0){
-        // mandar mensaje de que todo ok a lib
         log_info(logger,"el memalloc se realizó correctamente");
         void *payload = _serialize(sizeof(int), "%d", 0);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
@@ -599,12 +585,11 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
     }   
 }
 
-void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // está bien lo que estamos retornando al carpincho?
+void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // martin => está bien lo que estamos retornando al carpincho?
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
 
-    // mandar mensaje a memoria
     void *payload = _serialize(     sizeof(int) * 3 + sizeof(int), 
                                     "%d%d%d%v%d",
                                     carpincho->id, 
@@ -694,10 +679,10 @@ void entrantes_a_ready(){
    int valor = 1; 
 
     while(1){
-        sem_wait(&hay_estructura_creada); // hacerle post en mate_init y cuando uno pasa a estar en suspended_ready
-        sem_wait(&sem_grado_multiprogramacion_libre); //grado multiprogramacion --> HACER POST CUANDO SALE DE EXEC! o en suspender()
+        sem_wait(&hay_estructura_creada);
+        sem_wait(&sem_grado_multiprogramacion_libre); 
 		
-        if(!queue_is_empty(suspended_ready)) // se fija si hay elementos que hayan venido de suspended, y si hay lo saca de ahi
+        if(!queue_is_empty(suspended_ready)) 
         {
             pthread_mutex_lock(&sem_cola_ready); 
             pthread_mutex_lock(&sem_cola_suspended_ready); 
@@ -711,7 +696,7 @@ void entrantes_a_ready(){
             pthread_mutex_unlock(&sem_cola_suspended_ready); 
             
         }
-        else{ // si no habia venido ninguno de suspended, saco de cola new y pongo en cola ready al primero (FIFO):
+        else{ 
             pthread_mutex_lock(&sem_cola_ready); 
             pthread_mutex_lock(&sem_cola_new);
 
@@ -725,15 +710,14 @@ void entrantes_a_ready(){
         }
         
         carpincho_a_mover->estado = READY;
-        sem_post(&cola_ready_con_elementos); //avisa: hay procesos en ready 
+        sem_post(&cola_ready_con_elementos); 
 
         valor = sem_getvalue(&sem_grado_multiprogramacion_libre, &valor);
-        if(valor == 0){ // si con este se llena el grado de multiprocesamiento, podria necesitarse suspender 
+        if(valor == 0){ 
             sem_post(&sem_programacion_lleno);
         }
     }
 }
-
 
 void ready_a_exec(){  
 
@@ -778,7 +762,7 @@ void ready_a_exec(){
         _send_message(carpincho_a_mover->fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
         
         valor = sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor);
-        if( valor == 0){ // si con este se llena el grado de multiprocesamiento, podria necesitarse suspender 
+        if( valor == 0){ 
             sem_post(&sem_procesamiento_lleno);
         }
     }
@@ -793,11 +777,9 @@ void exec_a_block(int id_carpincho){
             return ((data_carpincho *) carpincho)->id == carpincho_a_bloquear->id;
         }
 
-    // le pasan el id del carpincho y lo saca de la lista de exec, lo pone en block y le hace signal al cpu
 
     calculo_rafaga_anterior(carpincho_a_bloquear); 
 
-    // Sacar de la lista de exec y ponerlo en la la cola de blocked
     pthread_mutex_lock(&sem_cola_exec); 
 	pthread_mutex_lock(&sem_cola_blocked);
 
@@ -827,7 +809,7 @@ void exec_a_exit(int id_carpincho, int fd){
     }
 
     bool es_el_mismo(void* carpincho){
-        data_carpincho* aux = (data_carpincho*)carpincho; // A CHEQUEAR
+        data_carpincho* aux = (data_carpincho*)carpincho; 
         return es_el_mismo_carpincho(aux,carpincho_que_termino);
     }
 
@@ -835,7 +817,7 @@ void exec_a_exit(int id_carpincho, int fd){
 
     int socket_memoria;
     socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
-    _send_message(socket_memoria, ID_KERNEL, MATE_CLOSE, payload, sizeof(int), logger);  //avisar a mem para que libere
+    _send_message(socket_memoria, ID_KERNEL, MATE_CLOSE, payload, sizeof(int), logger); 
 
     t_mensaje *buffer;
     int respuesta_memoria;
@@ -848,7 +830,7 @@ void exec_a_exit(int id_carpincho, int fd){
     list_remove_by_condition(exec, es_el_mismo);
 	pthread_mutex_unlock(&sem_cola_exec);
 
-    sem_post(&(liberar_CPU[carpincho_que_termino->CPU_en_uso])); // "libera" el hilo cpu en el que estaba:
+    sem_post(&(liberar_CPU[carpincho_que_termino->CPU_en_uso])); 
     sem_post(&sem_grado_multiprogramacion_libre);
 
     _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger); 
@@ -858,7 +840,7 @@ bool sonElMismoC(data_carpincho *carpincho_lista, data_carpincho * carpincho_a_r
     return carpincho_lista->id == carpincho_a_ready->id;
 }
 
-void block_a_ready(data_carpincho *carpincho_a_ready){ //la llaman cuando se hace post o cuando se termina IO
+void block_a_ready(data_carpincho *carpincho_a_ready){ 
 
     bool es_el_mismo(void* carpincho){
             return ((data_carpincho *) carpincho)->id == carpincho_a_ready->id;
@@ -954,24 +936,6 @@ bool estan_las_condiciones_para_suspender(){
 ////////////////////////// ALGORITMOS ////////////////////////
 
 data_carpincho* ready_a_exec_SJF(){
-
-/* 
-        for(int i= 0; i< list_size(ready); i++){
-
-            float min_hasta_el_momento = 0;
-            data_carpincho carpincho_sig;
-            data_carpincho carpincho_listo = list_get(ready, i); // agarro un carpincho
-            calculo_estimacion_siguiente(*carpincho_listo);       // le calculo su estimacion
-            float estimacion_actual = carpincho_listo->estimacion_siguiente; //agarro su estimacion
-                if(estimacion_actual < min_hasta_el_momento){    // si esta es menor => pasa a ser la minima hasta el momento
-                    carpincho_sig = carpincho_listo;
-                    id_carpincho = carpincho_listo->id;
-                    min_hasta_el_momento = estimacion_actual;
-                }
-        }
-
-        */
-
   
     float min_hasta_el_momento = 0;
     
@@ -991,7 +955,6 @@ data_carpincho* ready_a_exec_SJF(){
                     carpincho_menor = carpincho_actual;
                 }
             }           
-        
     }
     list_iterator_destroy(list_iterator);
 
@@ -1000,21 +963,6 @@ data_carpincho* ready_a_exec_SJF(){
 }
 
 data_carpincho* ready_a_exec_HRRN(){ 
-    
-    /* 
-        for(int i= 0; i<  list_size(ready); i++){
-
-            float max_hasta_el_momento = 0;
-            data_carpincho carpincho_sig;
-            data_carpincho carpincho_listo* = list_get(ready, i); 
-            calculo_RR(*carpincho_listo);                         
-            float RR_actual = carpincho_listo->RR;               
-                if(RR_actual > max_hasta_el_momento){            
-                    max_hasta_el_momento = RR_actual;
-                    carpincho_sig = carpincho_listo;
-                }
-        }
-    */
 
    float max_hasta_el_momento = 0;
    t_list_iterator* list_iterator = list_iterator_create(ready);
@@ -1045,16 +993,14 @@ void calculo_estimacion_siguiente(data_carpincho *carpincho){
     carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa); // gonza -> invalid operands to binary * (have ‘float *’ and ‘int’) (le agregue *)
 }
 
-// para SJF
-void calculo_rafaga_anterior(data_carpincho *carpincho){
+void calculo_rafaga_anterior(data_carpincho *carpincho){ // para SJF
 
     int tiempo_salida = calcular_milisegundos();
 
     carpincho->rafaga_anterior = tiempo_salida - carpincho->tiempo_entrada_a_exec; 
 }
 
-// para HRRN
-void calculo_RR(data_carpincho *carpincho){ 
+void calculo_RR(data_carpincho *carpincho){ // para HRRN
 
     char ahora = calcular_milisegundos();
 
@@ -1064,7 +1010,6 @@ void calculo_RR(data_carpincho *carpincho){
 
     carpincho->RR = 1 + espera/prox_rafaga;
 }
-
 
 int calcular_milisegundos(){
 
@@ -1078,7 +1023,6 @@ int calcular_milisegundos(){
     tiempo_calculado.segundos = atoi(tiempo_formateado[1]);
     tiempo_calculado.milisegundos = atoi(tiempo_formateado[2]);
 
-    // paso todo a milisegundos para que sea mas facil despues sacar la diferencia
     return tiempo_calculado.minutos * 60000 + tiempo_calculado.segundos * 60 + tiempo_calculado.milisegundos;
 }
 
@@ -1105,10 +1049,10 @@ void ejecuta(void *id_cpu){
     while(1){
 
         int *id = (int *) id_cpu;
-        //mutex
+        //hacer => mutex
         sem_wait(&usar_CPU[*id]); // espera hasta que algun carpincho haga post para usar ese cpu
         sem_wait(&CPU_libre[*id]); // indica que ya no está más libre ese cpu
-        // mutex
+        //hacer => mutex
         
         sem_wait(&liberar_CPU[*id]); // espera a que algun carpincho indique que quiere liberar el cpu
         queue_push(CPU_libres, id);
@@ -1133,13 +1077,13 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     int offset = 0;
     int ptr_len = 0;
 
-    if(strcmp(id, ID_MATE_LIB) == 0){ // comparison with string literal results in unspecified behavior
+    if(strcmp(id, ID_MATE_LIB) == 0){ 
         switch(opcode){
             case MATE_INIT:
                 mate_init(fd);
             break;
             case MATE_CLOSE: 
-                mate_close(estructura_interna->id,fd); // gonza .> passing argument 1 of ‘mate_close’ makes integer from pointer without a cast (le agregue * porque es tipo data_carpincho)
+                mate_close(estructura_interna->id,fd); 
             break;
             case MATE_SEM_INIT: 
                 mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
@@ -1212,7 +1156,6 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 }
 
 
-
 ////////////////////////////// DEADLOCK ////////////////////////////////
 
 
@@ -1262,13 +1205,12 @@ void detectar_deadlock(){
                         list_add(lista_conectados,c2);
                     }
                 }       
-            }    //A tiene s1 s3 s4 bloq s2
-                //B tiene s2 bloq s1
+            }    
         }
     }
 
     if(formar_ciclo()){
-       // solucionar_deadlock();
+        solucionar_deadlock();
     }
 
     list_clean(lista_posibles);
@@ -1276,8 +1218,6 @@ void detectar_deadlock(){
         
 }
 
-
-// s1 de la lista de conectados: c1 -> lo tiene c2 -> lo tiene c3 -> lo tiene c1 => deadlock
 bool formar_ciclo(){
 
         int id_base = 0;
@@ -1331,7 +1271,7 @@ bool formar_ciclo(){
 
     return false;
 }
-/*
+
 void solucionar_deadlock(){
 
     int mayor_id_hasta_ahora = 0;
@@ -1348,16 +1288,14 @@ void solucionar_deadlock(){
 
     data_carpincho *carpincho_a_eliminar = encontrar_estructura_segun_id(mayor_id_hasta_ahora);
 
-    mate_close(carpincho_a_eliminar);
+    mate_close(mayor_id_hasta_ahora, carpincho_a_eliminar->fd);
 
     for(int i=0; i<list_size(carpincho_a_eliminar->semaforos_retenidos); i++){ //simular post a los semaforos que tenia retenido ese carpincho
-        sem_t semaforo = list_get((carpincho_a_eliminar->semaforos_retenidos, i);
+        sem_t *semaforo = (sem_t *) list_get((carpincho_a_eliminar->semaforos_retenidos), i);
         sem_post(&semaforo);
     }
     
-
 }
 
-*/
 
 

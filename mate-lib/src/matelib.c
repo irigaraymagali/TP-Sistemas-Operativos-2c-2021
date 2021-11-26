@@ -3,9 +3,9 @@
 t_log* logger;
 int id_carpincho;
 
-int armar_socket_desde_binario(char* config,t_log* logger){
+int armar_socket_desde_archivo(char* config,t_log* logger){
    
-    // FALTA leer archivo 
+    // hacer => leer archivo 
 
     char *ip;
     char *puerto;
@@ -76,7 +76,7 @@ int mate_init(mate_instance *lib_ref, char *config)
     void* payload = armar_paquete(estructura_interna);
 
     // martin -> esta bien que el socket sea siempre este? o habria que abrirlo y cerrarlo cada vez?
-    socket_backend = armar_socket_desde_binario(config,logger);
+    socket_backend = armar_socket_desde_archivo(config,logger);
 
     printf("socket: %d\n", socket_backend);
 
