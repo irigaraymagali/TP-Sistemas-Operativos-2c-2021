@@ -248,7 +248,7 @@ void mate_init(int fd){
     if(respuesta_memoria >= 0){
         log_info(logger, "La estructura del carpincho %d se creó correctamente en memoria", id_carpincho);
         list_add(lista_carpinchos, (void *) carpincho);
-        // sem_post(&hay_estructura_creada);
+        // sem_post(&hay_estructura_creada); hacer descomentar esto despues de las pruebas
         _send_message(fd, ID_KERNEL, MATE_INIT, payload, sizeof(int), logger);
     }
     else{
@@ -267,43 +267,70 @@ void mate_close(int id_carpincho, int fd){
     carpincho_a_cerrar->fd = fd;
 
     bool es_el_carpincho(void* carpincho){
-        return (data_carpincho *) carpincho == carpincho_a_cerrar;
+        return ((data_carpincho *)carpincho)->id == carpincho_a_cerrar->id;
     }
 
-    list_remove_by_condition(lista_carpinchos, es_el_carpincho);
-    
     if(carpincho_a_cerrar->estado == EXEC){
         exec_a_exit(id_carpincho, fd); 
     }
-    else if(carpincho_a_cerrar->estado == BLOCKED) 
+    else if(carpincho_a_cerrar->estado == BLOCKED)  // porque hay deadlock
     {      
-         bool es_el_mismo(void* carpincho){
-            return ((data_carpincho *) carpincho)->id == carpincho_a_cerrar->id;
-        }
+        void *payload;
+        payload = _serialize(sizeof(int), "%d", id_carpincho);
+
+        int socket_memoria;
+        socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
+        _send_message(socket_memoria, ID_KERNEL, MATE_CLOSE, payload, sizeof(int), logger); 
+
+        t_mensaje *buffer;
+        int respuesta_memoria;
+        buffer = _receive_message(socket_memoria, logger);
+        memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+
+        close(socket_memoria);
+        
+        int fd = carpincho_a_cerrar->fd;
 
         pthread_mutex_lock(&sem_cola_blocked);
-        list_remove_by_condition(blocked, es_el_mismo); // salir de la cola de bloqueado
+        list_remove_and_destroy_by_condition(blocked, es_el_carpincho, free); //martin => esta bien asi?
         pthread_mutex_unlock(&sem_cola_blocked);
-   
+
         sem_post(&sem_grado_multiprogramacion_libre);
 
-    // hacer
-        // borrar su estructura
-        // avisar a memoria que lo eliminamos 
+        payload = _serialize(sizeof(int), "%d", CERRADO_POR_DEADLOCK);
+
+        _send_message(fd, ID_KERNEL, MATE_CLOSE, payload, sizeof(int), logger);
+
     }
     else{ 
-        bool son_el_mismo(void* carpincho){
-            return ((data_carpincho *) carpincho)->id == carpincho_a_cerrar->id;
-        }
+
+        void *payload;
+        payload = _serialize(sizeof(int), "%d", id_carpincho);
+
+        int socket_memoria;
+        socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
+        _send_message(socket_memoria, ID_KERNEL, MATE_CLOSE, payload, sizeof(int), logger); 
+
+        t_mensaje *buffer;
+        int respuesta_memoria;
+        buffer = _receive_message(socket_memoria, logger);
+        memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+
+        close(socket_memoria);
+        
+        int fd = carpincho_a_cerrar->fd;
 
         pthread_mutex_lock(&sem_cola_suspended_blocked);
-        list_remove_by_condition(suspended_blocked, son_el_mismo); // salir de la cola de suspended_blocked
+        list_remove_and_destroy_by_condition(suspended_blocked, es_el_carpincho, free); //martin => esta bien asi?
         pthread_mutex_unlock(&sem_cola_suspended_blocked);
 
-    // hacer
-        // borrar su estructura
-        // avisar a memoria que lo eliminamos 
+        payload = _serialize(sizeof(int), "%d", CERRADO_POR_DEADLOCK);
+
+        _send_message(fd, ID_KERNEL, MATE_CLOSE, payload, sizeof(int), logger);
+
     }
+
+    list_remove_by_condition(lista_carpinchos, es_el_carpincho);
 
     // post pruebas => chequear si es necesario que se haga post a todos los semaforos que tenia retenido el carpincho
     log_info(logger, "La estructura del carpincho %d se eliminó correctamente", id_carpincho);
@@ -852,7 +879,7 @@ void exec_a_exit(int id_carpincho, int fd){
         data_carpincho* aux = (data_carpincho*)carpincho; 
         return es_el_mismo_carpincho(aux,carpincho_que_termino);
     }
-
+  
     payload = _serialize(sizeof(int), "%d", id_carpincho);
 
     int socket_memoria;
@@ -867,7 +894,7 @@ void exec_a_exit(int id_carpincho, int fd){
     close(socket_memoria);
 
     pthread_mutex_lock(&sem_cola_exec); 
-    list_remove_by_condition(exec, es_el_mismo);
+    list_remove_and_destroy_by_condition(exec, es_el_mismo, free); //martin => esta bien el free ahi?
 	pthread_mutex_unlock(&sem_cola_exec);
 
     log_info(logger, "El carpincho %d paso a EXIT", carpincho_que_termino->id);
@@ -904,8 +931,7 @@ void block_a_ready(data_carpincho *carpincho_a_ready){
 
     sem_wait(&sem_hay_bloqueados);
 
-    // no tiene que evaluar ni grado de multiprogramacion ni de multiproc porque ya estaba considerado.
-    // no responde nada a la lib porque todavia no esta en exec, solo paso a ready
+    // no tiene que evaluar ni grado de multiprogramacion ni de multiproc porque ya estaba considerado. no responde nada a la lib porque todavia no esta en exec, solo paso a ready
 }
 
 void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
@@ -956,12 +982,20 @@ void suspender(){
             carpincho_a_suspender->estado = SUSPENDED_BLOCKED;
             log_info(logger, "El carpincho %d paso a SUSPENDED BLOCKED", carpincho_a_suspender->id);
             sem_post(&liberar_CPU[carpincho_a_suspender->CPU_en_uso]); //--> esta bien que sea el de liberar CPU?
-        
-            /* 
-            payload = _serialize(sizeof(int), "%d", carpincho_a_suspender->id);
-            // hacer: corregir lo de socket_memoria
-            _send_message(socket_memoria, ID_KERNEL, SUSPENDER, payload, sizeof(int), logger);  //avisar a mem para que libere
-            */
+
+            void *payload;
+            payload =_serialize(sizeof(int), "%d", carpincho_a_suspender->id);
+
+            int socket_memoria;
+            socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
+            _send_message(socket_memoria, ID_KERNEL, SUSPENDER, payload, sizeof(int), logger); 
+
+            t_mensaje *buffer;
+            int respuesta_memoria;
+            buffer = _receive_message(socket_memoria, logger);
+            memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+
+            close(socket_memoria);
 
             sem_post(&sem_grado_multiprocesamiento_libre);
             sem_post(&sem_grado_multiprogramacion_libre);  
@@ -1034,7 +1068,7 @@ data_carpincho* ready_a_exec_HRRN(){
 
 void calculo_estimacion_siguiente(data_carpincho *carpincho){ 
     calculo_rafaga_anterior(carpincho);
-    float alfa = (float) config_get_double_value(config, "ALFA"); // hacer: ver que alfa no es un valor entero entonces la funcion get_int_value no lo va a entender
+    float alfa = (float) config_get_double_value(config, "ALFA"); // post pruebas: ver que alfa si no es un valor entero entonces la funcion get_int_value no lo va a entender
     carpincho->estimacion_siguiente = carpincho->rafaga_anterior * alfa + carpincho->estimacion_anterior * (1 - alfa); // gonza -> invalid operands to binary * (have ‘float *’ and ‘int’) (le agregue *)
 }
 

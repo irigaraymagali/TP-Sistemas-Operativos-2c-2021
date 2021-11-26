@@ -44,6 +44,8 @@
 #define SUSPENDED_READY 'Y'
 #define EXIT 'X'
 
+#define CERRADO_POR_DEADLOCK -9
+
 enum mate_errors {
     MATE_FREE_FAULT = -5,
     MATE_READ_FAULT = -6,
