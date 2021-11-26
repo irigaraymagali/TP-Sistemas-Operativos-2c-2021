@@ -1,19 +1,37 @@
 {
+    "version": "2.0.0",
     "tasks": [
         {
+            "label": "Swamp Make",
             "type": "shell",
-            "label": "gcc-5 build active file",
-            "command": "/usr/bin/gcc-5",
-            "args": [
-                "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
-            ],
-            "options": {
-                "cwd": "/usr/bin"
-            }
+            "command": "make",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Swamp Normal",
+            "type": "shell",
+            "command": "sh ./swap/exec.sh",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Swamp Valgrind",
+            "type": "shell",
+            "command": "sh ./swap/exec.sh",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Swamp Helgrind",
+            "type": "shell",
+            "command": "sh ./swap/exec.sh",
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
-    ],
-    "version": "2.0.0"
+    ]
 }
