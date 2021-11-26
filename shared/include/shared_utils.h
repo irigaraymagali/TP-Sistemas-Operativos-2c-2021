@@ -46,7 +46,7 @@
 
 
 
-
+#define CERRADO_POR_DEADLOCK -9
 
 typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
 {
