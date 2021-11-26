@@ -100,6 +100,7 @@ pthread_mutex_t sem_cola_exit;
 pthread_mutex_t sem_cola_suspended_blocked;
 pthread_mutex_t sem_cola_suspended_ready;
 pthread_mutex_t sem_CPU_libres;
+pthread_mutex_t mutex_para_CPU;
 
 // log
 t_log *logger;

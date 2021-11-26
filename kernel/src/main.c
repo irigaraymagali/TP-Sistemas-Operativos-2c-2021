@@ -66,6 +66,8 @@ void inicializar_colas(){
     CPU_libres = queue_create();
     pthread_mutex_init(&sem_CPU_libres, NULL);
 
+    pthread_mutex_init(&mutex_para_CPU, NULL);
+
 }
 
 void inicializar_semaforos(){ 
@@ -141,6 +143,7 @@ void free_memory(){
     pthread_mutex_destroy(&sem_cola_blocked);
     pthread_mutex_destroy(&sem_cola_suspended_blocked);
     pthread_mutex_destroy(&sem_cola_suspended_ready);
+    pthread_mutex_destroy(&mutex_para_CPU);
 
     // hacer => free a todo
     // martin => liberar memoria en todos lados
@@ -1049,10 +1052,13 @@ void ejecuta(void *id_cpu){
     while(1){
 
         int *id = (int *) id_cpu;
-        //hacer => mutex
+    
+        pthread_mutex_lock(&mutex_para_CPU); 
+
         sem_wait(&usar_CPU[*id]); // espera hasta que algun carpincho haga post para usar ese cpu
         sem_wait(&CPU_libre[*id]); // indica que ya no está más libre ese cpu
-        //hacer => mutex
+
+        pthread_mutex_unlock(&mutex_para_CPU); 
         
         sem_wait(&liberar_CPU[*id]); // espera a que algun carpincho indique que quiere liberar el cpu
         queue_push(CPU_libres, id);
@@ -1291,7 +1297,8 @@ void solucionar_deadlock(){
     mate_close(mayor_id_hasta_ahora, carpincho_a_eliminar->fd);
 
     for(int i=0; i<list_size(carpincho_a_eliminar->semaforos_retenidos); i++){ //simular post a los semaforos que tenia retenido ese carpincho
-        sem_t *semaforo = (sem_t *) list_get((carpincho_a_eliminar->semaforos_retenidos), i);
+        t_list* retenidos_del_carpi = carpincho_a_eliminar->semaforos_retenidos;
+        sem_t semaforo = list_get(retenidos_del_carpi, i);
         sem_post(&semaforo);
     }
     
