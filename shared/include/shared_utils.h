@@ -36,25 +36,35 @@
 #define MEMORIA_BACKEND = 2 // cuando la memoria responda, va a responder 2
 
 //estados
-#define NEW = 'N'
-#define READY = 'R'
-#define EXEC = 'E'
-#define BLOCKED = 'B'
-#define SUSPENDED_BLOCKED = 'S'
-#define SUSPENDED_READY = 'Y'
-#define EXIT = 'X'
-
-
+#define NEW 'N'
+#define READY 'R'
+#define EXEC 'E'
+#define BLOCKED 'B'
+#define SUSPENDED_BLOCKED 'S'
+#define SUSPENDED_READY 'Y'
+#define EXIT 'X'
 
 #define CERRADO_POR_DEADLOCK -9
+
+enum mate_errors {
+    MATE_FREE_FAULT = -5,
+    MATE_READ_FAULT = -6,
+    MATE_WRITE_FAULT = -7
+};
 
 typedef struct mate_inner_structure // datos para poder saber qué está pidiendo el carpincho cuando se conecte con backend
 {
     int id;
-    char semaforo; 
+    char *semaforo; 
     int valor_semaforo; 
-    char dispositivo_io; 
+    char *dispositivo_io; 
 } mate_inner_structure;
+
+typedef char *mate_io_resource;
+
+typedef char *mate_sem_name;
+
+typedef int32_t mate_pointer;
 
 
 char* mi_funcion_compartida();
