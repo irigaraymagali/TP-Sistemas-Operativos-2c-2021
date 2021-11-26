@@ -121,12 +121,17 @@ void free_memory(){
     
     config_destroy(config);     
     log_destroy(logger);
+
 	list_destroy_and_destroy_elements(lista_carpinchos, free); 
+
     list_destroy_and_destroy_elements(hilos_CPU, free);
+
     list_destroy_and_destroy_elements(semaforos_carpinchos, remove_semaforos_carpinchos);
     list_destroy_and_destroy_elements(semaforos_carpinchos, free);
+
     sem_destroy(&sem_grado_multiprogramacion_libre);  
 	sem_destroy(&sem_grado_multiprocesamiento_libre); 
+
     sem_destroy(&hay_estructura_creada);
     sem_destroy(&cola_ready_con_elementos);
     sem_destroy(&cola_exec_con_elementos);
@@ -134,6 +139,7 @@ void free_memory(){
     sem_destroy(&hay_bloqueados_para_deadlock);
     sem_destroy(&cola_suspended_blocked_con_elementos);
     sem_destroy(&cola_suspended_ready_con_elementos); 
+
     pthread_mutex_destroy(&sem_cola_new);
     pthread_mutex_destroy(&sem_cola_ready);
     pthread_mutex_destroy(&sem_cola_exec);
@@ -141,8 +147,10 @@ void free_memory(){
     pthread_mutex_destroy(&sem_cola_suspended_blocked);
     pthread_mutex_destroy(&sem_cola_suspended_ready);
     pthread_mutex_destroy(&mutex_para_CPU);
+
     // hacer => free a todo
     // martin => liberar memoria en todos lados
+
     exit(EXIT_SUCCESS);
     */ //ver despues para liberar memoria
 }
