@@ -5,7 +5,7 @@ int id_carpincho;
 
 int armar_socket_desde_binario(char* config,t_log* logger){
    
-    // FALTA leer archivo binario
+    // FALTA leer archivo 
 
     char *ip;
     char *puerto;
@@ -17,17 +17,9 @@ int armar_socket_desde_binario(char* config,t_log* logger){
 /////////////////////////---------------------------- funciones a parte ------------------------///////////////////////////////////////
 
 void* armar_paquete(mate_inner_structure* estructura_interna){ // serializar estructura interna para mandar al carpincho
-   
     int sem_len =  string_length(estructura_interna->semaforo);
     int sem_dis_io = string_length(estructura_interna->dispositivo_io);
-    return _serialize( sizeof(int) * 4 + sem_len + sem_dis_io                       
-                       , "%d%s%d%s",
-                        estructura_interna->id,
-                        estructura_interna->semaforo,
-                        estructura_interna->valor_semaforo, 
-                        estructura_interna->dispositivo_io            
-                    );
-
+    return _serialize( sizeof(int) * 4 + sem_len + sem_dis_io, "%d%s%d%s", estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, estructura_interna->dispositivo_io);
 }
 
 mate_inner_structure* convertir_a_estructura_interna(mate_instance* lib_ref){ // usarla para, de lo que manda el capincho, poder utilizar la estructura interna
@@ -36,20 +28,21 @@ mate_inner_structure* convertir_a_estructura_interna(mate_instance* lib_ref){ //
 
 
 int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_interna){
+    
     void* payload = armar_paquete(estructura_interna);
     int sem_len =  string_length(estructura_interna->semaforo);
-    int sem_dis_io = string_length(estructura_interna->dispositivo_io);
-    int size =  sizeof(int) * 4 + sem_len + sem_dis_io;
+    int len_dis_io = string_length(estructura_interna->dispositivo_io);
+    int size =  sizeof(int) * 4 + sem_len + len_dis_io;
    
     int  conexion_con_backend = _send_message(socket_backend, ID_MATE_LIB, id_funcion, payload, size, logger); // envia la estructura al backend para que inicialice todo
     
     free(payload);
+
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
         return conexion_con_backend;  
     }
     else{
-        // está bien así?
         t_mensaje* buffer = _receive_message(socket_backend, logger);
         return deserializar_numero(buffer);
     }
@@ -78,17 +71,19 @@ int mate_init(mate_instance *lib_ref, char *config)
 
     int conexion_con_backend;
     int sem_len =  string_length(estructura_interna->semaforo);
-    int sem_dis_io = string_length(estructura_interna->dispositivo_io);
-    int size =  sizeof(int) * 4 + sem_len + sem_dis_io;
+    int len_dis_io = string_length(estructura_interna->dispositivo_io);
+    int size =  sizeof(int) * 4 + sem_len + len_dis_io;
     void* payload = armar_paquete(estructura_interna);
 
+    // martin -> esta bien que el socket sea siempre este? o habria que abrirlo y cerrarlo cada vez?
     socket_backend = armar_socket_desde_binario(config,logger);
-    sdfsdhsg
+
     printf("socket: %d\n", socket_backend);
 
     conexion_con_backend = _send_message(socket_backend, ID_MATE_LIB, MATE_INIT, payload, size, logger); // envia la estructura al backend para que inicialice todo
 
     free(payload);
+
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
         return conexion_con_backend;  
@@ -98,6 +93,7 @@ int mate_init(mate_instance *lib_ref, char *config)
         t_mensaje* buffer = _receive_message(socket_backend, logger);
         id_recibido = deserializar_numero(buffer);
         estructura_interna->id = id_recibido;
+        //&lib_ref->group_info = (void*)estructura_interna; martin => ver esto y cambiar en todas las funciones
         return 0;
     }  
 }
@@ -158,9 +154,10 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 
     void* payload = _serialize(sizeof(int) * 2, "%d%d", estructura_interna->id, size);
 
-    conexion_con_backend = _send_message(   socket_backend, ID_MATE_LIB, MATE_MEMALLOC, payload, sizeof(int)*2, logger); 
+    conexion_con_backend = _send_message(socket_backend, ID_MATE_LIB, MATE_MEMALLOC, payload, sizeof(int)*2, logger); 
 
     free(payload);
+    
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
         return conexion_con_backend;  
@@ -172,7 +169,11 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
         buffer = _receive_message(socket_backend, logger);
 
         memcpy(&pointer, buffer->payload, sizeof(int));
-       
+        
+        free(buffer->identifier);
+        free(buffer->payload);
+        free(buffer);
+        
         return pointer;  
     } 
 }
@@ -182,15 +183,10 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
     int conexion_con_backend;
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     void* paylaod = _serialize(sizeof(int) + sizeof(mate_pointer), "%d%d", estructura_interna->id, addr);
-    conexion_con_backend = _send_message(
-                                            socket_backend, 
-                                            ID_MATE_LIB, 
-                                            MATE_MEMFREE, 
-                                            paylaod, 
-                                            sizeof(int) + sizeof(mate_pointer), 
-                                            logger); 
+    conexion_con_backend = _send_message( socket_backend, ID_MATE_LIB, MATE_MEMFREE, paylaod, sizeof(int) + sizeof(mate_pointer), logger); 
 
     free(paylaod);
+
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
         return conexion_con_backend;  
@@ -208,9 +204,11 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
         } else {
             log_error(logger,"no se pudo hacer el memfree");
         }
+
          free(buffer->payload);
          free(buffer->identifier);
          free(buffer);
+
         return resultado; 
     } 
 }
@@ -219,18 +217,9 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
 {
     int conexion_con_backend;
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
-    void* payload = _serialize(sizeof(int) * 3, 
-                                 "%d%d%d",
-                                 estructura_interna->id, 
-                                 origin,
-                                 size);
+    void* payload = _serialize(sizeof(int) * 3, "%d%d%d", estructura_interna->id, origin, size);
    
-    conexion_con_backend = _send_message(   socket_backend, 
-                                            ID_MATE_LIB, 
-                                            MATE_MEMREAD, 
-                                            payload, 
-                                            sizeof(int) * 3, 
-                                            logger); 
+    conexion_con_backend = _send_message(   socket_backend, ID_MATE_LIB, MATE_MEMREAD, payload, sizeof(int) * 3, logger); 
 
     free(payload);
     if(conexion_con_backend < 0 ){ 
@@ -249,38 +238,21 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
            memcpy(dest, buffer->payload + sizeof(int), resultado); 
         } else {
            log_error(logger, "No se pudo leer el contenido con exito");
-           free(buffer->payload);
-           free(buffer->identifier);
-           free(buffer);
-           return resultado;
         }
        
         free(buffer->payload);
         free(buffer->identifier);
         free(buffer);
-        return 0; // o tengo que devolver resultado?  
-        
+        return resultado;  
     }   
-
 }
 
 int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int size)
 {
     int conexion_con_backend;
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
-    void* payload = _serialize(sizeof(int) * 3 + size, 
-                              "%d%d%d%v",
-                              estructura_interna->id, 
-                              dest,
-                              size,
-                              origin);
-    conexion_con_backend = _send_message(
-                                            socket_backend, 
-                                            ID_MATE_LIB, 
-                                            MATE_MEMWRITE, 
-                                            payload, 
-                                            sizeof(sizeof(int) * 2 + sizeof(int) * sizeof(origin) + sizeof(int) +  sizeof(int)), 
-                                            logger); 
+    void* payload = _serialize(sizeof(int) * 3 + size, "%d%d%d%v", estructura_interna->id, dest, size, origin);
+    conexion_con_backend = _send_message( socket_backend, ID_MATE_LIB, MATE_MEMWRITE, payload, sizeof(sizeof(int) * 2 + sizeof(int) * sizeof(origin) + sizeof(int) +  sizeof(int)), logger); 
 
     free(payload);
    

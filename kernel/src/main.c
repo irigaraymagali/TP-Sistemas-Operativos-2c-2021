@@ -14,7 +14,7 @@ int main(int argc, char ** argv){
     lista_dispositivos_io = list_create(); // crear lista para ir guardando los dispositivios io
 
     t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
-
+    
     crear_estructura_dispositivo();
     inicializar_semaforos();
 	inicializar_colas();
@@ -38,6 +38,7 @@ int main(int argc, char ** argv){
     pthread_join ( planficador_mediano_plazo , NULL ) ;    
 
     free_memory();
+
 
 }
 
@@ -265,11 +266,28 @@ void mate_close(int id_carpincho, int fd){
     }
 
     list_remove_by_condition(lista_carpinchos, es_el_carpincho);
-
-    exec_a_exit(id_carpincho, fd); // acá se encarga de avisar a memoria y responder al fd
-
-    log_info(logger, "La estructura del carpincho %d se eliminó correctamente", id_carpincho);
     
+    if(carpincho_a_cerrar->estado == EXEC){
+        exec_a_exit(id_carpincho, fd); // acá se encarga de avisar a memoria y responder al fd
+
+    }
+    else if(carpincho_a_cerrar->estado == BLOCKED) 
+    {
+        // salir de la cola de bloqueado
+        // hacer post a sem_multiprogramacion
+        // borrar su estructura
+        // avisar a memoria que lo eliminamos 
+    }
+    else{
+        // salir de la cola de suspended_blocked
+        // borrar su estructura
+        // avisar a memoria que lo eliminamos 
+    }
+
+    // chequear si es necesario que se haga post a todos los semaforos que tenia retenido el carpincho
+    log_info(logger, "La estructura del carpincho %d se eliminó correctamente", id_carpincho);
+
+    // martin -> hace falta cerrar el socket con la lib
 
 }
 
@@ -1290,7 +1308,7 @@ void detectar_deadlock(){
     }
 
     if(formar_ciclo()){
-        solucionar_deadlock();
+       // solucionar_deadlock();
     }
 
     list_clean(lista_posibles);
@@ -1299,66 +1317,179 @@ void detectar_deadlock(){
 }
 
 
- // s1 de la lista de conectados: c1 -> lo tiene c2 -> lo tiene c3 -> lo tiene c1 => deadlock
-    bool formar_ciclo(){
+// s1 de la lista de conectados: c1 -> lo tiene c2 -> lo tiene c3 -> lo tiene c1 => deadlock
+bool formar_ciclo(){
 
-        int carpincho_base = 0;
-        int id_carpincho_bloquiante;
+        int id_base = 0;
+        data_carpincho *carpincho_base;
+        int carpincho_C;
         data_carpincho *carpincho_B;
         data_carpincho *carpincho_A;
 
 
+    while( id_base != (list_size(lista_conectados)-1)){  
 
-    while(carpincho_base!=(list_size(lista_conectados)-1)){
+        carpincho_C = id_base;
 
-        carpincho_A = list_get(lista_conectados, carpincho_base); 
-        carpincho_B = carpincho_A->tiene_su_espera;
+        bool esIgualACarpincho_A(void *id){
+            return (int)id == carpincho_A->id;
+        }
+        bool esIgualACarpincho_B(void *id){
+            return (int)id == carpincho_B->id;
+        }
+        bool esIgualACarpincho_C(void *id){
+            return (int)id == carpincho_C;
+        }
 
-            
-        id_carpincho_bloquiante = carpincho_B->tiene_su_espera; 
-        list_add(ciclo_deadlock,(void*)carpincho_B->id);
-        list_add(ciclo_deadlock,(void*)id_carpincho_bloquiante);
-                
-                if(carpincho_A->id == id_carpincho_bloquiante){
-                 return true;               
-                }
+        for(int i = 0; i < list_size(lista_conectados); i++){
 
-            
-              
-        carpincho_base = id_carpincho_bloquiante;
-        
+            carpincho_base = list_get(lista_conectados, id_base); 
+            carpincho_A = list_get(lista_conectados, carpincho_C);  
+            carpincho_B = encontrar_estructura_segun_id(carpincho_A->tiene_su_espera); 
+
+            carpincho_C = carpincho_B->tiene_su_espera;  
+
+            if(!list_any_satisfy(ciclo_deadlock, (void *)esIgualACarpincho_A)){
+                list_add(ciclo_deadlock,(void*)carpincho_A->id);   
+            }
+            if(!list_any_satisfy(ciclo_deadlock, (void *)esIgualACarpincho_B)){
+                list_add(ciclo_deadlock,(void*)carpincho_B->id);
+            }     
+            if(!list_any_satisfy(ciclo_deadlock, (void *)esIgualACarpincho_C)){
+                list_add(ciclo_deadlock,(void*)carpincho_C);
+            }
+                        
+            if(carpincho_base->id == carpincho_C || carpincho_base->tiene_su_espera == carpincho_C){
+                return true;               
+            }
+        }
+
         list_clean(ciclo_deadlock);
-    }
-        
-        return false;
+        id_base ++;
+
     }
 
-/* 
+    return false;
+}
+/*
 void solucionar_deadlock(){
 
     int mayor_id_hasta_ahora = 0;
+    int id_actual;
+
     for(int i= 0; i< list_size(ciclo_deadlock); i++){
         
         data_carpincho *carpincho = list_get(ciclo_deadlock, i);
-        int id_actual = carpincho->id;
-            if(id_actual < mayor_id_hasta_ahora){    
-                mayor_id_hasta_ahora = id_actual;
-            }
+        id_actual = carpincho->id;
+        if(id_actual > mayor_id_hasta_ahora){    
+            mayor_id_hasta_ahora = id_actual;
+        }
     }
 
-   data_carpincho *carpincho_a_eliminar = encontrar_estructura_segun_id(mayor_id_hasta_ahora);
+    data_carpincho *carpincho_a_eliminar = encontrar_estructura_segun_id(mayor_id_hasta_ahora);
 
-   //simular mate_close para carpincho_a_eliminar
+    mate_close(carpincho_a_eliminar);
 
     for(int i=0; i<list_size(carpincho_a_eliminar->semaforos_retenidos); i++){ //simular post a los semaforos que tenia retenido ese carpincho
         sem_t semaforo = list_get((carpincho_a_eliminar->semaforos_retenidos, i);
         sem_post(&semaforo);
     }
     
-    //cerrar socket
+
 }
-
-
 
 */
 
+
+/* CAMBIOS PARA EL HANDLER
+void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
+    
+    log_info(logger, "Recibí un mensaje");
+    data_carpincho* estructura_interna = deserializar(payload);
+    int id_carpincho;
+    int size_memoria;
+    int addr_memfree;
+    int origin_memread;
+    void *origin_memwrite;
+    int dest_memwrite;
+    int offset = 0;
+    int ptr_len = 0;
+
+    if(strcmp(id, ID_MATE_LIB) == 0){ // comparison with string literal results in unspecified behavior
+        switch(opcode){
+            case MATE_INIT:
+                mate_init(fd);
+            break;
+            case MATE_CLOSE: 
+                mate_close(estructura_interna->id,fd); // gonza .> passing argument 1 of ‘mate_close’ makes integer from pointer without a cast (le agregue * porque es tipo data_carpincho)
+            break;
+            case MATE_SEM_INIT: 
+                mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
+            break;
+            case MATE_SEM_WAIT: 
+                mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
+            break;
+            case MATE_SEM_POST: 
+                mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
+            break;
+            case MATE_SEM_DESTROY:
+                mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
+            break;
+            case MATE_CALL_IO:
+                mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
+            break;       
+            case MATE_MEMALLOC: 
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // size_memoria
+                memcpy(&size_memoria, payload, sizeof(int));
+                offset += sizeof(int);
+
+                mate_memalloc(id_carpincho, size_memoria, fd);      
+            break;      
+            case MATE_MEMFREE:
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // addr_memfree
+                memcpy(&addr_memfree, payload, sizeof(int));
+                offset += sizeof(int);
+
+                mate_memfree(id_carpincho, addr_memfree, fd);      
+            break;      
+            case MATE_MEMREAD: 
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // origin_memread
+                memcpy(&origin_memread, payload, sizeof(int));
+                offset += sizeof(int);
+                // size_memoria
+                memcpy(&size_memoria, payload, sizeof(int));
+                offset += sizeof(int);
+
+                mate_memread(id_carpincho, origin_memread, dest_memread, size_memoria, fd);            
+            break;
+            case MATE_MEMWRITE:  
+                // id_carpincho
+                memcpy(&id_carpincho, payload, sizeof(int));
+                offset += sizeof(int);
+                // origin_memwrite
+                memcpy(&ptr_len, payload + offset, sizeof(int));
+                offset += sizeof(int);
+                memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
+                offset += sizeof(int)* ptr_len;                
+                // dest_memwrite
+                memcpy(&dest_memwrite, payload, sizeof(int));
+                offset += sizeof(int);
+                // size_memoria
+                memcpy(&size_memoria, payload, sizeof(int));
+                offset += sizeof(int);
+
+                mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);     
+            break;  
+        }
+    }
+}
+*/
