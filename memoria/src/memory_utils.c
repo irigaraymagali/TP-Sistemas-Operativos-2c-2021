@@ -741,7 +741,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 
                 int frameFinal = getFrameDeUn(idProcess, paginaActual + 1);
 
-                memcpy(paginasAuxiliares + tamanioDePagina, memoria + frameFinal, tamanioDePagina);
+                memcpy(paginasAuxiliares + tamanioDePagina, memoria + frameFinal*tamanioDePagina, tamanioDePagina);
 
                 int allocDentroDelFrame = (dirAllocActual ) - ((paginaActual-1) * tamanioDePagina);
 
@@ -753,7 +753,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 
                 memcpy(memoria + frameBuscado*tamanioDePagina, paginasAuxiliares, tamanioDePagina);
 
-                memcpy(memoria + frameFinal, paginasAuxiliares+tamanioDePagina, tamanioDePagina);
+                memcpy(memoria + frameFinal*tamanioDePagina, paginasAuxiliares+tamanioDePagina, tamanioDePagina);
 
                 free(paginasAuxiliares);
             }
@@ -770,7 +770,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
                 while(contador<= paginaFinal){
                     int frameIterador = getFrameDeUn(idProcess,contador);
 
-                    memcpy(paginasAuxiliares + offsetAuxiliar, memoria + frameIterador, tamanioDePagina);
+                    memcpy(paginasAuxiliares + offsetAuxiliar, memoria + frameIterador*tamanioDePagina, tamanioDePagina);
 
                     cantDePags++;
                     contador++;
@@ -790,7 +790,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
                 while(contador<= paginaFinal){
                     int frameIterador = getFrameDeUn(idProcess,contador);
 
-                    memcpy(memoria + frameIterador, paginasAuxiliares + offsetAuxiliar, tamanioDePagina);
+                    memcpy(memoria + frameIterador*tamanioDePagina, paginasAuxiliares + offsetAuxiliar, tamanioDePagina);
 
                     contador++;
                     offsetAuxiliar += tamanioDePagina;
@@ -813,7 +813,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
                     {
                         int frameIterador = getFrameDeUn(idProcess, contador);
 
-                        memcpy(paginasAuxiliares+ offsetAux,memoria+frameIterador,tamanioDePagina);
+                        memcpy(paginasAuxiliares+ offsetAux,memoria+frameIterador*tamanioDePagina,tamanioDePagina);
 
                         offsetAux+=tamanioDePagina;
                         contador++;
@@ -831,7 +831,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
                     while(contador<= paginaFinal){
                         int frameIterador = getFrameDeUn(idProcess,contador);
 
-                        memcpy(memoria + frameIterador, paginasAuxiliares + offsetAux, tamanioDePagina);
+                        memcpy(memoria + frameIterador*tamanioDePagina, paginasAuxiliares + offsetAux, tamanioDePagina);
 
                         contador++;
                         offsetAux += tamanioDePagina;
