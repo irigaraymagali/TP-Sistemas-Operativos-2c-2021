@@ -54,7 +54,7 @@ int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_intern
 int mate_init(mate_instance *lib_ref, char *config)
 {
     // post pruebas => ver si trae problemas tener un solo log
-    logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
+    logger = log_create("./cfg/mate-lib.log", "[Mate-Lib]", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
 
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
 

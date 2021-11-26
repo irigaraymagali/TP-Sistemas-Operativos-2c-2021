@@ -13,7 +13,7 @@ int main(int argc, char ** argv){
     hilos_CPU = list_create(); // crear lista para ir guardando los hilos cpus
     lista_dispositivos_io = list_create(); // crear lista para ir guardando los dispositivios io
 
-    t_log* logger = log_create("./cfg/kernel.log", "KERNEL", true, LOG_LEVEL_INFO);
+    logger = log_create("./cfg/kernel.log", "[Kernel]", true, LOG_LEVEL_INFO);
 	char *puerto_escucha = config_get_string_value(config, "PUERTO_ESCUCHA");        
     
     crear_estructura_dispositivo();
@@ -222,12 +222,16 @@ void mate_init(int fd){
     payload = _serialize(sizeof(int), "%d", carpincho->id);
 
     int socket_memoria;
-    socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
+    char* ip_memoria = string_from_format("%s", config_get_string_value(config, "IP_MEMORIA"));
+    char* puerto_memoria = string_from_format("%s", config_get_string_value(config, "PUERTO_MEMORIA"));
+    socket_memoria = _connect(ip_memoria, puerto_memoria, logger);
+    free(ip_memoria);
+    free(puerto_memoria);
     
-    int respuesta_memoria;
+    int respuesta_memoria = 1;
 
     if(socket_memoria >= 0){
-       _send_message(socket_memoria, ID_KERNEL, MATE_INIT, payload , sizeof(int), logger); 
+        _send_message(socket_memoria, ID_KERNEL, MATE_INIT, payload , sizeof(int), logger); 
         t_mensaje *buffer;
         buffer = _receive_message(socket_memoria, logger);
         memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
@@ -241,10 +245,10 @@ void mate_init(int fd){
         log_error(logger, "no se pudo conectar con el módulo memoria");
     }
 
-    if(respuesta_memoria >= 0){  
+    if(respuesta_memoria >= 0){
         log_info(logger, "La estructura del carpincho %d se creó correctamente en memoria", id_carpincho);
         list_add(lista_carpinchos, (void *) carpincho);
-        sem_post(&hay_estructura_creada);
+        // sem_post(&hay_estructura_creada);
         _send_message(fd, ID_KERNEL, MATE_INIT, payload, sizeof(int), logger);
     }
     else{

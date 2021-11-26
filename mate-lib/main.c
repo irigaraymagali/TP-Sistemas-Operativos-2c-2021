@@ -30,6 +30,4 @@ int main(int argc, char *argv[]) {
     // Lib instantiation
     mate_instance mate_ref;
     mate_init(&mate_ref, "./cfg/mate-lib.conf");
-
-
 }
