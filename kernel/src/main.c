@@ -66,6 +66,8 @@ void inicializar_colas(){
     CPU_libres = queue_create();
     pthread_mutex_init(&sem_CPU_libres, NULL);
 
+    pthread_mutex_init(&mutex_para_CPU, NULL);
+
 }
 
 void inicializar_semaforos(){ 
@@ -141,6 +143,7 @@ void free_memory(){
     pthread_mutex_destroy(&sem_cola_blocked);
     pthread_mutex_destroy(&sem_cola_suspended_blocked);
     pthread_mutex_destroy(&sem_cola_suspended_ready);
+    pthread_mutex_destroy(&mutex_para_CPU);
 
     // hacer => free a todo
     // martin => liberar memoria en todos lados
@@ -260,14 +263,31 @@ void mate_close(int id_carpincho, int fd){
         exec_a_exit(id_carpincho, fd); 
     }
     else if(carpincho_a_cerrar->estado == BLOCKED) 
-    { // hacer
-        // salir de la cola de bloqueado
-        // hacer post a sem_multiprogramacion
+    {      
+         bool es_el_mismo(void* carpincho){
+            return ((data_carpincho *) carpincho)->id == carpincho_a_cerrar->id;
+        }
+
+        pthread_mutex_lock(&sem_cola_blocked);
+        list_remove_by_condition(blocked, es_el_mismo); // salir de la cola de bloqueado
+        pthread_mutex_unlock(&sem_cola_blocked);
+   
+        sem_post(&sem_grado_multiprogramacion_libre);
+
+    // hacer
         // borrar su estructura
         // avisar a memoria que lo eliminamos 
     }
-    else{ // hacer
-        // salir de la cola de suspended_blocked
+    else{ 
+        bool son_el_mismo(void* carpincho){
+            return ((data_carpincho *) carpincho)->id == carpincho_a_cerrar->id;
+        }
+
+        pthread_mutex_lock(&sem_cola_suspended_blocked);
+        list_remove_by_condition(suspended_blocked, son_el_mismo); // salir de la cola de suspended_blocked
+        pthread_mutex_unlock(&sem_cola_suspended_blocked);
+
+    // hacer
         // borrar su estructura
         // avisar a memoria que lo eliminamos 
     }
@@ -350,7 +370,7 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     {
         void* payload;
         payload = _serialize(sizeof(int), "%d", -1);
-        log_info(logger, "se intento hacer wait de un semaforo no inicializado");
+        log_info(logger, "Se intento hacer wait de un semaforo no inicializado");
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
 
@@ -397,7 +417,7 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     else
     {
         payload = _serialize(sizeof(int), "%d", -1);
-        log_info(logger, "se intento hacer post de un semaforo no inicializado");
+        log_info(logger, "Se intento hacer post de un semaforo no inicializado");
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
 }
@@ -419,14 +439,14 @@ void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
             _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
        }
        else{
-            log_info(logger, "no se puede destruir un semáforo que tenga carpinchos en wait");
+            log_info(logger, "No se puede destruir un semáforo que tenga carpinchos en wait");
             payload = _serialize(sizeof(int), "%d", -2);
             _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
        }
     }
     else
     {
-        log_info(logger, "se intento borrar un semaforo no inicializado");
+        log_info(logger, "Se intento borrar un semaforo no inicializado");
         payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
@@ -456,7 +476,8 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); 
 
         if(dispositivo_pedido->en_uso){
-           queue_push(dispositivo_pedido->en_espera, carpincho);       
+           queue_push(dispositivo_pedido->en_espera, carpincho);  
+           log_info(logger, "El dispositivo IO esta en uso");     
         }
         else{ 
             dispositivo_pedido->en_uso = true;
@@ -469,6 +490,7 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
                 usleep(dispositivo_pedido->duracion);
                 block_a_ready(carpincho_siguiente);
             }
+            log_info(logger, "Se le dio el dispositivo IO");
         }
     }
     else
@@ -532,16 +554,16 @@ void mate_memalloc(int id_carpincho, int size, int fd){  // martin => hay que re
         close(socket_memoria);
     }
     else{
-        log_error(logger, "no se pudo conectar con el módulo memoria");
+        log_error(logger, "No se pudo conectar con el módulo memoria");
     }
 
     if(respuesta_memoria >= 0){
-        log_info(logger,"el memalloc se realizó correctamente");
+        log_info(logger,"El memalloc se realizó correctamente");
         void *payload = _serialize(sizeof(int), "%d", 0);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
     else{
-        log_info(logger,"no se pudo realizar el memalloc");
+        log_info(logger,"No se pudo realizar el memalloc");
         void *payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }   
@@ -572,16 +594,16 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
         close(socket_memoria);
     }
     else{
-        log_error(logger, "no se pudo conectar con el módulo memoria");
+        log_error(logger, "No se pudo conectar con el módulo memoria");
     }
 
     if(respuesta_memoria >= 0){
-        log_info(logger,"el memalloc se realizó correctamente");
+        log_info(logger,"El memalloc se realizó correctamente");
         void *payload = _serialize(sizeof(int), "%d", 0);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
     else{
-        log_info(logger,"no se pudo realizar el memalloc");
+        log_info(logger,"No se pudo realizar el memalloc");
         void *payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }   
@@ -613,17 +635,17 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
         close(socket_memoria);
     }
     else{
-        log_error(logger, "no se pudo conectar con el módulo memoria");
+        log_error(logger, "No se pudo conectar con el módulo memoria");
     }
 
 
     if(respuesta_memoria >= 0){
-        log_info(logger,"el memread se realizó correctamente");
+        log_info(logger,"El memread se realizó correctamente");
         void *payload = _serialize(sizeof(int), "%d", 0);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
     else{
-        log_info(logger,"no se pudo realizar el memread");
+        log_info(logger,"No se pudo realizar el memread");
         void *payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
@@ -658,17 +680,17 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
         close(socket_memoria);
     }
     else{
-        log_error(logger, "no se pudo conectar con el módulo memoria");
+        log_error(logger, "No se pudo conectar con el módulo memoria");
     }
 
     if(respuesta_memoria >= 0){
 
-        log_info(logger,"el memread se realizó correctamente");
+        log_info(logger,"El memread se realizó correctamente");
         void *payload = _serialize(sizeof(int), "%d", 0);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
     else{
-        log_info(logger,"no se pudo realizar el memread");
+        log_info(logger,"No se pudo realizar el memread");
         void *payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
 
@@ -696,6 +718,8 @@ void entrantes_a_ready(){
 
             pthread_mutex_unlock(&sem_cola_ready); 
             pthread_mutex_unlock(&sem_cola_suspended_ready); 
+
+            log_info(logger, "El carpincho %d paso a READY", carpincho_a_mover->id);
             
         }
         else{ 
@@ -709,6 +733,8 @@ void entrantes_a_ready(){
 
             pthread_mutex_unlock(&sem_cola_new);
             pthread_mutex_unlock(&sem_cola_ready);
+
+            log_info(logger, "El carpincho %d paso a READY", carpincho_a_mover->id);
         }
         
         carpincho_a_mover->estado = READY;
@@ -756,9 +782,11 @@ void ready_a_exec(){
 		pthread_mutex_unlock(&sem_cola_exec);
 		pthread_mutex_unlock(&sem_cola_ready);
 
+        log_info(logger, "El carpincho %d paso a EXEC", carpincho_a_mover->id);
+
         carpincho_a_mover->estado = EXEC;
 
-       carpincho_a_mover->tiempo_entrada_a_exec = calcular_milisegundos(); 
+        carpincho_a_mover->tiempo_entrada_a_exec = calcular_milisegundos(); 
 
         payload =  _serialize(sizeof(int), "%d", 0);
         _send_message(carpincho_a_mover->fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
@@ -797,6 +825,8 @@ void exec_a_block(int id_carpincho){
 
     sem_post(&sem_hay_bloqueados);
     sem_post(&hay_bloqueados_para_deadlock);
+
+    log_info(logger, "El carpincho %d paso a BLOCKED", carpincho_a_bloquear->id);
 }
 
 void exec_a_exit(int id_carpincho, int fd){
@@ -832,6 +862,8 @@ void exec_a_exit(int id_carpincho, int fd){
     list_remove_by_condition(exec, es_el_mismo);
 	pthread_mutex_unlock(&sem_cola_exec);
 
+    log_info(logger, "El carpincho %d paso a EXIT", carpincho_que_termino->id);
+
     sem_post(&(liberar_CPU[carpincho_que_termino->CPU_en_uso])); 
     sem_post(&sem_grado_multiprogramacion_libre);
 
@@ -857,6 +889,8 @@ void block_a_ready(data_carpincho *carpincho_a_ready){
     pthread_mutex_unlock(&sem_cola_blocked);
     pthread_mutex_unlock(&sem_cola_ready);
 
+    log_info(logger, "El carpincho %d paso a READY", carpincho_a_ready->id);
+
     carpincho_a_ready->estado = READY;
     sem_post(&cola_ready_con_elementos);
 
@@ -872,14 +906,16 @@ void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
        return ((data_carpincho *) carpincho_lista)->id == carpincho->id;
     }   
 
-    pthread_mutex_lock(&sem_cola_ready); 
-    pthread_mutex_lock(&sem_cola_blocked);
+    pthread_mutex_lock(&sem_cola_suspended_ready);  
+    pthread_mutex_lock(&sem_cola_suspended_blocked);
 
     queue_push(suspended_ready, (void*)carpincho);
     list_remove_by_condition(suspended_blocked, esIgualACarpincho);
 
-    pthread_mutex_unlock(&sem_cola_blocked);
-    pthread_mutex_unlock(&sem_cola_ready);
+    pthread_mutex_unlock(&sem_cola_suspended_blocked);
+    pthread_mutex_unlock(&sem_cola_suspended_ready);
+
+    log_info(logger, "El carpincho %d paso a SUSPENDED READY", carpincho->id);
 
     carpincho->estado = SUSPENDED_READY; 
     sem_post(&hay_estructura_creada);
@@ -960,7 +996,7 @@ data_carpincho* ready_a_exec_SJF(){
     }
     list_iterator_destroy(list_iterator);
 
-    
+    log_info(logger, "SJF elige al carpincho %d ", carpincho_menor->id);
     return  carpincho_menor;        
 }
 
@@ -985,6 +1021,7 @@ data_carpincho* ready_a_exec_HRRN(){
             }          
     }
     list_iterator_destroy(list_iterator);
+    log_info(logger, "HRRN elige al carpincho %d ", carpincho_mayor->id);
     return carpincho_mayor;     
 }
 
@@ -1051,18 +1088,21 @@ void ejecuta(void *id_cpu){
     while(1){
 
         int *id = (int *) id_cpu;
-        //hacer => mutex
+    
+        pthread_mutex_lock(&mutex_para_CPU); 
+
         sem_wait(&usar_CPU[*id]); // espera hasta que algun carpincho haga post para usar ese cpu
-        sem_wait(&CPU_libre[*id]); // indica que ya no está más libre ese cpu
-        //hacer => mutex
+        sem_wait(&CPU_libre[*id]); // ya no está más libre ese cpu
+
+        pthread_mutex_unlock(&mutex_para_CPU); 
         
         sem_wait(&liberar_CPU[*id]); // espera a que algun carpincho indique que quiere liberar el cpu
         queue_push(CPU_libres, id);
         
-        //
+        pthread_mutex_lock(&mutex_para_CPU); 
         sem_post(&CPU_libre[*id]); 
-        sem_post(&sem_grado_multiprocesamiento_libre); // indica que ya hay algun cpu libre
-        //
+        sem_post(&sem_grado_multiprocesamiento_libre); //hay algun cpu libre
+        pthread_mutex_lock(&mutex_para_CPU); 
     }
 }
 
@@ -1212,6 +1252,7 @@ void detectar_deadlock(){
     }
 
     if(formar_ciclo()){
+        log_info(logger, "Hay DEADLOCK");
         solucionar_deadlock();
     }
 
@@ -1290,13 +1331,14 @@ void solucionar_deadlock(){
 
     data_carpincho *carpincho_a_eliminar = encontrar_estructura_segun_id(mayor_id_hasta_ahora);
 
+    log_info(logger, "Se elimina al carpincho %d para solucionar deadlock", carpincho_a_eliminar->id);
     mate_close(mayor_id_hasta_ahora, carpincho_a_eliminar->fd);
 
-    for(int i=0; i<list_size(carpincho_a_eliminar->semaforos_retenidos); i++){ //simular post a los semaforos que tenia retenido ese carpincho
+    for(int i=0; i<list_size(carpincho_a_eliminar->semaforos_retenidos); i++){ 
         sem_t *semaforo = (sem_t *) list_get((carpincho_a_eliminar->semaforos_retenidos), i);
-        sem_post(&semaforo);
+        sem_post(&(*semaforo));
     }
-    
+
 }
 
 
