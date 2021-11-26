@@ -158,7 +158,7 @@ int contar_elementos(char** elementos);
 
 void mate_memalloc(int id_carpincho, int size, int fd);
 void mate_memfree(int id_carpincho, mate_pointer addr, int fd);
-void mate_memread(int id_carpincho, mate_pointer origin, void *dest, int size, int fd);
+void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd);
 void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, int fd);
 
 void entrantes_a_ready();
