@@ -58,7 +58,6 @@ int mate_init(mate_instance *lib_ref, char *config)
 
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
 
-    int conexion_con_backend;
     int sem_len =  string_length(estructura_interna->semaforo);
     int len_dis_io = string_length(estructura_interna->dispositivo_io);
     int size =  sizeof(int) * 4 + sem_len + len_dis_io;
@@ -69,15 +68,16 @@ int mate_init(mate_instance *lib_ref, char *config)
 
     printf("socket: %d\n", socket_backend);
 
-    conexion_con_backend = _send_message(socket_backend, ID_MATE_LIB, MATE_INIT, payload, size, logger); // envia la estructura al backend para que inicialice todo
 
     free(payload);
 
-    if(conexion_con_backend < 0 ){ 
+    if(socket_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
-        return conexion_con_backend;  
+        printf("\nestoy aca\n");
+        return socket_backend;  
     }
     else{
+        _send_message(socket_backend, ID_MATE_LIB, MATE_INIT, payload, size, logger); // envia la estructura al backend para que inicialice todo
         int id_recibido;
         t_mensaje* buffer = _receive_message(socket_backend, logger);
         id_recibido = deserializar_numero(buffer);
