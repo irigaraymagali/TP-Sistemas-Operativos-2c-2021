@@ -228,7 +228,7 @@ void mate_init(int fd){
     free(ip_memoria);
     free(puerto_memoria);
     
-    int respuesta_memoria = 1;
+    int respuesta_memoria;
 
     if(socket_memoria >= 0){
         _send_message(socket_memoria, ID_KERNEL, MATE_INIT, payload , sizeof(int), logger); 
