@@ -362,7 +362,6 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
 
 
             if((nextAllocAux-HEAP_METADATA_SIZE)<espacioAReservar || isfreeAux == BUSY){
-                allocActual = nextAllocAux;
                 while (allocActual < temp->lastHeap  && espacioEncontrado==0)
                 {
                     
