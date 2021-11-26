@@ -2,23 +2,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "matelib.h"
+#include <matelib.h>
 
-int id;
-int* p_id;
-
-
-int main(){
- mate_instance mate_ref;
-char algo = 'a';
-char *p_algo;
-p_algo = algo;
-
-mate_init(&mate_ref,p_algo);
-    
-}
-
-/*
 void* io_thread(void* mate_ref) {
     mate_sem_wait(mate_ref, "SEM1");
     printf("And this one second...\n");
@@ -43,22 +28,5 @@ void* io_thread(void* mate_ref) {
 int main(int argc, char *argv[]) {
     // Lib instantiation
     mate_instance mate_ref;
-    mate_init(&mate_ref, "./config.json");
-
-    // Let's work with semaphores
-    mate_sem_init(&mate_ref, "SEM1", 0);
-    pthread_t thread_id;
-    pthread_create(&thread_id, NULL, &io_thread, &mate_ref);
-
-    usleep(1000);
-    printf("This message should go first...\n");
-    mate_sem_post(&mate_ref, "SEM1");
-
-    pthread_join(thread_id, NULL);
-
-    mate_sem_destroy(&mate_ref, "SEM1");
-
-    mate_close(&mate_ref);
-    return 0;
+    mate_init(&mate_ref, "./cfg/mate-lib.conf");
 }
-*/
