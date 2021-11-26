@@ -4,7 +4,7 @@
 
 int main(int argc, char ** argv){
 
-    config = config_create("../cfg/kernel.conf");
+    config = config_create("./cfg/kernel.conf");
 
     id_carpincho = 1; 
 
@@ -38,8 +38,6 @@ int main(int argc, char ** argv){
     pthread_join ( planficador_mediano_plazo , NULL ) ;    
 
     free_memory();
-
-
 }
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
@@ -503,7 +501,7 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 }
 
 void crear_estructura_dispositivo(){ //gonza -> si desde el main llamo a esta funcione, me da segmentation fault
-
+    
     char** dispositivos_io = config_get_array_value(config, "DISPOSITIVOS_IO");
     char** duraciones_io = config_get_array_value(config, "DURACIONES_IO");
 
