@@ -94,17 +94,20 @@ void crear_hilos_CPU(){
 
     int grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
 
-	for(int i= 0; i< grado_multiprocesamiento; i++){
+	for(int i = 0; i< grado_multiprocesamiento; i++){
         
-        int *id_CPU;
+        void* id_CPU;
         id_CPU = malloc(sizeof(int));
+        memcpy(id_CPU, &i, sizeof(int));
         sem_init(&(liberar_CPU[i]), 0, 0);
         sem_init(&(CPU_libre[i]), 0, 1); // post pruebas => ver si es 0 o 1 en el segundo argumento
         sem_init(&(usar_CPU[i]), 0, 0);       
 
-        pthread_create(&(hilo_CPU[i]), NULL, (void*) ejecuta, (void *)id_CPU); 
+        pthread_create(&(hilo_CPU[i]), NULL, (void*) ejecuta, id_CPU); 
         
         queue_push(CPU_libres, id_CPU);
+
+        // hay que ver como se hace el free de todos los id_CPU que se crean aca y se ponen en la queue
 	}
 }
 
@@ -1338,6 +1341,3 @@ void solucionar_deadlock(){
     }
 
 }
-
-
-
