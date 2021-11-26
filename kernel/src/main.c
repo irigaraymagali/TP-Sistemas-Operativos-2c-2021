@@ -930,46 +930,45 @@ void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
 
 }
 
-void suspender(){  //no hace falta pasarle el carpincho??
-  /*  void *payload;
+void suspender(){
+    //void *payload;
     while(1){
 
         sem_wait(&sem_procesamiento_lleno);
         sem_wait(&sem_programacion_lleno);
         sem_wait(&sem_hay_bloqueados);
 
-        data_carpincho carpincho_a_suspender; 
+        data_carpincho *carpincho_a_suspender; 
 
         if(estan_las_condiciones_para_suspender()){
 
-           // int longitud;
-            //longitud = list_size(blocked);
+            int longitud = list_size(blocked);
 
             pthread_mutex_lock(&sem_cola_blocked);
             pthread_mutex_lock(&sem_cola_suspended_blocked);
 
-            //carpincho_a_suspender = list_remove(blocked, longitud); 
-            carpincho_a_suspender = list_get(blocked, longitud);  //para que saque al ultimo?
-            list_remove_by_condition(suspended_blocked, esIgualACarpincho); //ver fun es igaual a 
+            carpincho_a_suspender = list_remove(blocked, longitud); //retorna y remueve el ultimo de bloqueados
             list_add(suspended_blocked, carpincho_a_suspender);
-
+            
             pthread_mutex_unlock(&sem_cola_blocked);
             pthread_mutex_unlock(&sem_cola_suspended_blocked);
 
             carpincho_a_suspender->estado = SUSPENDED_BLOCKED;
-            sem_post(carpincho_a_suspender->hilo_CPU_usado->semaforo);
-
+            log_info(logger, "El carpincho %d paso a SUSPENDED BLOCKED", carpincho_a_suspender->id);
+            sem_post(&liberar_CPU[carpincho_a_suspender->CPU_en_uso]); //--> esta bien que sea el de liberar CPU?
+        
+            /* 
             payload = _serialize(sizeof(int), "%d", carpincho_a_suspender->id);
-            // corregir lo de socket_memoria
+            // hacer: corregir lo de socket_memoria
             _send_message(socket_memoria, ID_KERNEL, SUSPENDER, payload, sizeof(int), logger);  //avisar a mem para que libere
-            
+            */
+
             sem_post(&sem_grado_multiprocesamiento_libre);
             sem_post(&sem_grado_multiprogramacion_libre);
             
-
         }
     }
-    */ 
+     
 }
 
 bool estan_las_condiciones_para_suspender(){
