@@ -14,11 +14,14 @@ int main(int argc, char ** argv){
     lista_dispositivos_io = list_create(); // crear lista para ir guardando los dispositivios io
 
     t_log* logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO);
+	char *puerto_escucha = config_get_string_value(config, "PUERTO_ESCUCHA");        
     
     crear_estructura_dispositivo();
     inicializar_semaforos();
 	inicializar_colas();
     crear_hilos_CPU();
+
+    signal(SIGINT, free_memory);
 
     pthread_t planficador_largo_plazo;
     pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
@@ -29,15 +32,12 @@ int main(int argc, char ** argv){
     pthread_t deteccion_deadlock;
     pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
     
-	char *puerto_escucha = config_get_string_value(config, "PUERTO_ESCUCHA");        
     _start_server(puerto_escucha, handler, logger);
 
-    // martin => esta bien esperar asi a los hilos? o cuando se va a terminar la conexion?
     pthread_join ( planficador_largo_plazo , NULL ) ;
     pthread_join ( planficador_corto_plazo , NULL ) ;
-    pthread_join ( planficador_mediano_plazo , NULL ) ;    
-
-    free_memory();
+    pthread_join ( planficador_mediano_plazo , NULL ) ;
+    pthread_join ( deteccion_deadlock , NULL ) ;    
 
 }
 
@@ -110,7 +110,7 @@ void crear_hilos_CPU(){
 
 
 void free_memory(){
-    
+    /*
     void remove_semaforos_carpinchos(void* elem){
         semaforo *semaforo_borrar = (semaforo *) elem;
         queue_destroy_and_destroy_elements(semaforo_borrar->en_espera, free);
@@ -147,6 +147,9 @@ void free_memory(){
 
     // hacer => free a todo
     // martin => liberar memoria en todos lados
+
+    exit(EXIT_SUCCESS);
+    */ //ver despues para liberar memoria
 }
 
 ///////////////// FUNCIONES ÚTILES ////////////////////////
@@ -533,12 +536,7 @@ void mate_memalloc(int id_carpincho, int size, int fd){  // martin => hay que re
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
-
-    void *payload = _serialize(    sizeof(int) * 2, 
-                                    "%d%d", 
-                                    carpincho->id, 
-                                    size 
-                                );
+    void *payload = _serialize(sizeof(int) * 2, "%d%d", carpincho->id, size );
     int socket_memoria;
     socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
 

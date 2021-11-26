@@ -28,6 +28,9 @@ typedef struct mate_instance
 } mate_instance;
 
 int socket_backend;
+t_log* logger;
+int id_carpincho;
+
 
 // TODO: Docstrings
 

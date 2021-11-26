@@ -1,18 +1,15 @@
 #include "matelib.h"
 
-t_log* logger;
-int id_carpincho;
+int deserializar_numero(t_mensaje* buffer){
 
-int armar_socket_desde_archivo(char* config,t_log* logger){
-   
-    // hacer => leer archivo -> puede ser un .conf y lo hacemos como querramos
-
-    char *ip;
-    char *puerto;
-
-    return _connect(ip, puerto, logger); // crea la conexión con backend los ip y puerto del config
-    
+    int numero;
+    memcpy(&numero, buffer->payload, sizeof(int));
+    free(buffer->identifier);
+    free(buffer->payload);
+    free(buffer);
+    return numero;
 }
+
 
 /////////////////////////---------------------------- funciones a parte ------------------------///////////////////////////////////////
 
@@ -44,19 +41,11 @@ int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_intern
     }
     else{
         t_mensaje* buffer = _receive_message(socket_backend, logger);
-        return deserializar_numero(buffer);
+        return  deserializar_numero(buffer);
     }
 }
 
-int deserializar_numero(t_mensaje* buffer){
 
-    int numero;
-    memcpy(&numero, buffer->payload, sizeof(int));
-    free(buffer->identifier);
-    free(buffer->payload);
-    free(buffer);
-    return numero;
-}
 
 ////////////////////////////////////////                        LIB                          /////////////////////////////////////////////
 
@@ -64,7 +53,7 @@ int deserializar_numero(t_mensaje* buffer){
 
 int mate_init(mate_instance *lib_ref, char *config)
 {
-
+    // post pruebas => ver si trae problemas tener un solo log
     logger = log_create("./cfg/mate-lib.log", "MATE-LIB", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
 
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
@@ -74,9 +63,9 @@ int mate_init(mate_instance *lib_ref, char *config)
     int len_dis_io = string_length(estructura_interna->dispositivo_io);
     int size =  sizeof(int) * 4 + sem_len + len_dis_io;
     void* payload = armar_paquete(estructura_interna);
+    t_config* datos_configuracion = config_create(config);
 
-    // martin -> esta bien que el socket sea siempre este? o habria que abrirlo y cerrarlo cada vez?
-    socket_backend = armar_socket_desde_archivo(config,logger);
+    socket_backend = _connect(config_get_string_value(datos_configuracion, "IP_BACKEND"), config_get_string_value(datos_configuracion, "PUERTO_BACKEND"), logger);
 
     printf("socket: %d\n", socket_backend);
 
@@ -94,7 +83,8 @@ int mate_init(mate_instance *lib_ref, char *config)
         id_recibido = deserializar_numero(buffer);
         estructura_interna->id = id_recibido;
 
-
+    //post pruebas => podríamos revisar aca que onda que solo esta vez les pasamos la referencia
+        lib_ref->group_info = malloc(sizeof(mate_inner_structure));
         lib_ref->group_info = (void*)estructura_interna; 
         
         return 0;
@@ -104,6 +94,7 @@ int mate_init(mate_instance *lib_ref, char *config)
 int mate_close(mate_instance *lib_ref)
 {
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
+    free(lib_ref->group_info);
     return conexion_con_backend(MATE_CLOSE, estructura_interna);
 }
 
@@ -166,7 +157,7 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
         return conexion_con_backend;  
     }
     else{
-        mate_pointer pointer;
+        int pointer;
         t_mensaje* buffer;
 
         buffer = _receive_message(socket_backend, logger);
@@ -177,7 +168,7 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
         free(buffer->payload);
         free(buffer);
         
-        return pointer;  
+        return (mate_pointer) pointer;  
     } 
 }
 
