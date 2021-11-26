@@ -184,7 +184,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
         case MATE_INIT:
             pid = deserialize_init_process(id, payload);
             inicializarUnProceso(pid);  
-            iresp = 1;    
+            iresp = pid;    
             break;
         case MATE_MEMALLOC:
             deserialize_mem_alloc(&pid, &espacioAReservar, payload);
@@ -292,8 +292,8 @@ void deserialize_mem_write(int* pid, int* dir_logica, int* size, void* info,  vo
 
     memcpy(size, payload + offset, sizeof(int));
 
-    info = malloc(size);
-    memcpy(info, payload, size);
+    info = malloc(*size);
+    memcpy(info, payload, *size);
 }
 
 void free_memory(){
