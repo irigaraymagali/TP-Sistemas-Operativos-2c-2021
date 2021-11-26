@@ -964,8 +964,7 @@ void suspender(){
             */
 
             sem_post(&sem_grado_multiprocesamiento_libre);
-            sem_post(&sem_grado_multiprogramacion_libre);
-            
+            sem_post(&sem_grado_multiprogramacion_libre);  
         }
     }
      
