@@ -620,16 +620,10 @@ void mate_memalloc(int id_carpincho, int size, int fd){  // martin => hay que re
         log_error(logger, "No se pudo conectar con el módulo memoria");
     }
 
-    if(respuesta_memoria >= 0){
-        log_info(logger,"El memalloc se realizó correctamente");
-        void *payload = _serialize(sizeof(int), "%d", 0);
-        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-    }
-    else{
-        log_info(logger,"No se pudo realizar el memalloc");
-        void *payload = _serialize(sizeof(int), "%d", -1);
-        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-    }   
+    
+    log_info(logger,"mandando a matelib la respuesta del memalloc :) %d",respuesta_memoria);
+    _send_message(fd, ID_KERNEL, 1, (void*)respuesta_memoria, sizeof(int), logger); 
+   
     free(payload);
 }
 
@@ -1173,6 +1167,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     int offset = 0;
     int ptr_len = 0;
 
+    printf("\nque linda que es la vida %d\n",opcode);
     if(strcmp(id, ID_MATE_LIB) == 0){ 
         switch(opcode){
             case MATE_INIT:
@@ -1237,6 +1232,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
             break;
             case MATE_MEMWRITE:  
                 // id_carpincho
+                printf("\nque buen TP :) \n");
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
 

@@ -27,22 +27,25 @@ int main(int argc, char *argv[]) {
 	mate_instance instance;
 
 	mate_init(&instance, (char*)config);
-
-    char saludo[] = "No, ¡hola humedal!\n";
+    char *saludo = "No, ¡hola humedal!\n";
 
     mate_pointer saludoRef = mate_memalloc(&instance, strlen(saludo));
 
+    printf("\n Delfi larga la picana %d\n", saludoRef);
+
     mate_memwrite(&instance, saludo, saludoRef, strlen(saludo));
 
-    mate_sem_init(&instance, SEMAFORO_SALUDO, 0);
+    /*mate_sem_init(&instance, SEMAFORO_SALUDO, 0);
 
     mate_sem_wait(&instance, SEMAFORO_SALUDO);
 
     mate_memread(&instance, saludoRef, saludo, strlen(saludo));
 
-    printf(saludo);
+    printf(saludo);*/
 
     mate_close(&instance);
+
+    printf("\n puede ser que llego hasta aca pa? \n");
 
 	return EXIT_SUCCESS;
 }

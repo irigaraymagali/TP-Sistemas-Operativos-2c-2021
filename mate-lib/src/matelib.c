@@ -23,6 +23,13 @@ mate_inner_structure* convertir_a_estructura_interna(mate_instance* lib_ref){ //
     return (mate_inner_structure *)lib_ref->group_info; 
 }
 
+ mate_inner_structure* nuevaEstructuraInterna(){
+    mate_inner_structure* tuestructurapapu = malloc(sizeof(mate_inner_structure));
+    tuestructurapapu->semaforo = string_new();
+    tuestructurapapu->dispositivo_io = string_new();
+
+    return tuestructurapapu;
+ }
 
 int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_interna){
     
@@ -53,19 +60,20 @@ int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_intern
 
 int mate_init(mate_instance *lib_ref, char *config)
 {
+    
     // post pruebas => ver si trae problemas tener un solo log
     logger = log_create("./cfg/mate-lib.log", "[Mate-Lib]", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
 
-    mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
+   
+    mate_inner_structure* estructura_interna = nuevaEstructuraInterna();
 
     int sem_len =  string_length(estructura_interna->semaforo);
     int len_dis_io = string_length(estructura_interna->dispositivo_io);
     int size =  sizeof(int) * 4 + sem_len + len_dis_io;
     void* payload = armar_paquete(estructura_interna);
     t_config* datos_configuracion = config_create(config);
-
     socket_backend = _connect(config_get_string_value(datos_configuracion, "IP_BACKEND"), config_get_string_value(datos_configuracion, "PUERTO_BACKEND"), logger);
-
+    
     printf("socket: %d\n", socket_backend);
 
     if(socket_backend < 0 ){ 
@@ -82,17 +90,19 @@ int mate_init(mate_instance *lib_ref, char *config)
         estructura_interna->id = id_recibido;
 
     //post pruebas => podríamos revisar aca que onda que solo esta vez les pasamos la referencia
+
         lib_ref->group_info = malloc(sizeof(mate_inner_structure));
         lib_ref->group_info = (void*)estructura_interna; 
         free(payload);
+        
         return 0;
-    }  
+    } 
 }
 
 int mate_close(mate_instance *lib_ref)
 {
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
-    free(lib_ref->group_info);
+    //free(lib_ref->group_info);
     return conexion_con_backend(MATE_CLOSE, estructura_interna);
 }
 
@@ -148,10 +158,11 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 
     conexion_con_backend = _send_message(socket_backend, ID_MATE_LIB, MATE_MEMALLOC, payload, sizeof(int)*2, logger); 
 
-    
+    printf("\ngonza nadie te quiere \n");
     if(conexion_con_backend < 0 ){ 
         free(payload);
         log_info(logger, "no se pudo crear la conexión");
+        printf("\ngonza nadie te  \n");
         return conexion_con_backend;  
     }
     else{
@@ -168,6 +179,7 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
     
         free(payload);
         
+        printf("\nesto viene antes de return (mate_pointer) pointer; %d \n", pointer);
         return (mate_pointer) pointer;  
     } 
 }
@@ -247,8 +259,10 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
     int conexion_con_backend;
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     void* payload = _serialize(sizeof(int) * 3 + size, "%d%d%d%v", estructura_interna->id, dest, size, origin);
+    printf("\npasa por aca\n");
     conexion_con_backend = _send_message( socket_backend, ID_MATE_LIB, MATE_MEMWRITE, payload, sizeof(sizeof(int) * 2 + sizeof(int) * sizeof(origin) + sizeof(int) +  sizeof(int)), logger); 
-   
+    printf("\npasa por aca\n");
+
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
         free(payload);
