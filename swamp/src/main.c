@@ -13,7 +13,7 @@ int main(int argc, char ** argv) {
     swap_file_size = config_get_int_value(config_file, "TAMANIO_SWAP");
     swap_page_size = config_get_int_value(config_file, "TAMANIO_PAGINA");
     marcos_por_carpincho = config_get_int_value(config_file, "MARCOS_POR_CARPINCHO");
-    retardo_swap = config_get_int_value(config_file, "RETARDO_SWAP");
+    retardo_swamp = config_get_int_value(config_file, "RETARDO_SWAMP");
 
     inicializar_directorios();
     inicializar_swap_files();

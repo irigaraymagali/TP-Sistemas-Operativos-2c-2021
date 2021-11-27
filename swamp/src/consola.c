@@ -73,7 +73,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             int resultado = guardar_pagina(proceso, pagina, contenido);
             void* resultado_a_enviar = _serialize(swap_page_size, "%d", resultado);
             if(resultado) {
-                sleep(retardo_swap);
+                sleep(retardo_swamp);
             }
             if (_send_message(socket_conexion, "SWP", MEMORY_SEND_SWAP_RECV, resultado_a_enviar, sizeof(int), log_file)) {
                 if (resultado) {
@@ -106,7 +106,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             void* pagina_leida = obtener_pagina(proceso, pagina);
             if (pagina_leida != NULL) {
                 void* pagina_a_enviar = _serialize(sizeof(int) + swap_page_size, "%d%v", swap_page_size, pagina_leida);
-                sleep(retardo_swap);
+                sleep(retardo_swamp);
                 if (_send_message(socket_conexion, "SWP", MEMORY_RECV_SWAP_SEND, pagina_a_enviar, sizeof(int) + swap_page_size, log_file)) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
                     log_info(log_file, "Pagina %d del proceso %d enviada.", pagina, proceso);
                 }
