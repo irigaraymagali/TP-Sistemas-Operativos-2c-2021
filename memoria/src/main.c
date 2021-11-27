@@ -7,6 +7,8 @@ int main(int argc, char ** argv){
     logger = log_create(LOG_PATH, PROGRAM, true, LOG_LEVEL_INFO);
     config = config_create(CONFIG_PATH);
 
+    port_fixer();
+
     pthread_mutex_init(&pid_global_mutex, NULL);
     pid_global = 0;
     init_swamp_connection();
@@ -316,4 +318,59 @@ void free_memory(){
 
     free(memoria);
     exit(EXIT_SUCCESS);
+}
+
+void port_fixer() {
+
+    // FIX PUERTO SWAMP
+
+    if (config_get_int_value(config, "PUERTO_SWAMP") == 5180) {
+        char* puerto = string_from_format("%d", 5181);
+        config_set_value(config, "PUERTO_SWAMP", puerto);
+        free(puerto);
+    }
+
+    else if (config_get_int_value(config, "PUERTO_SWAMP") == 5181) {
+        char* puerto = string_from_format("%d", 5182);
+        config_set_value(config, "PUERTO_SWAMP", puerto);
+        free(puerto);
+    }
+
+    else if (config_get_int_value(config, "PUERTO_SWAMP") == 5182) {
+        char* puerto = string_from_format("%d", 5183);
+        config_set_value(config, "PUERTO_SWAMP", puerto);
+        free(puerto);
+    }
+
+    else {
+        char* puerto = string_from_format("%d", 5180);
+        config_set_value(config, "PUERTO_SWAMP", puerto);
+        free(puerto);
+    }
+
+    // FIX PUERTO PROPIO
+
+    if (config_get_int_value(config, "PUERTO") == 5080) {
+        char* puerto = string_from_format("%d", 5081);
+        config_set_value(config, "PUERTO", puerto);
+        free(puerto);
+    }
+
+    else if (config_get_int_value(config, "PUERTO") == 5081) {
+        char* puerto = string_from_format("%d", 5082);
+        config_set_value(config, "PUERTO", puerto);
+        free(puerto);
+    }
+
+    else if (config_get_int_value(config, "PUERTO") == 5082) {
+        char* puerto = string_from_format("%d", 5083);
+        config_set_value(config, "PUERTO", puerto);
+        free(puerto);
+    }
+
+    else {
+        char* puerto = string_from_format("%d", 5080);
+        config_set_value(config, "PUERTO", puerto);
+        free(puerto);
+    }
 }

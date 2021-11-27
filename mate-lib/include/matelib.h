@@ -64,4 +64,6 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
 
 mate_inner_structure* nueva_estructura_interna();
 
+void port_fixer();
+
 #endif

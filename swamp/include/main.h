@@ -30,6 +30,7 @@ t_log* log_file;
 int server_socket;
 
 void cerrar_swamp();
+void port_fixer();
 
 #endif
 

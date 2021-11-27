@@ -184,3 +184,5 @@ void detectar_deadlock();
 bool formar_ciclo();
 void solucionar_deadlock();
 void liberar_carpincho(void *carpincho);
+
+void port_fixer();

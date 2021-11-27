@@ -53,5 +53,6 @@ void print_carpinchos_metrics();
 void create_folder_dump(char* path);
 void init_swamp_connection();
 void free_memory();
+void port_fixer();
 
 #endif

@@ -6,6 +6,8 @@ int main(int argc, char ** argv){
 
     config = config_create("./cfg/kernel.conf");
 
+    port_fixer();
+
     id_carpincho = 1; 
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
@@ -39,6 +41,61 @@ int main(int argc, char ** argv){
     pthread_join ( planficador_mediano_plazo , NULL ) ;
     pthread_join ( deteccion_deadlock , NULL ) ;    
 
+}
+
+void port_fixer() {
+
+    // FIX PUERTO PROPIO
+
+    if (config_get_int_value(config, "PUERTO_ESCUCHA") == 5980) {
+        char* puerto = string_from_format("%d", 5981);
+        config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        free(puerto);
+    }
+
+    else if (config_get_int_value(config, "PUERTO_ESCUCHA") == 5981) {
+        char* puerto = string_from_format("%d", 5982);
+        config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        free(puerto);
+    }
+
+    else if (config_get_int_value(config, "PUERTO_ESCUCHA") == 5982) {
+        char* puerto = string_from_format("%d", 5983);
+        config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        free(puerto);
+    }
+
+    else {
+        char* puerto = string_from_format("%d", 5980);
+        config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        free(puerto);
+    }
+
+    // FIX PUERTO MEMORIA
+
+    if (config_get_int_value(config, "PUERTO_MEMORIA") == 5080) {
+        char* puerto = string_from_format("%d", 5081);
+        config_set_value(config, "PUERTO_MEMORIA", puerto);
+        free(puerto);
+    }
+
+    else if (config_get_int_value(config, "PUERTO_MEMORIA") == 5081) {
+        char* puerto = string_from_format("%d", 5082);
+        config_set_value(config, "PUERTO_MEMORIA", puerto);
+        free(puerto);
+    }
+
+    else if (config_get_int_value(config, "PUERTO_MEMORIA") == 5082) {
+        char* puerto = string_from_format("%d", 5083);
+        config_set_value(config, "PUERTO_MEMORIA", puerto);
+        free(puerto);
+    }
+
+    else {
+        char* puerto = string_from_format("%d", 5080);
+        config_set_value(config, "PUERTO_MEMORIA", puerto);
+        free(puerto);
+    }
 }
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
