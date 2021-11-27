@@ -77,10 +77,10 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             }
             if (_send_message(socket_conexion, "SWP", MEMORY_SEND_SWAP_RECV, resultado_a_enviar, sizeof(int), log_file)) {
                 if (resultado) {
-                    log_info(log_file, "Pagina %d del proceso %d guardada.", pagina, proceso);
+                    log_info(log_file, "La pagina %d del proceso %d fue guardada correctamente.", pagina, proceso);
                 }
                 else {
-                    log_info(log_file, "No se pudo guardar la pagina %d del proceso %d.");
+                    log_error(log_file, "No se pudo guardar la pagina %d del proceso %d.", pagina, proceso);
                 }
             }
 
@@ -141,6 +141,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             int proceso;
             memcpy(&proceso, recibido->payload, sizeof(int));
             finalizar_proceso(proceso);
+            log_info(log_file, "El proceso %d fue eliminado de swap.", proceso);
         }
 
         else {
