@@ -182,7 +182,7 @@ int memalloc(int processId, int espacioAReservar){
 
 int suspend_process(int pid) {
     log_info(logger, "Suspendiendo el Proceso %d...", pid);
-    int pay_len = sizeof(int)*3 + tamanioDePagina;
+    int pay_len = 3*sizeof(int) + tamanioDePagina;
     void* free_mem = malloc(tamanioDePagina);
 
     log_info(logger, "Buscando la tabla de paginas del proceso %d", pid);
@@ -1268,7 +1268,7 @@ void seleccionLRU(int processID){
 
     //falta una parte que le mande el mendaje a gonza
 
-    int pay_len = 2*sizeof(uint32_t)+tamanioDePagina;
+    int pay_len = 3*sizeof(int)+tamanioDePagina;
     void* paginaAEnviar = malloc(tamanioDePagina);
     memcpy(paginaAEnviar,memoria + (frameVictima*tamanioDePagina),tamanioDePagina);
     void* payload = _serialize(pay_len, "%d%d%d%v", processID, numeroDePagVictima,tamanioDePagina,paginaAEnviar);       
@@ -1308,7 +1308,7 @@ void seleccionClockMejorado(){
         if(paginaEncontrada->bitModificado == 0 && paginaEncontrada->bitUso==0){
             frameNoEncontrado =0;
             
-            int pay_len = 2*sizeof(uint32_t)+tamanioDePagina;
+            int pay_len = 3*sizeof(int)+tamanioDePagina;
             void* paginaAEnviar = malloc(tamanioDePagina);
             memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
             void* payload = _serialize(pay_len, "%d%d%d%v", getProcessIdby(paginaEncontrada->frame), paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);       
@@ -1339,7 +1339,7 @@ void seleccionClockMejorado(){
         if(paginaEncontrada->bitUso==0){
             frameNoEncontrado =0;
             
-            int pay_len = 2*sizeof(uint32_t)+tamanioDePagina;
+            int pay_len = 3*sizeof(int)+tamanioDePagina;
             void* paginaAEnviar = malloc(tamanioDePagina);
             memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
             void* payload = _serialize(pay_len, "%d%d%d%v", getProcessIdby(paginaEncontrada->frame), paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);       

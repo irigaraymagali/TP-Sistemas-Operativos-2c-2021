@@ -221,6 +221,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             break;
         default:
             log_error(logger, "Comando incorrecto");
+            iresp = -1;
     }
     if(opcode != MATE_MEMREAD){
         resp = _serialize(sizeof(int), "%d", iresp);
@@ -228,7 +229,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
     }
 
     _send_message(fd, ID_MEMORIA, opcode, resp, size_msg, logger);
-    free(payload);
+    free(resp);
 }
 
 int deserialize_init_process(char* id, void* payload){
