@@ -259,9 +259,7 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
     int conexion_con_backend;
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     void* payload = _serialize(sizeof(int) * 3 + size, "%d%d%d%v", estructura_interna->id, dest, size, origin);
-    printf("\npasa por aca\n");
-    conexion_con_backend = _send_message( socket_backend, ID_MATE_LIB, MATE_MEMWRITE, payload, sizeof(sizeof(int) * 2 + sizeof(int) * sizeof(origin) + sizeof(int) +  sizeof(int)), logger); 
-    printf("\npasa por aca\n");
+    conexion_con_backend = _send_message(socket_backend, ID_MATE_LIB, MATE_MEMWRITE, payload, sizeof(int) * 3 + size, logger); 
 
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");

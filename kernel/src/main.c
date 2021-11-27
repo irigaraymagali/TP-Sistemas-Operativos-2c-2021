@@ -702,7 +702,7 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
     int respuesta_memoria;
     
     if(socket_memoria >= 0){
-        _send_message(socket_memoria, ID_KERNEL, MATE_MEMWRITE,payload,sizeof(sizeof(int) * 2 + sizeof(int) * sizeof(origin) + sizeof(int) +  sizeof(int)),logger);   
+        _send_message(socket_memoria, ID_KERNEL, MATE_MEMWRITE, payload, sizeof(int) * 3 + size, logger); 
 
         t_mensaje *buffer;
         buffer = _receive_message(socket_memoria, logger);

@@ -282,7 +282,7 @@ void deserialize_mem_read(int* pid, int* dir_logica, int* size, void* payload){
     memcpy(size, payload + offset, sizeof(int));
 }
 
-void deserialize_mem_write(int* pid, int* dir_logica, int* size, void* info,  void* payload){
+void deserialize_mem_write(int* pid, int* dir_logica, int* size, void* info, void* payload){
     int offset = 0;
 
     memcpy(pid, payload, sizeof(int));
@@ -292,9 +292,10 @@ void deserialize_mem_write(int* pid, int* dir_logica, int* size, void* info,  vo
     offset += sizeof(int);
 
     memcpy(size, payload + offset, sizeof(int));
+    offset += sizeof(int);
 
     info = malloc(*size);
-    memcpy(info, payload, *size);
+    memcpy(info, payload + offset, *size);
 }
 
 void free_memory(){
