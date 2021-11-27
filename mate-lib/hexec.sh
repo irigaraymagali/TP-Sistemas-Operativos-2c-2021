@@ -16,7 +16,7 @@ if [ ! -d "$LOG_DIRECTORY" ]; then
 fi
 
 FILE=example.out
-make test
+sudo make test
 if test -f "./$FILE"; then
     LD_LIBRARY_PATH="obj/" valgrind --tool=helgrind ./$FILE
 fi

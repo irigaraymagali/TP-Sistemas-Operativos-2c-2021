@@ -7,6 +7,14 @@ CC=gcc
 CFLAGS=-I$(IDIR) -I$(SHARED_IDIR) -g -Wall
 LIBS=-lcommons -lpthread -lreadline -lcunit -lrt
 EX_LIBS=-lcommons -lpthread -lreadline -lmate -lrt
+USR=/usr
+LOCAL_LIB=/local
+LIB=/lib
+
+USR_LIB=$(USR)$(LIB)
+
+USR_LOCAL_LIB=$(USR)$(LOCAL_LIB)$(LIB)
+
 
 # Shared Dir
 SHARED_SRCDIR = ../shared/src
@@ -27,20 +35,36 @@ $(SO_DIR)/%.o:
 
 SHARED_OBJ_DIR = $(SO_DIR)/%.o
 
-build: $(SHARED_OBJ_DIR) $(SHARED_OBJ)
+# sudo make install
+install: $(SHARED_OBJ_DIR) $(SHARED_OBJ)
 	# Compiling all .c    
 	$(CC) -Wall -fPIC -c $(SRC_DIR)/*.c $(CFLAGS) $(LIBS)
+
 	# Compiling all .o
 	$(CC) -shared matelib.o $(SHARED_ODIR)/*.o -L$(COMMONS) $(LIBS) -o $(ODIR)/libmate.so
+
+	# Moving the lib to the global link route
+	#cp -u $(ODIR)/libmate.so $(USR_LOCAL_LIB)
+	cp -u $(ODIR)/libmate.so $(USR_LIB)
+	#cp -u $(ODIR)/libmate.so $(LIB)
+
 	# Removing obj files..
 	rm *.o
 	# Done
 
-
-clean:
+# sudo make uninstall
+uninstall:
 	# Remove Libmate shared object    
 	rm $(ODIR)/libmate.so
+	#rm -f $(USR_LOCAL_LIB)/libmate.so
+	rm -f $(USR_LIB)/libmate.so
+	#rm -f $(LIB)/libmate.so
+
 	# Done
 
-test: build
+
+# sudo make update
+update: uninstall install
+
+test: install
 	$(CC) -g3 -Wall -L$(ODIR) -I$(IDIR) main.c $(EX_LIBS) -o example.out

@@ -16,7 +16,7 @@ if [ ! -d "$LOG_DIRECTORY" ]; then
 fi
 
 FILE=example.out
-make test
+sudo make test
 if test -f "./$FILE"; then
     LD_LIBRARY_PATH="obj/" valgrind --tool=memcheck --leak-check=yes --show-possibly-lost=no --show-reachable=no --num-callers=20 ./$FILE
 fi
