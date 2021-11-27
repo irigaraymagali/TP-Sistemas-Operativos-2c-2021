@@ -145,6 +145,7 @@ int delete_process(int pid);
 void remove_paginas(void* elem);
 void set_pid_metric_if_missing(uint32_t pid); 
 void sum_metric(uint32_t pid, int isHit);
+int allFramesUsedForAsignacionFijaPara(int processID);
 
 int suspend_process(int pid);
 #endif

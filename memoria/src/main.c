@@ -17,8 +17,11 @@ int main(int argc, char ** argv){
     send_message_swamp(TIPO_ASIGNACION, payload, sizeof(int));
     free(payload);
 
-    inicializarUnProceso(1);
+    /* inicializarUnProceso(1);
     inicializarUnProceso(2);
+
+    memalloc(1, 20);
+    memwrite(1,0,"carpincho",10);*/
 
     signal(SIGINT, print_metrics);
     signal(SIGUSR1, print_dump);

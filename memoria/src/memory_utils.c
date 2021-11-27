@@ -126,9 +126,10 @@ int memalloc(int processId, int espacioAReservar){
            agregarXPaginasPara(processId, (espacioAReservar-espacioFinalDisponible));
 
             int paginaLastHeap = (tempLastHeap/tamanioDePagina)+1;
-            int paginaFinLastHeap= ((tempLastHeap+HEAP_METADATA_SIZE)/tamanioDePagina)+1;
+            int ubicacionNuevoLastHeap = tempLastHeap + espacioAReservar;
+            int paginaFinLastHeap= ((ubicacionNuevoLastHeap+HEAP_METADATA_SIZE)/tamanioDePagina)+1;
             Pagina *ultimaPag = getLastPageDe(processId);
-            void* espacioAuxiliar = malloc(((ultimaPag->pagina - paginaLastHeap)+1)*tamanioDePagina);
+            void* espacioAuxiliar = malloc(((paginaFinLastHeap - paginaLastHeap)+1)*tamanioDePagina);
 
             int nroPagAux=paginaLastHeap;
             int offsetEspacioAux=0;
@@ -144,7 +145,7 @@ int memalloc(int processId, int espacioAReservar){
             
             offsetEspacioAux = tempLastHeap - (tamanioDePagina*(paginaLastHeap-1));
             offsetEspacioAux += sizeof(uint32_t);
-            int ubicacionNuevoLastHeap = tempLastHeap + espacioAReservar;
+            
             
             memcpy(espacioAuxiliar+offsetEspacioAux,&ubicacionNuevoLastHeap , sizeof(uint32_t));
             
@@ -162,7 +163,7 @@ int memalloc(int processId, int espacioAReservar){
             
             nroPagAux=paginaLastHeap;
             offsetEspacioAux=0;
-            while(nroPagAux <= ultimaPag->pagina){
+            while(nroPagAux <= paginaFinLastHeap){
                 int framenecesitado = getFrameDeUn(processId, nroPagAux);
                 
                 memcpy(memoria + (framenecesitado*tamanioDePagina), espacioAuxiliar + offsetEspacioAux, tamanioDePagina);
@@ -537,31 +538,43 @@ int getNewEmptyFrame(int idProcess){
     }
     else
     {
-        pthread_mutex_lock(&list_pages_mutex);
-        t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
+        if( !allFramesUsedForAsignacionFijaPara(idProcess)){
+            pthread_mutex_lock(&list_pages_mutex);
+            t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
 
-        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
 
-        while (temp->id != idProcess) {
+            while (temp->id != idProcess) {
 
-            temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);  
+                temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);  
 
-        }
+            }
 
-        t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
+            t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
 
-        while(list_iterator_has_next(iterator2)){
-                Pagina *tempPagina = (Pagina*) list_iterator_next(iterator2);
-    
-                if(tempPagina->isfree == FREE ){
-                    list_iterator_destroy(iterator);
-                    list_iterator_destroy(iterator2);
-                    add_entrada_tlb(idProcess, tempPagina->pagina, tempPagina->frame);
-                    pthread_mutex_unlock(&list_pages_mutex);
-                    return tempPagina->frame;
+            while(list_iterator_has_next(iterator2)){
+                    Pagina *tempPagina = (Pagina*) list_iterator_next(iterator2);
+
+                    if(tempPagina->isfree == FREE && tempPagina->bitPresencia==1){
+                        list_iterator_destroy(iterator);
+                        list_iterator_destroy(iterator2);
+                        add_entrada_tlb(idProcess, tempPagina->pagina, tempPagina->frame);
+                        pthread_mutex_unlock(&list_pages_mutex);
+                        return tempPagina->frame;
+                    }
+            }
+            pthread_mutex_unlock(&list_pages_mutex);
+        }else{
+            while(emptyFrame < paginaFinal){
+                isfree= estaOcupadoUn(emptyFrame, idProcess);
+                if(isfree!= BUSY){
+                    return emptyFrame;
                 }
+
+                emptyFrame++;
+            }
+            return -1;
         }
-        pthread_mutex_unlock(&list_pages_mutex);
         return -1;
     }
 
@@ -581,10 +594,20 @@ int estaOcupadoUn(int emptyFrame, int idProcess){
                 Pagina *tempPagina = (Pagina*) list_iterator_next(iterator2);
     
                 if(tempPagina->frame == emptyFrame ){
+                    if(tipoDeAsignacionDinamica){
                     list_iterator_destroy(iterator);
                     list_iterator_destroy(iterator2);
                     pthread_mutex_unlock(&list_pages_mutex);
                     return tempPagina->isfree;
+                    }
+                    else{
+                        if(getProcessIdby(emptyFrame)){
+                            list_iterator_destroy(iterator);
+                            list_iterator_destroy(iterator2);
+                            pthread_mutex_unlock(&list_pages_mutex);
+                            return tempPagina->isfree;
+                        }
+                    }
                 }
             }
             list_iterator_destroy(iterator2);
@@ -634,6 +657,31 @@ int frameAsignado(int unFrame){
     
     }
     return 0;
+}
+
+int allFramesUsedForAsignacionFijaPara(int processID){
+    TablaDePaginasxProceso* tempTabla =get_pages_by(processID);
+
+    int contador=0;
+
+    t_list_iterator * iterator = list_iterator_create(tempTabla->paginas);
+    
+    while(list_iterator_has_next(iterator)){
+        Pagina* tempPagina = list_iterator_next(iterator);
+
+        if(tempPagina->bitPresencia =1){
+            contador++;
+        }
+
+    }
+
+    if(contador= cantidadDePaginasPorProceso){
+        return 1;
+    }else
+    {
+        return 0;
+    }
+    
 }
 
 int getFrameDeUn(int processId, int mayorNroDePagina){
@@ -1450,6 +1498,16 @@ void liberarFrame(uint32_t nroDeFrame){
             if(paginatemp->frame == nroDeFrame){
                 paginatemp->frame = (tamanioDeMemoria/tamanioDePagina)+1;
                 paginatemp->bitPresencia = 0;
+
+                if(!tipoDeAsignacionDinamica){
+                Pagina* paginaSiguienteALaUltima = malloc(sizeof(Pagina));
+                
+                paginaSiguienteALaUltima->frame = paginatemp->frame;
+                paginaSiguienteALaUltima->isfree = FREE;
+                paginaSiguienteALaUltima->bitPresencia=1; 
+
+                list_add(temp->paginas, paginaSiguienteALaUltima);
+                }
             }
 
             
