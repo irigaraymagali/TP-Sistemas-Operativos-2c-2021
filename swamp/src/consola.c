@@ -17,7 +17,7 @@ void recibir_mensajes() {
     //     log_warning(log_file, "Conexion finalizada con el socket %d", client_socket);
     // }
 
-    recibido = _receive_message(client_socket, log_file);
+    /*recibido = _receive_message(client_socket, log_file);
     while (recibido != NULL) {
         consola(recibido, client_socket);
         free_t_mensaje(recibido);
@@ -27,6 +27,12 @@ void recibir_mensajes() {
     if (recibido == NULL) {
         log_warning(log_file, "Conexion finalizada con el socket %d", client_socket);
         cerrar_swamp();
+    }*/
+
+    while(1) {
+        recibido = _receive_message(client_socket, log_file);
+        consola(recibido, client_socket);
+        free_t_mensaje(recibido);
     }
 }
 
