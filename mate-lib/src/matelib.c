@@ -70,7 +70,6 @@ int mate_init(mate_instance *lib_ref, char *config)
     int size =  sizeof(int) * 4 + sem_len + len_dis_io;
     void* payload = armar_paquete(estructura_interna);
     t_config* datos_configuracion = config_create(config);
-    port_fixer();
     socket_backend = _connect(config_get_string_value(datos_configuracion, "IP_BACKEND"), config_get_string_value(datos_configuracion, "PUERTO_BACKEND"), logger);
     
     printf("socket: %d\n", socket_backend);
