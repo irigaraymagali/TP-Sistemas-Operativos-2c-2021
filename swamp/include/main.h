@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <signal.h>
+#include "serialization.h"
 
 #define CONFIG_PATH "./cfg/swamp.cfg"
 #define LOG_PATH "./cfg/swamp.log"
