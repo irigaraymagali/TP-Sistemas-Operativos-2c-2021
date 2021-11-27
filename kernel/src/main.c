@@ -604,26 +604,28 @@ void mate_memalloc(int id_carpincho, int size, int fd){  // martin => hay que re
     void *payload = _serialize(sizeof(int) * 2, "%d%d", carpincho->id, size);
     int socket_memoria;
     socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
-
     int respuesta_memoria;
     
     if(socket_memoria >= 0){
-        _send_message(socket_memoria, ID_KERNEL, MATE_MEMALLOC, payload,sizeof(int)*2,logger);   
-
         t_mensaje *buffer;
+        _send_message(socket_memoria, ID_KERNEL, MATE_MEMALLOC, payload,sizeof(int)*2,logger);   
         buffer = _receive_message(socket_memoria, logger);
-        memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+        memcpy(&respuesta_memoria, buffer->payload, sizeof(int));
 
         close(socket_memoria);
+        free(buffer->identifier);
+        free(buffer->payload);
+        free(buffer);
     }
     else{
+        respuesta_memoria = -1;
         log_error(logger, "No se pudo conectar con el módulo memoria");
     }
 
-    
+    void* respuesta_memoria_serializada = _serialize(sizeof(int), "%d", respuesta_memoria);
     log_info(logger,"mandando a matelib la respuesta del memalloc :) %d",respuesta_memoria);
-    _send_message(fd, ID_KERNEL, 1, (void*)respuesta_memoria, sizeof(int), logger); 
-   
+    _send_message(fd, ID_KERNEL, 1, respuesta_memoria_serializada, sizeof(int), logger); 
+    free(respuesta_memoria_serializada);
     free(payload);
 }
 
@@ -631,7 +633,6 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
-
     void* payload = _serialize(sizeof(int) + sizeof(mate_pointer), "%d%d", carpincho->id, addr);
 
     int socket_memoria;
@@ -641,22 +642,25 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
     
     if(socket_memoria >= 0){
         _send_message(socket_memoria,  ID_KERNEL, MATE_MEMFREE,payload,sizeof(int) + sizeof(mate_pointer),logger);   
-
         t_mensaje *buffer;
         buffer = _receive_message(socket_memoria, logger);
         memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
         
         close(socket_memoria);
+        free(buffer->identifier);
+        free(buffer->payload);
+        free(buffer);
     }
     else{
         log_error(logger, "No se pudo conectar con el módulo memoria");
+        respuesta_memoria = -1;
     }
 
-    log_info(logger,"mandando a matelib la respuesta del mate_memfree :) %d",respuesta_memoria);
-    _send_message(fd, ID_KERNEL, 1, (void*)respuesta_memoria, sizeof(int), logger); 
-   
-
-    free(payload); 
+    void* respuesta_memoria_serializada = _serialize(sizeof(int), "%d", respuesta_memoria);
+    log_info(logger,"mandando a matelib la respuesta del memfree :) %d",respuesta_memoria);
+    _send_message(fd, ID_KERNEL, 1, respuesta_memoria_serializada, sizeof(int), logger); 
+    free(respuesta_memoria_serializada);
+    free(payload);
 }
 
 void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // martin => está bien lo que estamos retornando al carpincho?
@@ -664,29 +668,25 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
     void* payload = _serialize(sizeof(int) * 3, "%d%d%d", carpincho->id, origin, size);  
-
+    t_mensaje *buffer;
     int socket_memoria;
     socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
 
-    int respuesta_memoria;
-
     if(socket_memoria >= 0){
-        
         _send_message(socket_memoria, ID_KERNEL, MATE_MEMREAD,payload,sizeof(sizeof(int) * 3 + sizeof(int)),logger);   
-          t_mensaje *buffer;
         buffer = _receive_message(socket_memoria, logger);
-        memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
-
+        log_info(logger,"mandando a matelib la respuesta del memread :)");
+        _send_message(fd, ID_KERNEL, 1, buffer->payload, sizeof(int), logger);
         close(socket_memoria);
     }
     else{
         log_error(logger, "No se pudo conectar con el módulo memoria");
+        int respuesta_memoria = -6;
+        void* respuesta_memoria_serializada = _serialize(sizeof(int), "%d", respuesta_memoria);
+        log_error(logger, "Enviando a Mate Lib codigo de error en memread. %d", respuesta_memoria);
+        _send_message(fd, ID_KERNEL, 1, respuesta_memoria_serializada, sizeof(int), logger); 
+        free(respuesta_memoria_serializada);
     }
-
-
-    log_info(logger,"mandando a matelib la respuesta del mate_memread :) %d",respuesta_memoria);
-    _send_message(fd, ID_KERNEL, 1, (void*)respuesta_memoria, sizeof(int), logger); 
-   
     free(payload);
 }
 
@@ -694,7 +694,6 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
-
     void* payload = _serialize(sizeof(int) * 3 + size, "%d%d%d%v", carpincho->id, dest, size, origin);
 
     int socket_memoria;
@@ -708,16 +707,20 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
         t_mensaje *buffer;
         buffer = _receive_message(socket_memoria, logger);
         memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
-
+        free(buffer->identifier);
+        free(buffer->payload);
+        free(buffer);
         close(socket_memoria);
     }
     else{
         log_error(logger, "No se pudo conectar con el módulo memoria");
+        respuesta_memoria = -1;
     }
 
-    log_info(logger,"mandando a matelib la respuesta del mate_memread :) %d",respuesta_memoria);
-    _send_message(fd, ID_KERNEL, 1, (void*)respuesta_memoria, sizeof(int), logger); 
-   
+    void* respuesta_memoria_serializada = _serialize(sizeof(int), "%d", respuesta_memoria);
+    log_info(logger,"mandando a matelib la respuesta del memwrite :) %d",respuesta_memoria);
+    _send_message(fd, ID_KERNEL, 1, respuesta_memoria_serializada, sizeof(int), logger); 
+    free(respuesta_memoria_serializada);
     free(payload);
 }
 
