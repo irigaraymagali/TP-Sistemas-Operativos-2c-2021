@@ -18,5 +18,5 @@ fi
 FILE=example.out
 sudo make test
 if test -f "./$FILE"; then
-   LD_LIBRARY_PATH="obj/" ./$FILE "/home/utnso/tp-2021-2c-3era-es-la-vencida/mate-lib/cfg/mate-lib.conf"
+   LD_LIBRARY_PATH="obj/" ./$FILE "./cfg/mate-lib.conf"
 fi
