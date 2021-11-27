@@ -23,12 +23,12 @@ mate_inner_structure* convertir_a_estructura_interna(mate_instance* lib_ref){ //
     return (mate_inner_structure *)lib_ref->group_info; 
 }
 
- mate_inner_structure* nuevaEstructuraInterna(){
-    mate_inner_structure* tuestructurapapu = malloc(sizeof(mate_inner_structure));
-    tuestructurapapu->semaforo = string_new();
-    tuestructurapapu->dispositivo_io = string_new();
+ mate_inner_structure* nueva_estructura_interna(){
+    mate_inner_structure* nueva_estructura = malloc(sizeof(mate_inner_structure));
+    nueva_estructura->semaforo = string_new();
+    nueva_estructura->dispositivo_io = string_new();
 
-    return tuestructurapapu;
+    return nueva_estructura;
  }
 
 int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_interna){
@@ -65,7 +65,7 @@ int mate_init(mate_instance *lib_ref, char *config)
     logger = log_create("./cfg/mate-lib.log", "[Mate-Lib]", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
 
    
-    mate_inner_structure* estructura_interna = nuevaEstructuraInterna();
+    mate_inner_structure* estructura_interna = nueva_estructura_interna();
 
     int sem_len =  string_length(estructura_interna->semaforo);
     int len_dis_io = string_length(estructura_interna->dispositivo_io);
@@ -110,15 +110,19 @@ int mate_close(mate_instance *lib_ref)
 
 int mate_sem_init(mate_instance *lib_ref, mate_sem_name sem, unsigned int value) 
 {
-    mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);    
-    estructura_interna->semaforo = sem;
+    mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
+    string_append(&estructura_interna->semaforo, (char*) sem);
+    // free(estructura_interna->semaforo);
+    // estructura_interna->semaforo = string_from_format("%s", sem);
     estructura_interna->valor_semaforo = value; 
     return conexion_con_backend(MATE_SEM_INIT, estructura_interna);    
 }   
 
 int modificar_semaforo(int id_funcion, mate_sem_name sem, mate_instance* lib_ref){
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
-    estructura_interna->semaforo = sem;
+    // estructura_interna->semaforo = sem;
+    free(estructura_interna->semaforo);
+    estructura_interna->semaforo = string_from_format("%s", sem);
     return conexion_con_backend(id_funcion, estructura_interna);
 }
 
@@ -143,7 +147,8 @@ int mate_sem_destroy(mate_instance *lib_ref, mate_sem_name sem)
 int mate_call_io(mate_instance *lib_ref, mate_io_resource io, void *msg)
 {
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
-    estructura_interna->dispositivo_io = io;  
+    free(estructura_interna->dispositivo_io);
+    estructura_interna->dispositivo_io = string_from_format("%s", (char*) io);
     return conexion_con_backend(MATE_CALL_IO, estructura_interna);    
 }
 

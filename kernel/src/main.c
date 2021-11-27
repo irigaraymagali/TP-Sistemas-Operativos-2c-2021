@@ -521,52 +521,78 @@ void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
 
 //////////////// FUNCIONES IO ///////////////////
 
-bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo){
-    return  strcmp(((dispositivo_io *)dispositivo)->nombre, nombre_dispositivo) == 0 ;    
+bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo) {
+    dispositivo_io* aux = (dispositivo_io*) dispositivo; 
+    return string_equals_ignore_case(aux->nombre, (char*) nombre_dispositivo);
 } 
 
 void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
-    
-    void * payload;
     
     bool igual_a(void *dispositivo){
         return es_igual_dispositivo(nombre_io, dispositivo);
     }
 
-    if(list_any_satisfy(lista_dispositivos_io, igual_a)){  
-        
-        dispositivo_io *dispositivo_pedido; 
-        exec_a_block(id_carpincho);
-        data_carpincho *carpincho;
-        carpincho = encontrar_estructura_segun_id(id_carpincho);
-        carpincho->estado = BLOCKED;
-        dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); 
+    // void * payload;
 
-        if(dispositivo_pedido->en_uso){
-           queue_push(dispositivo_pedido->en_espera, carpincho);  
-           log_info(logger, "El dispositivo IO esta en uso");     
-        }
-        else{ 
-            dispositivo_pedido->en_uso = true;
+    // if(list_any_satisfy(lista_dispositivos_io, (void*) igual_a)){  
+        
+    //     dispositivo_io *dispositivo_pedido; 
+    //     exec_a_block(id_carpincho);
+    //     data_carpincho *carpincho;
+    //     carpincho = encontrar_estructura_segun_id(id_carpincho);
+    //     carpincho->estado = BLOCKED;
+    //     dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); 
+
+    //     if(dispositivo_pedido->en_uso){
+    //        queue_push(dispositivo_pedido->en_espera, carpincho);  
+    //        log_info(logger, "El dispositivo IO esta en uso");     
+    //     }
+    //     else{ 
+    //         dispositivo_pedido->en_uso = true;
+    //         usleep(dispositivo_pedido->duracion);
+    //         block_a_ready(carpincho);
+    //         while(!queue_is_empty(dispositivo_pedido->en_espera)){
+    //             data_carpincho *carpincho_siguiente;
+    //             carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
+    //             queue_pop(dispositivo_pedido->en_espera);
+    //             usleep(dispositivo_pedido->duracion);
+    //             block_a_ready(carpincho_siguiente);
+    //         }
+    //         log_info(logger, "Se le dio el dispositivo IO");
+    //     }
+    // }
+    // else
+    // {
+    //     log_info(logger, "Se pidio un dispositivo IO que no existe");
+    //      payload = _serialize(sizeof(int), "%d", -1);
+    //     _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
+    // }
+
+    dispositivo_io *dispositivo_pedido; 
+    exec_a_block(id_carpincho);
+    data_carpincho *carpincho;
+    carpincho = encontrar_estructura_segun_id(id_carpincho);
+    carpincho->estado = BLOCKED;
+    dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); 
+    if(dispositivo_pedido->en_uso){
+       queue_push(dispositivo_pedido->en_espera, carpincho);  
+       log_info(logger, "El dispositivo IO esta en uso");     
+    }
+    else{ 
+        dispositivo_pedido->en_uso = true;
+        usleep(dispositivo_pedido->duracion);
+        block_a_ready(carpincho);
+        while(!queue_is_empty(dispositivo_pedido->en_espera)){
+            data_carpincho *carpincho_siguiente;
+            carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
+            queue_pop(dispositivo_pedido->en_espera);
             usleep(dispositivo_pedido->duracion);
-            block_a_ready(carpincho);
-            while(!queue_is_empty(dispositivo_pedido->en_espera)){
-                data_carpincho *carpincho_siguiente;
-                carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
-                queue_pop(dispositivo_pedido->en_espera);
-                usleep(dispositivo_pedido->duracion);
-                block_a_ready(carpincho_siguiente);
-            }
-            log_info(logger, "Se le dio el dispositivo IO");
+            block_a_ready(carpincho_siguiente);
         }
+        log_info(logger, "Se le dio el dispositivo IO");
     }
-    else
-    {
-        log_info(logger, "Se pidio un dispositivo IO que no existe");
-         payload = _serialize(sizeof(int), "%d", -1);
-        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-    }
-    free(payload);
+
+    // free(payload);
 }
 
 void crear_estructura_dispositivo(){ 
@@ -1065,7 +1091,7 @@ void calculo_rafaga_anterior(data_carpincho *carpincho){ // para SJF
 
     int tiempo_salida = calcular_milisegundos();
 
-    carpincho->rafaga_anterior = tiempo_salida - carpincho->tiempo_entrada_a_exec; 
+    carpincho->rafaga_anterior = carpincho->tiempo_entrada_a_exec - tiempo_salida; 
 }
 
 void calculo_RR(data_carpincho *carpincho){ // para HRRN
