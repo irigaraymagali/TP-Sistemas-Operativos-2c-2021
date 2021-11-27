@@ -53,51 +53,51 @@ int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_intern
 }
 
 void port_fixer_con_kernel() {
-    if (config_get_int_value(config, "PUERTO_BACKEND") == 5980) {
+    if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5980) {
         char* puerto = string_from_format("%d", 5981);
-        config_set_value(config, "PUERTO_BACKEND", puerto);
+        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
         free(puerto);
     }
 
-    else if (config_get_int_value(config, "PUERTO_BACKEND") == 5981) {
+    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5981) {
         char* puerto = string_from_format("%d", 5982);
-        config_set_value(config, "PUERTO_BACKEND", puerto);
+        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
         free(puerto);
     }
 
-    else if (config_get_int_value(config, "PUERTO_BACKEND") == 5982) {
+    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5982) {
         char* puerto = string_from_format("%d", 5983);
-        config_set_value(config, "PUERTO_BACKEND", puerto);
+        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
         free(puerto);
     }
 
-    else if (config_get_int_value(config, "PUERTO_BACKEND") == 5983) {
+    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5983) {
         char* puerto = string_from_format("%d", 5980);
-        config_set_value(config, "PUERTO_BACKEND", puerto);
+        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
         free(puerto);
     }
 
-    else if (config_get_int_value(config, "PUERTO_BACKEND") == 5080) {
+    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5080) {
         char* puerto = string_from_format("%d", 5081);
-        config_set_value(config, "PUERTO_BACKEND", puerto);
+        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
         free(puerto);
     }
 
-    else if (config_get_int_value(config, "PUERTO_BACKEND") == 5081) {
+    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5081) {
         char* puerto = string_from_format("%d", 5082);
-        config_set_value(config, "PUERTO_BACKEND", puerto);
+        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
         free(puerto);
     }
 
-    else if (config_get_int_value(config, "PUERTO_BACKEND") == 5082) {
+    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5082) {
         char* puerto = string_from_format("%d", 5083);
-        config_set_value(config, "PUERTO_BACKEND", puerto);
+        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
         free(puerto);
     }
 
     else {
         char* puerto = string_from_format("%d", 5080);
-        config_set_value(config, "PUERTO_BACKEND", puerto);
+        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
         free(puerto);
     }
 }

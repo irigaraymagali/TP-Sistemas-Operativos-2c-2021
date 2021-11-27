@@ -74,27 +74,27 @@ void port_fixer() {
 
     // FIX PUERTO SWAMP
 
-    if (config_get_int_value(config, "PUERTO_SWAMP") == 5180) {
+    if (config_get_int_value(config_file, "PUERTO_SWAMP") == 5180) {
         char* puerto = string_from_format("%d", 5181);
-        config_set_value(config, "PUERTO_SWAMP", puerto);
+        config_set_value(config_file, "PUERTO_SWAMP", puerto);
         free(puerto);
     }
 
-    else if (config_get_int_value(config, "PUERTO_SWAMP") == 5181) {
+    else if (config_get_int_value(config_file, "PUERTO_SWAMP") == 5181) {
         char* puerto = string_from_format("%d", 5182);
-        config_set_value(config, "PUERTO_SWAMP", puerto);
+        config_set_value(config_file, "PUERTO_SWAMP", puerto);
         free(puerto);
     }
 
-    else if (config_get_int_value(config, "PUERTO_SWAMP") == 5182) {
+    else if (config_get_int_value(config_file, "PUERTO_SWAMP") == 5182) {
         char* puerto = string_from_format("%d", 5183);
-        config_set_value(config, "PUERTO_SWAMP", puerto);
+        config_set_value(config_file, "PUERTO_SWAMP", puerto);
         free(puerto);
     }
 
     else {
         char* puerto = string_from_format("%d", 5180);
-        config_set_value(config, "PUERTO_SWAMP", puerto);
+        config_set_value(config_file, "PUERTO_SWAMP", puerto);
         free(puerto);
     }
 }
