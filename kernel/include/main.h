@@ -183,3 +183,4 @@ void ejecuta(void *id_cpu);
 void detectar_deadlock();
 bool formar_ciclo();
 void solucionar_deadlock();
+void liberar_carpincho(void *carpincho);

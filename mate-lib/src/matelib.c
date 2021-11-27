@@ -68,10 +68,10 @@ int mate_init(mate_instance *lib_ref, char *config)
 
     printf("socket: %d\n", socket_backend);
 
-
     if(socket_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
         printf("\nestoy aca\n");
+        free(payload);
         return socket_backend;  
     }
     else{
@@ -148,9 +148,9 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 
     conexion_con_backend = _send_message(socket_backend, ID_MATE_LIB, MATE_MEMALLOC, payload, sizeof(int)*2, logger); 
 
-    free(payload);
     
     if(conexion_con_backend < 0 ){ 
+        free(payload);
         log_info(logger, "no se pudo crear la conexión");
         return conexion_con_backend;  
     }
@@ -165,6 +165,8 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
         free(buffer->identifier);
         free(buffer->payload);
         free(buffer);
+    
+        free(payload);
         
         return (mate_pointer) pointer;  
     } 
@@ -174,10 +176,10 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
 {
     int conexion_con_backend;
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
-    void* paylaod = _serialize(sizeof(int) + sizeof(mate_pointer), "%d%d", estructura_interna->id, addr);
-    conexion_con_backend = _send_message( socket_backend, ID_MATE_LIB, MATE_MEMFREE, paylaod, sizeof(int) + sizeof(mate_pointer), logger); 
+    void* payload = _serialize(sizeof(int) + sizeof(mate_pointer), "%d%d", estructura_interna->id, addr);
+    conexion_con_backend = _send_message( socket_backend, ID_MATE_LIB, MATE_MEMFREE, payload, sizeof(int) + sizeof(mate_pointer), logger); 
 
-    free(paylaod);
+    free(payload);
 
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
@@ -213,9 +215,9 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
    
     conexion_con_backend = _send_message(   socket_backend, ID_MATE_LIB, MATE_MEMREAD, payload, sizeof(int) * 3, logger); 
 
-    free(payload);
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
+        free(payload);
         return conexion_con_backend;  
     }
     else{
@@ -235,6 +237,7 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
         free(buffer->payload);
         free(buffer->identifier);
         free(buffer);
+        free(payload);
         return resultado;  
     }   
 }
@@ -245,11 +248,10 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     void* payload = _serialize(sizeof(int) * 3 + size, "%d%d%d%v", estructura_interna->id, dest, size, origin);
     conexion_con_backend = _send_message( socket_backend, ID_MATE_LIB, MATE_MEMWRITE, payload, sizeof(sizeof(int) * 2 + sizeof(int) * sizeof(origin) + sizeof(int) +  sizeof(int)), logger); 
-
-    free(payload);
    
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión");
+        free(payload);
         return conexion_con_backend;  
     }
     else{
@@ -267,6 +269,7 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
          free(buffer->payload);
          free(buffer->identifier);
          free(buffer);
+        free(payload);
         return resultado;
         
     }   
