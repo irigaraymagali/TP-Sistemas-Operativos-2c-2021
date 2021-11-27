@@ -387,10 +387,7 @@ void* obtener_pagina(int proceso, int pagina) {
 void finalizar_proceso(int proceso) {
     char* string_proceso = string_itoa(proceso);
     t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso);
-    if (tabla_paginas == NULL) {
-        log_error(log_file, "El proceso %d no se encuentra utilizando swap.", proceso);
-    }
-    else {
+    if (tabla_paginas != NULL) {
         // Abro el archivo de swap y lo mapeo para eliminar las paginas guardadas.
         char* swap_file_name = get_swap_file_name(tabla_paginas);
         char* swap_file_path = string_from_format("%s%s", SWAP_FILES_PATH, swap_file_name);
