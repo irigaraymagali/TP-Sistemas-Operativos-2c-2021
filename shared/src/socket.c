@@ -183,7 +183,7 @@ t_mensaje *_receive_message(int socket, t_log *logger) {
 		log_info(logger, "Recibi: String: %s", temp -> payload);
 	}
 
-	log_info(logger, "Recibi un mensaje..");
+	log_info(logger, "Recibi el codigo de operacion %d del proceso %s..", temp->command, temp->identifier);
 
 	return temp;
 }

@@ -1206,7 +1206,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&origin_memread, payload + offset, sizeof(int));
                 offset += sizeof(int);
                 // size_memoria
-                memcpy(&size_memoria, payload, sizeof(int));
+                memcpy(&size_memoria, payload + offset, sizeof(int));
                 offset += sizeof(int);
 
                 mate_memread(id_carpincho, origin_memread, size_memoria, fd);            
@@ -1218,15 +1218,15 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 offset += sizeof(int);
 
                 // dest_memwrite
-                memcpy(&dest_memwrite, payload, sizeof(int));
+                memcpy(&dest_memwrite, payload + offset, sizeof(int));
                 offset += sizeof(int);
 
                 memcpy(&ptr_len, payload + offset, sizeof(int));
                 offset += sizeof(int);
                 size_memoria = ptr_len;
-
+                origin_memwrite = malloc(ptr_len);
                 // origin_memwrite
-                memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
+                memcpy(origin_memwrite, payload + offset, ptr_len);
 
                 mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);     
             break;  
