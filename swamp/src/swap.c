@@ -19,7 +19,7 @@ void inicializar_directorios() {
 void inicializar_swap_files() {
     swap_dict = dictionary_create();
     swap_list = list_create();
-    char** swap_file_names = config_get_array_value(config_file, "ARCHIVOS_SWAP");
+    char** swap_file_names = config_get_array_value(config_file, "ARCHIVOS_SWAMP");
 
     for (int i = 0; swap_file_names[i] != NULL; i++) {
         char* swap_file_path = string_from_format("%s%s", SWAP_FILES_PATH, swap_file_names[i]);
