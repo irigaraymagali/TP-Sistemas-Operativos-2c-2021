@@ -153,6 +153,8 @@ void free_memory(){
 
     exit(EXIT_SUCCESS);
     */ //ver despues para liberar memoria
+
+    exit(EXIT_SUCCESS);
 }
 
 ///////////////// FUNCIONES ÚTILES ////////////////////////
@@ -176,28 +178,27 @@ data_carpincho* encontrar_estructura_segun_id(int id){
 ///////////////// RECIBIR MENSAJES //////////////////////// 
 
 data_carpincho* deserializar(void* buffer){
-
-    int str_len;
+    int sem_len, io_len;
     int offset = 0;
-    data_carpincho* estructura_interna;
-    estructura_interna = malloc(sizeof(estructura_interna));
-
-    memcpy(&estructura_interna->id, buffer, sizeof(int));
+    int id;
+    memcpy(&id, buffer, sizeof(int));
     offset += sizeof(int); 
 
-    memcpy(&str_len, buffer + offset, sizeof(int));
+    data_carpincho* estructura_interna = encontrar_estructura_segun_id(id);
+
+    memcpy(&sem_len, buffer + offset, sizeof(int));
     offset += sizeof(int);
 
-    memcpy(&estructura_interna->semaforo, buffer + offset, str_len);
-    offset += str_len;
+    memcpy(&estructura_interna->semaforo, buffer + offset, sem_len);
+    offset += sem_len;
 
     memcpy(&estructura_interna->valor_semaforo, buffer + offset, sizeof(int));
     offset += sizeof(int);
 
-    memcpy(&str_len, buffer + offset, sizeof(int));
+    memcpy(&io_len, buffer + offset, sizeof(int));
     offset += sizeof(int);
 
-    memcpy(&estructura_interna->dispositivo_io, buffer + offset, str_len);
+    memcpy(&estructura_interna->dispositivo_io, buffer + offset, io_len);
 
     return estructura_interna;
 } 
@@ -1162,7 +1163,7 @@ void ejecuta(void *id_cpu){
 void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     
     log_info(logger, "Kernel, mensaje recibido");
-    data_carpincho* estructura_interna = deserializar(payload);
+    data_carpincho* estructura_interna;
     int id_carpincho;
     int size_memoria;
     int addr_memfree;
@@ -1178,21 +1179,27 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_init(fd);
             break;
             case MATE_CLOSE: 
+                estructura_interna = deserializar(payload);
                 mate_close(estructura_interna->id,fd); 
             break;
             case MATE_SEM_INIT: 
+                estructura_interna = deserializar(payload);
                 mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
             break;
             case MATE_SEM_WAIT: 
+                estructura_interna = deserializar(payload);
                 mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_SEM_POST: 
+                estructura_interna = deserializar(payload);
                 mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_SEM_DESTROY:
+                estructura_interna = deserializar(payload);
                 mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_CALL_IO:
+                estructura_interna = deserializar(payload);
                 mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
             break;       
             case MATE_MEMALLOC: 
@@ -1200,7 +1207,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
                 // size_memoria
-                memcpy(&size_memoria, payload, sizeof(int));
+                memcpy(&size_memoria, payload + offset, sizeof(int));
                 offset += sizeof(int);
 
                 mate_memalloc(id_carpincho, size_memoria, fd);      
@@ -1210,7 +1217,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
                 // addr_memfree
-                memcpy(&addr_memfree, payload, sizeof(int));
+                memcpy(&addr_memfree, payload + offset, sizeof(int));
                 offset += sizeof(int);
 
                 mate_memfree(id_carpincho, addr_memfree, fd);      
@@ -1220,7 +1227,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
                 // origin_memread
-                memcpy(&origin_memread, payload, sizeof(int));
+                memcpy(&origin_memread, payload + offset, sizeof(int));
                 offset += sizeof(int);
                 // size_memoria
                 memcpy(&size_memoria, payload, sizeof(int));
@@ -1232,17 +1239,17 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 // id_carpincho
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
-                // origin_memwrite
-                memcpy(&ptr_len, payload + offset, sizeof(int));
-                offset += sizeof(int);
-                memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
-                offset += sizeof(int)* ptr_len;                
+
                 // dest_memwrite
                 memcpy(&dest_memwrite, payload, sizeof(int));
                 offset += sizeof(int);
-                // size_memoria
-                memcpy(&size_memoria, payload, sizeof(int));
+
+                memcpy(&ptr_len, payload + offset, sizeof(int));
                 offset += sizeof(int);
+                size_memoria = ptr_len;
+
+                // origin_memwrite
+                memcpy(&origin_memwrite, payload + offset, sizeof(int)*ptr_len);
 
                 mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);     
             break;  
