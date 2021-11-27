@@ -16,6 +16,7 @@ int main(int argc, char ** argv){
     initPaginacion();
 
     void* payload = _serialize(sizeof(int), "%d", tipoDeAsignacionDinamica);
+    log_info(logger, "Enviando tipo de asignación a Swamp");
     send_message_swamp(TIPO_ASIGNACION, payload, sizeof(int));
     free(payload);
 
@@ -187,32 +188,39 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
 
     switch(opcode){
         case MATE_INIT:
+            log_info(logger, "Comenzando comando MATE_INIT");
             pid = deserialize_init_process(id, payload);
             inicializarUnProceso(pid);  
             iresp = pid;    
             break;
         case MATE_MEMALLOC:
+            log_info(logger, "Comenzando comando MATE_MEMALLOC");
             deserialize_mem_alloc(&pid, &espacioAReservar, payload);
             iresp = memalloc(pid, espacioAReservar);
             break;
         case MATE_MEMFREE:
+            log_info(logger, "Comenzando comando MATE_MEMFREE");
             deserialize_mem_free(&pid, &dir_logica, payload);
             iresp = memfree(pid, dir_logica);
             break;
         case MATE_MEMREAD:
+            log_info(logger, "Comenzando comando MATE_MEMREAD");
             deserialize_mem_read(&pid, &dir_logica, &size, payload);
             resp = memread(pid, dir_logica, size);
             size_msg = size;
             break;
         case MATE_MEMWRITE:
-            deserialize_mem_write(&pid, &dir_logica, &size, to_write, payload);
+            log_info(logger, "Comenzando comando MATE_MEMWRITE");
+            to_write = deserialize_mem_write(&pid, &dir_logica, &size, payload);
             iresp = memwrite(pid, dir_logica, to_write, size);
             break;
         case MATE_CLOSE:
+            log_info(logger, "Comenzando comando MATE_CLOSE");
             pid = deserialize_id_process(payload);
             iresp = delete_process(pid);
             break;    
         case SUSPENDER:
+            log_info(logger, "Comenzando comando SUSPENDER");
             pid = deserialize_id_process(payload);
             iresp = suspend_process(pid);
             break;
@@ -287,7 +295,7 @@ void deserialize_mem_read(int* pid, int* dir_logica, int* size, void* payload){
     memcpy(size, payload + offset, sizeof(int));
 }
 
-void deserialize_mem_write(int* pid, int* dir_logica, int* size, void* info, void* payload){
+void* deserialize_mem_write(int* pid, int* dir_logica, int* size, void* payload){
     int offset = 0;
 
     memcpy(pid, payload, sizeof(int));
@@ -299,8 +307,10 @@ void deserialize_mem_write(int* pid, int* dir_logica, int* size, void* info, voi
     memcpy(size, payload + offset, sizeof(int));
     offset += sizeof(int);
 
-    info = malloc(*size);
+    void* info = malloc(*size);
     memcpy(info, payload + offset, *size);
+
+    return info;
 }
 
 void free_memory(){

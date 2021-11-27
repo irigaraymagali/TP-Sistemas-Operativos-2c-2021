@@ -227,7 +227,7 @@ data_carpincho* encontrar_estructura_segun_id(int id){
     }
 
     data_carpincho *carpincho_encontrado;
-    carpincho_encontrado = (data_carpincho *) list_find(lista_carpinchos,buscar_id);
+    carpincho_encontrado = (data_carpincho *) list_find(lista_carpinchos, buscar_id);
 
     return carpincho_encontrado;
 }
@@ -246,7 +246,7 @@ data_carpincho* deserializar(void* buffer){
     memcpy(&sem_len, buffer + offset, sizeof(int));
     offset += sizeof(int);
 
-    memcpy(&estructura_interna->semaforo, buffer + offset, sem_len);
+    memcpy(estructura_interna->semaforo, buffer + offset, sem_len);
     offset += sem_len;
 
     memcpy(&estructura_interna->valor_semaforo, buffer + offset, sizeof(int));
@@ -255,7 +255,7 @@ data_carpincho* deserializar(void* buffer){
     memcpy(&io_len, buffer + offset, sizeof(int));
     offset += sizeof(int);
 
-    memcpy(&estructura_interna->dispositivo_io, buffer + offset, io_len);
+    memcpy(estructura_interna->dispositivo_io, buffer + offset, io_len);
 
     return estructura_interna;
 } 
@@ -428,28 +428,27 @@ void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo,
         return esIgualASemaforo(nombre_semaforo, semaforo_igual);
     }
 
-    if(list_any_satisfy(semaforos_carpinchos, (void *)esIgualA)){  
+    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
         void  *payload;
         payload = _serialize(sizeof(int), "%d", -1);
-        log_info(logger, "El semaforo %s ya estaba incializado", *nombre_semaforo);
+        log_info(logger, "El semaforo %s ya estaba incializado", nombre_semaforo);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
         free(payload);
     }
     else {
-        semaforo semaforo_nuevo;
-        void *ptr_semaforo;    
-        ptr_semaforo = (semaforo *) malloc(sizeof(semaforo));     
-        ptr_semaforo = &semaforo_nuevo;  
+        semaforo* semaforo_nuevo = malloc(sizeof(semaforo));     
         
         void *payload = _serialize(sizeof(int), "%d", 0);  
+        log_info(logger, "Se inicializó el semáforo %s", nombre_semaforo);   
 
-        semaforo_nuevo.nombre = nombre_semaforo;
-        semaforo_nuevo.valor = valor_semaforo;
-        semaforo_nuevo.en_espera = queue_create();
+        semaforo_nuevo->nombre = string_new();
+        string_append(&semaforo_nuevo->nombre, nombre_semaforo);
+        semaforo_nuevo->valor = valor_semaforo;
+        semaforo_nuevo->en_espera = queue_create();
 
-        list_add(semaforos_carpinchos, ptr_semaforo);
+        list_add(semaforos_carpinchos, (void *) semaforo_nuevo);
 
-        log_info(logger, "Se inicializó el semáforo %s", *nombre_semaforo );        
+        log_info(logger, "Se inicializó el semáforo %s", nombre_semaforo);   
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger);     
         free(payload);    
     }

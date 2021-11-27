@@ -48,7 +48,7 @@ int deserialize_id_process(void* payload);
 void deserialize_mem_alloc(int* pid, int* espacioAReservar, void* payload);
 void deserialize_mem_free(int* pid, int* dir_logica, void* payload);
 void deserialize_mem_read(int* pid, int* dir_logica, int* size, void* payload);
-void deserialize_mem_write(int* pid, int* dir_logica, int* size, void* info,  void* payload);
+void* deserialize_mem_write(int* pid, int* dir_logica, int* size, void* payload);
 void print_carpinchos_metrics();
 void create_folder_dump(char* path);
 void init_swamp_connection();

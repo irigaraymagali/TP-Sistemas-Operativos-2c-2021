@@ -341,13 +341,13 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
     TablaDePaginasxProceso* temp = get_pages_by(processId);
 
     if(temp->id == processId){
-        t_list_iterator* iterator = list_iterator_create(temp->paginas);  
+        // t_list_iterator* iterator = list_iterator_create(temp->paginas);  
 
         int nextAllocAux = 0;
         uint8_t isfreeAux;
         int allocActual = 0; 
-        int dirPaginaSiguiente = 0;
-        int dirPaginaActual;
+        // int dirPaginaSiguiente = 0;
+        // int dirPaginaActual;
         int espacioEncontrado=0;
         
         while(allocActual < temp->lastHeap  && espacioEncontrado==0){
@@ -669,13 +669,13 @@ int allFramesUsedForAsignacionFijaPara(int processID){
     while(list_iterator_has_next(iterator)){
         Pagina* tempPagina = list_iterator_next(iterator);
 
-        if(tempPagina->bitPresencia =1){
+        if(tempPagina->bitPresencia == 1){
             contador++;
         }
 
     }
 
-    if(contador= cantidadDePaginasPorProceso){
+    if(contador == cantidadDePaginasPorProceso){
         return 1;
     }else
     {
