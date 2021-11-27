@@ -652,16 +652,10 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
         log_error(logger, "No se pudo conectar con el módulo memoria");
     }
 
-    if(respuesta_memoria >= 0){
-        log_info(logger,"El memalloc se realizó correctamente");
-        void *payload = _serialize(sizeof(int), "%d", 0);
-        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-    }
-    else{
-        log_info(logger,"No se pudo realizar el memalloc");
-        void *payload = _serialize(sizeof(int), "%d", -1);
-        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-    }  
+    log_info(logger,"mandando a matelib la respuesta del mate_memfree :) %d",respuesta_memoria);
+    _send_message(fd, ID_KERNEL, 1, (void*)respuesta_memoria, sizeof(int), logger); 
+   
+
     free(payload); 
 }
 
@@ -690,16 +684,9 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
     }
 
 
-    if(respuesta_memoria >= 0){
-        log_info(logger,"El memread se realizó correctamente");
-        void *payload = _serialize(sizeof(int), "%d", 0);
-        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-    }
-    else{
-        log_info(logger,"No se pudo realizar el memread");
-        void *payload = _serialize(sizeof(int), "%d", -1);
-        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-    }
+    log_info(logger,"mandando a matelib la respuesta del mate_memread :) %d",respuesta_memoria);
+    _send_message(fd, ID_KERNEL, 1, (void*)respuesta_memoria, sizeof(int), logger); 
+   
     free(payload);
 }
 
@@ -728,18 +715,9 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
         log_error(logger, "No se pudo conectar con el módulo memoria");
     }
 
-    if(respuesta_memoria >= 0){
-
-        log_info(logger,"El memread se realizó correctamente");
-        void *payload = _serialize(sizeof(int), "%d", 0);
-        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-    }
-    else{
-        log_info(logger,"No se pudo realizar el memread");
-        void *payload = _serialize(sizeof(int), "%d", -1);
-        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-
-    }
+    log_info(logger,"mandando a matelib la respuesta del mate_memread :) %d",respuesta_memoria);
+    _send_message(fd, ID_KERNEL, 1, (void*)respuesta_memoria, sizeof(int), logger); 
+   
     free(payload);
 }
 
