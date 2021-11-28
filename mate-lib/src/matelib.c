@@ -52,56 +52,6 @@ int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_intern
     }
 }
 
-void port_fixer_con_kernel() {
-    if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5980) {
-        char* puerto = string_from_format("%d", 5981);
-        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
-        free(puerto);
-    }
-
-    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5981) {
-        char* puerto = string_from_format("%d", 5982);
-        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
-        free(puerto);
-    }
-
-    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5982) {
-        char* puerto = string_from_format("%d", 5983);
-        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
-        free(puerto);
-    }
-
-    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5983) {
-        char* puerto = string_from_format("%d", 5980);
-        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
-        free(puerto);
-    }
-
-    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5080) {
-        char* puerto = string_from_format("%d", 5081);
-        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
-        free(puerto);
-    }
-
-    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5081) {
-        char* puerto = string_from_format("%d", 5082);
-        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
-        free(puerto);
-    }
-
-    else if (config_get_int_value(datos_configuracion, "PUERTO_BACKEND") == 5082) {
-        char* puerto = string_from_format("%d", 5083);
-        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
-        free(puerto);
-    }
-
-    else {
-        char* puerto = string_from_format("%d", 5080);
-        config_set_value(datos_configuracion, "PUERTO_BACKEND", puerto);
-        free(puerto);
-    }
-}
-
 ////////////////////////////////////////                        LIB                          /////////////////////////////////////////////
 
  // Funciones generales --------------------------------------------------------------
@@ -119,7 +69,6 @@ int mate_init(mate_instance *lib_ref, char *config)
     int size =  sizeof(int) * 4 + sem_len + len_dis_io;
     void* payload = armar_paquete(estructura_interna);
     t_config* datos_configuracion = config_create(config);
-    port_fixer();
     socket_backend = _connect(config_get_string_value(datos_configuracion, "IP_BACKEND"), config_get_string_value(datos_configuracion, "PUERTO_BACKEND"), logger);
     
     printf("socket: %d\n", socket_backend);
