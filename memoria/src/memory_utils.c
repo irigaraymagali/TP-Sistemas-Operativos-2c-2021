@@ -202,6 +202,7 @@ int suspend_process(int pid) {
         memcpy(mem_aux, memoria + (page->frame * tamanioDePagina), tamanioDePagina);
         log_info(logger, "Enviando a Swamp la pagina %d del proceso %d", page->pagina, pid);
         void* payload = _serialize(pay_len, "%d%d%d%v", pid, page->pagina, tamanioDePagina, mem_aux);
+        log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", page->pagina, pid);
         void* v_res = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);        // SI SWAMP NO TIENE MAS ESPACIO DEBERIAMOS RECIBIR ALGO.
         
         memcpy(&res, v_res, sizeof(int));
@@ -319,9 +320,8 @@ void* memread(uint32_t pid, int dir_logica, int size){
     }
 
     log_info(logger, "Lectura realizada con exito");
-    void* response = _serialize(sizeof(int) + size, "%d%v", size, read);
 
-    return response;
+    return read;
 } 
 
 TablaDePaginasxProceso* get_pages_by(int processID){
@@ -713,7 +713,8 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
             utilizarAlgritmoDeAsignacion(processId);
             tempPagina->frame = getNewEmptyFrame(processId);
             int pay_len = 2*sizeof(int);
-            void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina);       
+            void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina); 
+            log_info(logger, "Pidiendo La Pagina %d del Proceso %d a Swamp", mayorNroDePagina, processId);      
             void* response = send_message_swamp(MEMORY_RECV_SWAP_SEND, payload, pay_len);
             void* swamp_mem = malloc(tamanioDePagina);
 
@@ -1321,7 +1322,8 @@ void seleccionLRU(int processID){
     int pay_len = 3*sizeof(int)+tamanioDePagina;
     void* paginaAEnviar = malloc(tamanioDePagina);
     memcpy(paginaAEnviar,memoria + (frameVictima*tamanioDePagina),tamanioDePagina);
-    void* payload = _serialize(pay_len, "%d%d%d%v", processID, numeroDePagVictima,tamanioDePagina,paginaAEnviar);       
+    void* payload = _serialize(pay_len, "%d%d%d%v", processID, numeroDePagVictima,tamanioDePagina,paginaAEnviar); 
+    log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", numeroDePagVictima, processID);      
     void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
     int iresp;
 
@@ -1361,7 +1363,9 @@ void seleccionClockMejorado(){
             int pay_len = 3*sizeof(int)+tamanioDePagina;
             void* paginaAEnviar = malloc(tamanioDePagina);
             memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
-            void* payload = _serialize(pay_len, "%d%d%d%v", getProcessIdby(paginaEncontrada->frame), paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);       
+            int pid = getProcessIdby(paginaEncontrada->frame);
+            void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
+            log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
             void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
             int iresp;
             memcpy(&iresp, resp, sizeof(int));
@@ -1392,7 +1396,9 @@ void seleccionClockMejorado(){
             int pay_len = 3*sizeof(int)+tamanioDePagina;
             void* paginaAEnviar = malloc(tamanioDePagina);
             memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
-            void* payload = _serialize(pay_len, "%d%d%d%v", getProcessIdby(paginaEncontrada->frame), paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);       
+            int pid = getProcessIdby(paginaEncontrada->frame);
+            void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
+            log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
             void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
             int iresp;
             memcpy(&iresp, resp, sizeof(int));

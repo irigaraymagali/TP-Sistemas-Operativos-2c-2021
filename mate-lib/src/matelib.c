@@ -248,17 +248,18 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
         buffer = _receive_message(socket_backend, logger);
 
         memcpy(&resultado, buffer->payload, sizeof(int));
-        if (resultado > 0){
-           memcpy(dest, buffer->payload + sizeof(int), resultado); 
-        } else {
-           log_error(logger, "No se pudo leer el contenido con exito");
+        if (resultado == -6){
+            log_error(logger, "No se pudo leer el contenido con exito");
+            return resultado;  
         }
+
+        memcpy(dest, buffer->payload, size);
        
         free(buffer->payload);
         free(buffer->identifier);
         free(buffer);
         free(payload);
-        return resultado;  
+        return 1;  
     }   
 }
 
