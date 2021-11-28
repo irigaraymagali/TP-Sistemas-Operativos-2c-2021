@@ -567,6 +567,9 @@ int getNewEmptyFrame(int idProcess){
             }
             pthread_mutex_unlock(&list_pages_mutex);
         }else{
+            if(cantidadDeFramesEnMemoriaPor(idProcess)==cantidadDePaginasPorProceso){
+                return -1;
+            }
             while(emptyFrame < paginaFinal){
                 isfree= estaOcupadoUn(emptyFrame, idProcess);
                 if(isfree!= BUSY){
@@ -662,6 +665,7 @@ int frameAsignado(int unFrame){
     return 0;
 }
 
+//chequeo si los primeros frames fijos ya fueron asignados
 int allFramesUsedForAsignacionFijaPara(int processID){
     TablaDePaginasxProceso* tempTabla =get_pages_by(processID);
 
@@ -672,19 +676,38 @@ int allFramesUsedForAsignacionFijaPara(int processID){
     while(list_iterator_has_next(iterator)){
         Pagina* tempPagina = list_iterator_next(iterator);
 
-        if(tempPagina->bitPresencia == 1){
+        if(tempPagina->frame < (tamanioDeMemoria/tamanioDePagina)){
             contador++;
         }
 
     }
 
-    if(contador == cantidadDePaginasPorProceso){
+    if(contador >= cantidadDePaginasPorProceso){
         return 1;
     }else
     {
         return 0;
     }
     
+}
+
+int cantidadDeFramesEnMemoriaPor(int processID){
+    TablaDePaginasxProceso* tempTabla =get_pages_by(processID);
+
+    int contador=0;
+
+    t_list_iterator * iterator = list_iterator_create(tempTabla->paginas);
+    
+    while(list_iterator_has_next(iterator)){
+        Pagina* tempPagina = list_iterator_next(iterator);
+
+        if(tempPagina->bitPresencia){
+            contador++;
+        }
+
+    }
+
+    return contador;
 }
 
 int getFrameDeUn(int processId, int mayorNroDePagina){
