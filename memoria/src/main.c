@@ -21,7 +21,7 @@ int main(int argc, char ** argv){
     free(payload);
 
     /* inicializarUnProceso(1);
-    inicializarUnProceso(2);
+    //inicializarUnProceso(2);
 
     memalloc(1, 20);
     memwrite(1,0,"carpincho",10);*/

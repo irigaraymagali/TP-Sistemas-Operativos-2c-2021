@@ -123,7 +123,7 @@ void deletePagina(int idProcess,int paginaActual);
 
 void utilizarAlgritmoDeAsignacion(int processID);
 void seleccionLRU(int processID);
-void seleccionClockMejorado();
+void seleccionClockMejorado(int idProcess);
 void liberarFrame(uint32_t nroDeFrame);
 Pagina *getMarcoDe(uint32_t nroDeFrame);
 void setAsUsedRecently(int idProcess, int nroDePagina);

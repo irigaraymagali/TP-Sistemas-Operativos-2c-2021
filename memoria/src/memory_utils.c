@@ -491,19 +491,40 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             if(getNewEmptyFrame(processId) == -1){
                 utilizarAlgritmoDeAsignacion(processId);
 
-                paginaSiguienteALaUltima->frame = getNewEmptyFrame(processId);
-                paginaSiguienteALaUltima->isfree = BUSY;
-                pthread_mutex_lock(&lru_mutex);
-                lRUACTUAL++;
-                paginaSiguienteALaUltima->lRU = lRUACTUAL;
-                pthread_mutex_unlock(&lru_mutex);
-                paginaSiguienteALaUltima->bitUso=1;
-                paginaSiguienteALaUltima->bitModificado=1;
-                paginaSiguienteALaUltima->bitPresencia=1;
+                    Pagina *nuevaPagina = malloc(sizeof(Pagina));
+                    nuevaPagina->pagina   = paginaSiguienteALaUltima->pagina + 1;
+                    nuevaPagina->frame = getNewEmptyFrame(processId);
+                    nuevaPagina->isfree = BUSY;
+                    pthread_mutex_lock(&lru_mutex);
+                    lRUACTUAL++;
+                    nuevaPagina->lRU = lRUACTUAL;
+                    pthread_mutex_unlock(&lru_mutex);
+                    nuevaPagina->bitUso=1;
+                    nuevaPagina->bitModificado=1;
+                    nuevaPagina->bitPresencia=1;
 
-                list_iterator_destroy(iterator);
-            
-                cantidadDePaginasAAgregar--;
+                    list_iterator_destroy(iterator);
+
+                    list_add(temp->paginas, nuevaPagina);
+                    cantidadDePaginasAAgregar--;
+               
+                    /*  COMENTO ESTO PORQUE ES LO VIEJO Y NO SE SI EN ALGUN CASO ESPECIFICO ME PUEDA PASAR QUE NO TENGA QUE MALLOCQUEAR
+                    paginaSiguienteALaUltima->frame = getNewEmptyFrame(processId);
+                    paginaSiguienteALaUltima->isfree = BUSY;
+                    pthread_mutex_lock(&lru_mutex);
+                    lRUACTUAL++;
+                    paginaSiguienteALaUltima->lRU = lRUACTUAL;
+                    pthread_mutex_unlock(&lru_mutex);
+                    paginaSiguienteALaUltima->bitUso=1;
+                    paginaSiguienteALaUltima->bitModificado=1;
+                    paginaSiguienteALaUltima->bitPresencia=1;
+
+
+
+                    list_iterator_destroy(iterator);
+
+                    cantidadDePaginasAAgregar--;*/
+                
             }else{
                 paginaSiguienteALaUltima->isfree = BUSY;
                 pthread_mutex_lock(&lru_mutex);
@@ -676,7 +697,7 @@ int allFramesUsedForAsignacionFijaPara(int processID){
     while(list_iterator_has_next(iterator)){
         Pagina* tempPagina = list_iterator_next(iterator);
 
-        if(tempPagina->frame < (tamanioDeMemoria/tamanioDePagina)){
+        if(tempPagina->isfree == BUSY){
             contador++;
         }
 
@@ -723,7 +744,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
     } else {
         t_list_iterator* iterator = list_iterator_create(temp->paginas);
 
-        tempPagina = list_iterator_next(iterator);
+        
         while (list_iterator_has_next(iterator)  && tempPagina->pagina != mayorNroDePagina) {
             tempPagina = list_iterator_next(iterator);
         }
@@ -1275,7 +1296,7 @@ void utilizarAlgritmoDeAsignacion(int processID){
     }
     else
     {
-       seleccionClockMejorado();
+       seleccionClockMejorado(processID);
     }
     
 
@@ -1362,7 +1383,7 @@ void seleccionLRU(int processID){
     liberarFrame(frameVictima);
 }
 
-void seleccionClockMejorado(){
+void seleccionClockMejorado(int idProcess){
 
     int frameNoEncontrado =1;
 
@@ -1379,30 +1400,34 @@ void seleccionClockMejorado(){
             continue;
         }
 
-        Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
-        
-        if(paginaEncontrada->bitModificado == 0 && paginaEncontrada->bitUso==0){
-            frameNoEncontrado =0;
-            
-            int pay_len = 3*sizeof(int)+tamanioDePagina;
-            void* paginaAEnviar = malloc(tamanioDePagina);
-            memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
-            int pid = getProcessIdby(paginaEncontrada->frame);
-            void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
-            log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
-            void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
-            int iresp;
-            memcpy(&iresp, resp, sizeof(int));
-            if(iresp == 0){
-                log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
-            }
-            free(resp);
-            free(payload);
-            free(paginaAEnviar);
-            liberarFrame(paginaEncontrada->frame);
-        }
+        if(!tipoDeAsignacionDinamica &&  idProcess==getProcessIdby(punteroFrameClock)){
+            Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
 
-        punteroFrameClock++;
+            if(paginaEncontrada->bitModificado == 0 && paginaEncontrada->bitUso==0){
+                frameNoEncontrado =0;
+
+                int pay_len = 3*sizeof(int)+tamanioDePagina;
+                void* paginaAEnviar = malloc(tamanioDePagina);
+                memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
+                int pid = getProcessIdby(paginaEncontrada->frame);
+                void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
+                log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
+                void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+                int iresp;
+                memcpy(&iresp, resp, sizeof(int));
+                if(iresp == 0){
+                    log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+                }
+                free(resp);
+                free(payload);
+                free(paginaAEnviar);
+                liberarFrame(paginaEncontrada->frame);
+            }
+
+            punteroFrameClock++;
+        }else{
+            punteroFrameClock++;
+        }
     }
 
     while(frameNoEncontrado ){
@@ -1412,37 +1437,40 @@ void seleccionClockMejorado(){
             continue;
         }
 
-        Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
-        
-        if(paginaEncontrada->bitUso==0){
-            frameNoEncontrado =0;
-            
-            int pay_len = 3*sizeof(int)+tamanioDePagina;
-            void* paginaAEnviar = malloc(tamanioDePagina);
-            memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
-            int pid = getProcessIdby(paginaEncontrada->frame);
-            void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
-            log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
-            void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
-            int iresp;
-            memcpy(&iresp, resp, sizeof(int));
-            if(iresp == 0){
-                log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+        if(!tipoDeAsignacionDinamica &&  idProcess==getProcessIdby(punteroFrameClock)){
+            Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+
+            if(paginaEncontrada->bitUso==0){
+                frameNoEncontrado =0;
+
+                int pay_len = 3*sizeof(int)+tamanioDePagina;
+                void* paginaAEnviar = malloc(tamanioDePagina);
+                memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
+                int pid = getProcessIdby(paginaEncontrada->frame);
+                void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
+                log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
+                void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+                int iresp;
+                memcpy(&iresp, resp, sizeof(int));
+                if(iresp == 0){
+                    log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+                }
+                free(resp);
+                free(payload);
+                free(paginaAEnviar);
+
+                liberarFrame(paginaEncontrada->frame);
+            }else
+            {
+                paginaEncontrada->bitUso =0;
             }
-            free(resp);
-            free(payload);
-            free(paginaAEnviar);
 
-            liberarFrame(paginaEncontrada->frame);
-        }else
-        {
-            paginaEncontrada->bitUso =0;
+
+                punteroFrameClock++;
+            }else{
+                punteroFrameClock++;
+            }
         }
-        
-
-        punteroFrameClock++;
-    }
-
 
 }
 
@@ -1531,7 +1559,7 @@ void liberarFrame(uint32_t nroDeFrame){
                 paginatemp->frame = (tamanioDeMemoria/tamanioDePagina)+1;
                 paginatemp->bitPresencia = 0;
 
-                if(!tipoDeAsignacionDinamica){
+                /* if(!tipoDeAsignacionDinamica){
                 Pagina* paginaSiguienteALaUltima = malloc(sizeof(Pagina));
                 
                 paginaSiguienteALaUltima->frame = paginatemp->frame;
@@ -1539,7 +1567,7 @@ void liberarFrame(uint32_t nroDeFrame){
                 paginaSiguienteALaUltima->bitPresencia=1; 
 
                 list_add(temp->paginas, paginaSiguienteALaUltima);
-                }
+                }*/
             }
 
             
