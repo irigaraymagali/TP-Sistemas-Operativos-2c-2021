@@ -7,7 +7,7 @@ int main(int argc, char ** argv){
     logger = log_create(LOG_PATH, PROGRAM, true, LOG_LEVEL_INFO);
     config = config_create(CONFIG_PATH);
 
-    port_fixer();
+    // port_fixer();
 
     pthread_mutex_init(&pid_global_mutex, NULL);
     pid_global = 0;

@@ -6,7 +6,7 @@ int main(int argc, char ** argv){
 
     config = config_create("./cfg/kernel.conf");
 
-    port_fixer();
+    // port_fixer();
 
     id_carpincho = 1; 
 
