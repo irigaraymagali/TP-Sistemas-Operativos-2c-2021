@@ -77,28 +77,28 @@ void port_fixer() {
     if (config_get_int_value(config_file, "PUERTO") == 5180) {
         char* puerto = string_from_format("%d", 5181);
         config_set_value(config_file, "PUERTO", puerto);
-        config_save_in_file(config_file, "CONFIG_PATH");
+        config_save_in_file(config_file, "./cfg/swamp.cfg");
         free(puerto);
     }
 
     else if (config_get_int_value(config_file, "PUERTO") == 5181) {
         char* puerto = string_from_format("%d", 5182);
         config_set_value(config_file, "PUERTO", puerto);
-        config_save_in_file(config_file, "CONFIG_PATH");
+        config_save_in_file(config_file, "./cfg/swamp.cfg");
         free(puerto);
     }
 
     else if (config_get_int_value(config_file, "PUERTO") == 5182) {
         char* puerto = string_from_format("%d", 5183);
         config_set_value(config_file, "PUERTO", puerto);
-        config_save_in_file(config_file, "CONFIG_PATH");
+        config_save_in_file(config_file, "./cfg/swamp.cfg");
         free(puerto);
     }
 
     else {
         char* puerto = string_from_format("%d", 5180);
         config_set_value(config_file, "PUERTO", puerto);
-        config_save_in_file(config_file, "CONFIG_PATH");
+        config_save_in_file(config_file, "./cfg/swamp.cfg");
         free(puerto);
     }
 }

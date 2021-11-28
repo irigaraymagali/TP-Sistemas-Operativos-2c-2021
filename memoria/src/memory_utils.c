@@ -319,7 +319,9 @@ void* memread(uint32_t pid, int dir_logica, int size){
     }
 
     log_info(logger, "Lectura realizada con exito");
-    return read;
+    void* response = _serialize(sizeof(int) + size, "%d%v", size, read);
+
+    return response;
 } 
 
 TablaDePaginasxProceso* get_pages_by(int processID){
