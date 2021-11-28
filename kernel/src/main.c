@@ -6,7 +6,7 @@ int main(int argc, char ** argv){
 
     config = config_create("./cfg/kernel.conf");
 
-    port_fixer();
+    // port_fixer();
 
     id_carpincho = 1; 
 
@@ -50,24 +50,28 @@ void port_fixer() {
     if (config_get_int_value(config, "PUERTO_ESCUCHA") == 5980) {
         char* puerto = string_from_format("%d", 5981);
         config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        config_save_in_file(config, "./cfg/kernel.conf");
         free(puerto);
     }
 
     else if (config_get_int_value(config, "PUERTO_ESCUCHA") == 5981) {
         char* puerto = string_from_format("%d", 5982);
         config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        config_save_in_file(config, "./cfg/kernel.conf");
         free(puerto);
     }
 
     else if (config_get_int_value(config, "PUERTO_ESCUCHA") == 5982) {
         char* puerto = string_from_format("%d", 5983);
         config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        config_save_in_file(config, "./cfg/kernel.conf");
         free(puerto);
     }
 
     else {
         char* puerto = string_from_format("%d", 5980);
         config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        config_save_in_file(config, "./cfg/kernel.conf");
         free(puerto);
     }
 
@@ -75,25 +79,29 @@ void port_fixer() {
 
     if (config_get_int_value(config, "PUERTO_MEMORIA") == 5080) {
         char* puerto = string_from_format("%d", 5081);
-        config_set_value(config, "PUERTO_MEMORIA", puerto);
+        config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        config_save_in_file(config, "./cfg/kernel.conf");
         free(puerto);
     }
 
     else if (config_get_int_value(config, "PUERTO_MEMORIA") == 5081) {
         char* puerto = string_from_format("%d", 5082);
-        config_set_value(config, "PUERTO_MEMORIA", puerto);
+        config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        config_save_in_file(config, "./cfg/kernel.conf");
         free(puerto);
     }
 
     else if (config_get_int_value(config, "PUERTO_MEMORIA") == 5082) {
         char* puerto = string_from_format("%d", 5083);
-        config_set_value(config, "PUERTO_MEMORIA", puerto);
+        config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        config_save_in_file(config, "./cfg/kernel.conf");
         free(puerto);
     }
 
     else {
         char* puerto = string_from_format("%d", 5080);
-        config_set_value(config, "PUERTO_MEMORIA", puerto);
+        config_set_value(config, "PUERTO_ESCUCHA", puerto);
+        config_save_in_file(config, "./cfg/kernel.conf");
         free(puerto);
     }
 }
