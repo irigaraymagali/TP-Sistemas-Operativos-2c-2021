@@ -42,6 +42,7 @@ void recibir_mensajes() {
 
 void consola(t_mensaje* recibido, int socket_conexion) {
     if (recibido->command == TIPO_ASIGNACION) { // Ejemplo: TIPO_ASIGNACION ASIGNACION_FIJA
+        log_info(log_file, "Comando TIPO_ASIGNACION recibido.");
         if (recibido->pay_len == sizeof(int)) {
             memcpy(&tipo_asignacion, recibido->payload, sizeof(int));
 
@@ -64,6 +65,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
     }
 
     else if (recibido->command == MEMORY_SEND_SWAP_RECV) { // Ejemplo: GUARDAR_PAGINA PROCESO NUMERO_PAGINA TAMAÑO_PAGINA CONTENIDO_PAGINA
+        log_info(log_file, "Comando MEMORY_SEND_SWAP_RECV recibido.");
         if (recibido->pay_len == 3 * sizeof(int) + swap_page_size) {
             int offset = 0;
             int proceso, pagina;
@@ -100,6 +102,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
     }
 
     else if (recibido->command == MEMORY_RECV_SWAP_SEND) { // Ejemplo: OBTENER_PAGINA PROCESO NUMERO_PAGINA
+        log_info(log_file, "Comando MEMORY_RECV_SWAP_SEND recibido.");
         if (recibido->pay_len == 2 * sizeof(int)) {
             int offset = 0;
             int proceso, pagina;
@@ -141,6 +144,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
     }
 
     else if (recibido->command == FINISH_PROCESS) { // Ejemplo: FINALIZAR_PROCESO PROCESO
+        log_info(log_file, "Comando FINISH_PROCESS recibido.");
         if (recibido->pay_len == sizeof(int)) {
             int proceso;
             memcpy(&proceso, recibido->payload, sizeof(int));
