@@ -9,7 +9,7 @@ int main(int argc, char ** argv) {
     signal(SIGINT, cerrar_swamp);
 
     config_file = config_create(CONFIG_PATH);
-    port_fixer();
+    // port_fixer();
     log_file = log_create(LOG_PATH, "[Swamp ᶘ◕ᴥ◕ᶅ]", 1, LOG_LEVEL_INFO);
     swap_file_size = config_get_int_value(config_file, "TAMANIO_SWAMP");
     swap_page_size = config_get_int_value(config_file, "TAMANIO_PAGINA");
