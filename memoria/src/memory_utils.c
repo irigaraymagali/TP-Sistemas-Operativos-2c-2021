@@ -603,7 +603,8 @@ int estaOcupadoUn(int emptyFrame, int idProcess){
                     return tempPagina->isfree;
                     }
                     else{
-                        if(getProcessIdby(emptyFrame)){
+                        int pid = getProcessIdby(emptyFrame);
+                        if(pid != -1){
                             list_iterator_destroy(iterator);
                             list_iterator_destroy(iterator2);
                             pthread_mutex_unlock(&list_pages_mutex);
@@ -1456,7 +1457,7 @@ Pagina *getMarcoDe(uint32_t nroDeFrame){
 
 uint32_t getProcessIdby(uint32_t nroDeFrame)
 {
-    uint32_t processEncontrado =0;
+    uint32_t processEncontrado = -1;
 
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
