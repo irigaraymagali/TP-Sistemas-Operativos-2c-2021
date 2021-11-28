@@ -303,9 +303,9 @@ void* memread(uint32_t pid, int dir_logica, int size){
         } else if ((read_len + size_to_read) > size){
                 size_to_read = size - read_len;
         }
-
-        if (heap->nextAlloc > page_len){
-            int nxt_long_alloc = page_len - heap->nextAlloc;
+        int last_dir_page = (act_page * page_len);
+        if (heap->nextAlloc > last_dir_page){
+            int nxt_long_alloc = last_dir_page - heap->nextAlloc;
             int act_long_alloc = alloc_len - nxt_long_alloc;
 
             if (size_to_read > act_long_alloc && div_heap == 0){
