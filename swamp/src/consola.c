@@ -31,6 +31,10 @@ void recibir_mensajes() {
 
     while(1) {
         recibido = _receive_message(client_socket, log_file);
+        if (!string_equals_ignore_case(recibido->identifier, ID_MEMORIA)){
+            free_t_mensaje(recibido);
+            cerrar_swamp();
+        }
         consola(recibido, client_socket);
         free_t_mensaje(recibido);
     }
