@@ -248,6 +248,7 @@ data_carpincho* deserializar(void* buffer){
 
     memcpy(estructura_interna->semaforo, buffer + offset, sem_len);
     offset += sem_len;
+    estructura_interna->semaforo[sem_len] = '\0';
 
     memcpy(&estructura_interna->valor_semaforo, buffer + offset, sizeof(int));
     offset += sizeof(int);
@@ -256,6 +257,7 @@ data_carpincho* deserializar(void* buffer){
     offset += sizeof(int);
 
     memcpy(estructura_interna->dispositivo_io, buffer + offset, io_len);
+    estructura_interna->dispositivo_io[sem_len] = '\0';
 
     return estructura_interna;
 } 
@@ -418,8 +420,8 @@ void liberar_carpincho(void *carpincho){
 //////////////// FUNCIONES SEMAFOROS ///////////////////
 
 bool esIgualASemaforo(char* nombre_semaforo, void *semaforo_igual){
-    
-    return strcmp(((semaforo *) semaforo_igual)->nombre, nombre_semaforo) == 0;
+    semaforo* sem = (semaforo *) semaforo_igual;
+    return strcmp(sem->nombre, nombre_semaforo) == 0;
 }
 
 void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo, int fd){  
@@ -457,22 +459,23 @@ void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo,
 void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
     bool esIgualA(void *semaforo){
-        return esIgualASemaforo(semaforo, nombre_semaforo);
+        return esIgualASemaforo(nombre_semaforo, semaforo);
     }
 
-    if(list_any_satisfy(semaforos_carpinchos, (void *)esIgualA)){ 
+    if(list_any_satisfy(semaforos_carpinchos, esIgualA)){ 
 
         semaforo *semaforo_wait;
-        semaforo_wait = (semaforo *)list_find(semaforos_carpinchos, (void *)esIgualA);
+        semaforo_wait = (semaforo *)list_find(semaforos_carpinchos, esIgualA);
         semaforo_wait->valor --; 
 
         data_carpincho *carpincho;
         carpincho = encontrar_estructura_segun_id(id_carpincho);
         carpincho->fd = fd;
 
-        if(semaforo_wait->valor<1){
+        if(semaforo_wait->valor < 1){
             log_info(logger, "Se hizo un wait de un semaforo menor a 1, se bloquea el carpincho");
-            carpincho->nombre_semaforo_por_el_que_se_bloqueo = nombre_semaforo;
+            free(carpincho->nombre_semaforo_por_el_que_se_bloqueo);
+            carpincho->nombre_semaforo_por_el_que_se_bloqueo = string_from_format("%s", nombre_semaforo);
             exec_a_block(id_carpincho); 
             queue_push(semaforo_wait->en_espera, carpincho);
         }
@@ -502,7 +505,7 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     void *payload;
 
     bool esIgualA(void *semaforo){
-        return esIgualASemaforo(semaforo, nombre_semaforo);
+        return esIgualASemaforo(nombre_semaforo, semaforo);
     }
 
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
@@ -548,7 +551,7 @@ void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
     void* payload; 
 
     bool esIgualA(void *semaforo){
-        return esIgualASemaforo(semaforo, nombre_semaforo);
+        return esIgualASemaforo(nombre_semaforo, semaforo);
     }
 
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
