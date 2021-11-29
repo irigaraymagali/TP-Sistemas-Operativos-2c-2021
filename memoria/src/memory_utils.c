@@ -1181,7 +1181,7 @@ void remove_paginas(void* elem){
         if (list_is_empty(tabla->paginas)){
             list_destroy(tabla->paginas);
         } else {
-            list_destroy_and_destroy_elements(tabla->paginas, delete_page);
+            list_destroy_and_destroy_elements(tabla->paginas, free);
         }
     }
 }

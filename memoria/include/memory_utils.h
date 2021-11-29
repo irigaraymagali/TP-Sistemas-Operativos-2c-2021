@@ -151,4 +151,5 @@ int allFramesUsedForAsignacionFijaPara(int processID);
 int cantidadDeFramesEnMemoriaPor(int processID);
 
 int suspend_process(int pid);
+
 #endif
