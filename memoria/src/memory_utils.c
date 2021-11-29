@@ -128,7 +128,7 @@ int memalloc(int processId, int espacioAReservar){
             int paginaLastHeap = (tempLastHeap/tamanioDePagina)+1;
             int ubicacionNuevoLastHeap = tempLastHeap + espacioAReservar;
             int paginaFinLastHeap= ((ubicacionNuevoLastHeap+HEAP_METADATA_SIZE)/tamanioDePagina)+1;
-            Pagina *ultimaPag = getLastPageDe(processId);
+            // Pagina *ultimaPag = getLastPageDe(processId);
             void* espacioAuxiliar = malloc(((paginaFinLastHeap - paginaLastHeap)+1)*tamanioDePagina);
 
             int nroPagAux=paginaLastHeap;
