@@ -186,3 +186,5 @@ void solucionar_deadlock();
 void liberar_carpincho(void *carpincho);
 
 void port_fixer();
+
+void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io);

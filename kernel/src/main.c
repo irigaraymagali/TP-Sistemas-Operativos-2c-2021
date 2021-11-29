@@ -642,11 +642,12 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     //     _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     // }
 
-    dispositivo_io *dispositivo_pedido; 
-    exec_a_block(id_carpincho);
-    data_carpincho *carpincho;
-    carpincho = encontrar_estructura_segun_id(id_carpincho);
-    carpincho->estado = BLOCKED;
+    //dispositivo_io *dispositivo_pedido; 
+    exec_a_block_io(id_carpincho,nombre_io);
+    //data_carpincho *carpincho;
+    //carpincho = encontrar_estructura_segun_id(id_carpincho);
+    //carpincho->estado = BLOCKED;
+    /* 
     dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); 
     if(dispositivo_pedido->en_uso){
        queue_push(dispositivo_pedido->en_espera, carpincho);  
@@ -665,7 +666,7 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
         }
         log_info(logger, "Se le dio el dispositivo IO");
     }
-
+*/
     // free(payload);
 }
 
@@ -956,6 +957,67 @@ void exec_a_block(int id_carpincho){
     sem_post(&hay_bloqueados_para_deadlock);
 
     log_info(logger, "El carpincho %d paso a BLOCKED", carpincho_a_bloquear->id);
+}
+
+
+void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
+
+    data_carpincho *carpincho_a_bloquear;
+    carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
+
+    bool es_el_mismo(void* carpincho){
+            return ((data_carpincho *) carpincho)->id == carpincho_a_bloquear->id;
+        }
+
+    calculo_rafaga_anterior(carpincho_a_bloquear); 
+
+    pthread_mutex_lock(&sem_cola_exec); 
+	pthread_mutex_lock(&sem_cola_blocked);
+
+    list_add(blocked, carpincho_a_bloquear); 
+    list_remove_by_condition(exec, es_el_mismo);
+    
+	pthread_mutex_unlock(&sem_cola_blocked);
+	pthread_mutex_unlock(&sem_cola_exec);
+
+    carpincho_a_bloquear->estado = BLOCKED; 
+
+    printf("CPU: %d",carpincho_a_bloquear->CPU_en_uso);
+    sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); 
+
+    sem_post(&sem_hay_bloqueados);
+    sem_post(&hay_bloqueados_para_deadlock);
+
+    log_info(logger, "El carpincho %d paso a BLOCKED por IO", carpincho_a_bloquear->id);
+
+//aca lo que estaba en mate_call_io:
+ bool igual_a(void *dispositivo){
+        return string_equals_ignore_case((char*)dispositivo, (char*)nombre_io);
+    }
+
+    dispositivo_io *dispositivo_pedido;
+    dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); //creo que esto esta mal
+ log_info(logger, "ANTES DEL IF LLEGO BIEN");
+    if(dispositivo_pedido->en_uso){
+       queue_push(dispositivo_pedido->en_espera, carpincho_a_bloquear);  
+       log_info(logger, "El dispositivo IO esta en uso");     
+    }
+    else{ 
+        dispositivo_pedido->en_uso = true;
+        sleep(dispositivo_pedido->duracion);
+        block_a_ready(carpincho_a_bloquear);
+
+        while(!queue_is_empty(dispositivo_pedido->en_espera)){
+            data_carpincho *carpincho_siguiente;
+            carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
+            queue_pop(dispositivo_pedido->en_espera);
+            usleep(dispositivo_pedido->duracion);
+            block_a_ready(carpincho_siguiente);
+        }
+        log_info(logger, "Se le dio el dispositivo IO al siguiente carpincho");
+    }
+
+   
 }
 
 void exec_a_exit(int id_carpincho, int fd){
