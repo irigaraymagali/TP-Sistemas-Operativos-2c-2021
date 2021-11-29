@@ -351,8 +351,9 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
         // int dirPaginaSiguiente = 0;
         // int dirPaginaActual;
         int espacioEncontrado=0;
-        
-        while(allocActual < temp->lastHeap  && espacioEncontrado==0){
+        int temp_last_heap = temp->lastHeap;
+
+        while(allocActual < temp_last_heap  && espacioEncontrado==0){
             int paginaActual = (allocActual/tamanioDePagina) +1; 
 
             int frameActual = getFrameDeUn(processId, paginaActual);
@@ -452,13 +453,13 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                 nroUltimaPagina++;
                 nuevaPagina->pagina= nroUltimaPagina;
             }
-
             nuevaPagina->frame = getNewEmptyFrame(processId);
 
             if(nuevaPagina->frame == -1){
                 utilizarAlgritmoDeAsignacion(processId);
                 nuevaPagina->frame = getNewEmptyFrame(processId);
             }
+
             nuevaPagina->isfree = BUSY;
             nuevaPagina->bitModificado = 0;
             nuevaPagina->bitPresencia = 1;
@@ -470,7 +471,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
 
             TablaDePaginasxProceso* temp = get_pages_by(processId);
 
-            list_add(temp->paginas, nuevaPagina);
+            list_add(temp->paginas, nuevaPagina); // ACA puede haber segun helgrind RACE CONDITION -> Array de mutex o un mutex para lista de paginas distinto a la de la tabla.
 
             cantidadDePaginasAAgregar--;
         }
@@ -660,8 +661,7 @@ int getframeNoAsignadoEnMemoria(){
 }
 
 int frameAsignado(int unFrame){
-    
-
+    pthread_mutex_lock(&list_pages_mutex);
     if(todasLasTablasDePaginas != NULL){
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
         while (list_iterator_has_next(iterator)) {
@@ -674,6 +674,7 @@ int frameAsignado(int unFrame){
                 if(tempPagina->frame == unFrame){
                     list_iterator_destroy(iterator);
                     list_iterator_destroy(iterator2);
+                    pthread_mutex_unlock(&list_pages_mutex);
                     
                     return 1;
                 }
@@ -681,8 +682,9 @@ int frameAsignado(int unFrame){
             list_iterator_destroy(iterator2);
         }
     list_iterator_destroy(iterator);
-    
     }
+
+    pthread_mutex_unlock(&list_pages_mutex);
     return 0;
 }
 
@@ -742,13 +744,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         /* TESTEAR */
         tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
     } else {
-        t_list_iterator* iterator = list_iterator_create(temp->paginas);
-
-        
-        while (list_iterator_has_next(iterator)  && tempPagina->pagina != mayorNroDePagina) {
-            tempPagina = list_iterator_next(iterator);
-        }
-        list_iterator_destroy(iterator);
+       tempPagina = getPageDe(processId, mayorNroDePagina);
     }
 
     
@@ -1068,7 +1064,9 @@ void inicializarUnProceso(int idDelProceso){
     nuevaTablaDePaginas->id = idDelProceso;
     nuevaTablaDePaginas->lastHeap = 0;
     nuevaTablaDePaginas->paginas = list_create();
+    pthread_mutex_lock(&list_pages_mutex);
     list_add(todasLasTablasDePaginas, nuevaTablaDePaginas);
+    pthread_mutex_unlock(&list_pages_mutex);
     
     if(tipoDeAsignacionDinamica){
         int nuevoFrame = getframeNoAsignadoEnMemoria();
@@ -1173,7 +1171,13 @@ int delete_process(int pid){
 
 void remove_paginas(void* elem){
     TablaDePaginasxProceso* tabla = (TablaDePaginasxProceso*) elem;
-    list_destroy_and_destroy_elements(tabla->paginas, free);
+    if (tabla->paginas != NULL){
+        if (list_is_empty(tabla->paginas)){
+            list_destroy(tabla->paginas);
+        } else {
+            list_destroy_and_destroy_elements(tabla->paginas, free);
+        }
+    }
 }
 
 int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir, int tamanio){
@@ -1426,6 +1430,32 @@ void seleccionClockMejorado(int idProcess){
 
             punteroFrameClock++;
         }else{
+            if (tipoDeAsignacionDinamica)
+            {
+                Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+
+            if(paginaEncontrada->bitModificado == 0 && paginaEncontrada->bitUso==0){
+                frameNoEncontrado =0;
+
+                int pay_len = 3*sizeof(int)+tamanioDePagina;
+                void* paginaAEnviar = malloc(tamanioDePagina);
+                memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
+                int pid = getProcessIdby(paginaEncontrada->frame);
+                void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
+                log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
+                void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+                int iresp;
+                memcpy(&iresp, resp, sizeof(int));
+                if(iresp == 0){
+                    log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+                }
+                free(resp);
+                free(payload);
+                free(paginaAEnviar);
+                liberarFrame(paginaEncontrada->frame);
+            }
+            }
+            
             punteroFrameClock++;
         }
     }
@@ -1460,14 +1490,41 @@ void seleccionClockMejorado(int idProcess){
                 free(paginaAEnviar);
 
                 liberarFrame(paginaEncontrada->frame);
-            }else
-            {
+            }else{
                 paginaEncontrada->bitUso =0;
             }
 
 
                 punteroFrameClock++;
             }else{
+                if (tipoDeAsignacionDinamica){
+                    Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+
+                    if(paginaEncontrada->bitUso==0){
+                        frameNoEncontrado =0;
+
+                        int pay_len = 3*sizeof(int)+tamanioDePagina;
+                        void* paginaAEnviar = malloc(tamanioDePagina);
+                        memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
+                        int pid = getProcessIdby(paginaEncontrada->frame);
+                        void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
+                        log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
+                        void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+                        int iresp;
+                        memcpy(&iresp, resp, sizeof(int));
+                        if(iresp == 0){
+                            log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+                        }
+                        free(resp);
+                        free(payload);
+                        free(paginaAEnviar);
+
+                        liberarFrame(paginaEncontrada->frame);
+                    }else{
+                        paginaEncontrada->bitUso =0;
+                    }
+                }
+
                 punteroFrameClock++;
             }
         }
@@ -1479,7 +1536,7 @@ Pagina *getMarcoDe(uint32_t nroDeFrame){
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
 
-    Pagina *paginatemp = malloc(sizeof(Pagina));
+    Pagina *paginatemp;
         
     while (list_iterator_has_next(iterator)) {
 
@@ -1513,20 +1570,18 @@ uint32_t getProcessIdby(uint32_t nroDeFrame)
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
 
-    Pagina *paginatemp = malloc(sizeof(Pagina));
+    Pagina *paginatemp;
         
     while (list_iterator_has_next(iterator)) {
-
         TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
-        
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
         
-        
-
         while (list_iterator_has_next(iterator2))
         {
             paginatemp = list_iterator_next(iterator2);
             if(paginatemp->frame == nroDeFrame){
+                list_iterator_destroy(iterator);
+                list_iterator_destroy(iterator2);
                 return temp->id;
             }
 

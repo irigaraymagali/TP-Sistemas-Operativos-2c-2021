@@ -44,9 +44,9 @@ install: $(SHARED_OBJ_DIR) $(SHARED_OBJ)
 	$(CC) -shared matelib.o $(SHARED_ODIR)/*.o -L$(COMMONS) $(LIBS) -o $(ODIR)/libmate.so
 
 	# Moving the lib to the global link route
-	#cp -u $(ODIR)/libmate.so $(USR_LOCAL_LIB)
+	cp -u $(ODIR)/libmate.so $(USR_LOCAL_LIB)
 	cp -u $(ODIR)/libmate.so $(USR_LIB)
-	#cp -u $(ODIR)/libmate.so $(LIB)
+	cp -u $(ODIR)/libmate.so $(LIB)
 
 	# Removing obj files..
 	rm *.o
@@ -55,10 +55,10 @@ install: $(SHARED_OBJ_DIR) $(SHARED_OBJ)
 # sudo make uninstall
 uninstall:
 	# Remove Libmate shared object    
-	rm $(ODIR)/libmate.so
-	#rm -f $(USR_LOCAL_LIB)/libmate.so
+	rm -f $(ODIR)/libmate.so
+	rm -f $(USR_LOCAL_LIB)/libmate.so
 	rm -f $(USR_LIB)/libmate.so
-	#rm -f $(LIB)/libmate.so
+	rm -f $(LIB)/libmate.so
 
 	# Done
 

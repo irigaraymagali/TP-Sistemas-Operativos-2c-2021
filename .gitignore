@@ -58,3 +58,6 @@ obj
 
 #Dump files
 *.dmp
+
+#Bin files
+*.bin
