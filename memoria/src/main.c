@@ -333,6 +333,7 @@ void free_memory(){
     list_destroy_and_destroy_elements(todasLasTablasDePaginas, remove_paginas);
 
     close(swamp_fd);
+    
     free(memoria);
     exit(EXIT_SUCCESS);
 }
