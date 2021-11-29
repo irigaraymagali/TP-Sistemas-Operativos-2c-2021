@@ -351,8 +351,9 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
         // int dirPaginaSiguiente = 0;
         // int dirPaginaActual;
         int espacioEncontrado=0;
-        
-        while(allocActual < temp->lastHeap  && espacioEncontrado==0){
+        int temp_last_heap = temp->lastHeap;
+
+        while(allocActual < temp_last_heap  && espacioEncontrado==0){
             int paginaActual = (allocActual/tamanioDePagina) +1; 
 
             int frameActual = getFrameDeUn(processId, paginaActual);
@@ -470,7 +471,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
 
             TablaDePaginasxProceso* temp = get_pages_by(processId);
 
-            list_add(temp->paginas, nuevaPagina);
+            list_add(temp->paginas, nuevaPagina); // ACA puede haber segun helgrind RACE CONDITION -> Array de mutex o un mutex para lista de paginas distinto a la de la tabla.
 
             cantidadDePaginasAAgregar--;
         }
@@ -660,8 +661,7 @@ int getframeNoAsignadoEnMemoria(){
 }
 
 int frameAsignado(int unFrame){
-    
-
+    pthread_mutex_lock(&list_pages_mutex);
     if(todasLasTablasDePaginas != NULL){
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
         while (list_iterator_has_next(iterator)) {
@@ -674,6 +674,7 @@ int frameAsignado(int unFrame){
                 if(tempPagina->frame == unFrame){
                     list_iterator_destroy(iterator);
                     list_iterator_destroy(iterator2);
+                    pthread_mutex_unlock(&list_pages_mutex);
                     
                     return 1;
                 }
@@ -681,8 +682,9 @@ int frameAsignado(int unFrame){
             list_iterator_destroy(iterator2);
         }
     list_iterator_destroy(iterator);
-    
     }
+
+    pthread_mutex_unlock(&list_pages_mutex);
     return 0;
 }
 
@@ -1068,7 +1070,9 @@ void inicializarUnProceso(int idDelProceso){
     nuevaTablaDePaginas->id = idDelProceso;
     nuevaTablaDePaginas->lastHeap = 0;
     nuevaTablaDePaginas->paginas = list_create();
+    pthread_mutex_lock(&list_pages_mutex);
     list_add(todasLasTablasDePaginas, nuevaTablaDePaginas);
+    pthread_mutex_unlock(&list_pages_mutex);
     
     if(tipoDeAsignacionDinamica){
         int nuevoFrame = getframeNoAsignadoEnMemoria();
@@ -1479,7 +1483,7 @@ Pagina *getMarcoDe(uint32_t nroDeFrame){
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
 
-    Pagina *paginatemp = malloc(sizeof(Pagina));
+    Pagina *paginatemp;
         
     while (list_iterator_has_next(iterator)) {
 
@@ -1513,7 +1517,7 @@ uint32_t getProcessIdby(uint32_t nroDeFrame)
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
 
-    Pagina *paginatemp = malloc(sizeof(Pagina));
+    Pagina *paginatemp;
         
     while (list_iterator_has_next(iterator)) {
 
