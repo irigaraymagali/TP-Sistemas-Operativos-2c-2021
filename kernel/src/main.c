@@ -282,12 +282,18 @@ void mate_init(int fd){
     carpincho->rafaga_anterior = 0;
     carpincho->estimacion_anterior = 0;
     carpincho->estimacion_siguiente = config_get_int_value(config, "ESTIMACION_INICIAL");
+    carpincho->llegada_a_ready = 0;
+    carpincho->RR = 0;
     carpincho->estado = NEW;
+    carpincho->CPU_en_uso = NULL;
+    carpincho->tiempo_entrada_a_exec = 0;
     carpincho->fd = fd; 
     carpincho->semaforos_retenidos = list_create();
     carpincho->semaforo = string_new(); 
+    carpincho->valor_semaforo = NULL;
     carpincho->dispositivo_io = string_new(); 
     carpincho->nombre_semaforo_por_el_que_se_bloqueo = string_new();
+    carpincho->tiene_su_espera = 0;
 
     void *payload;
     payload = _serialize(sizeof(int), "%d", carpincho->id);
@@ -429,7 +435,7 @@ void liberar_carpincho(void *carpincho){
 
 bool esIgualASemaforo(char* nombre_semaforo, void *semaforo_igual){
     semaforo* sem = (semaforo *) semaforo_igual;
-    return strcmp(sem->nombre, nombre_semaforo) == 0;
+    return string_equals_ignore_case(sem->nombre, nombre_semaforo);
 }
 
 void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo, int fd){  
@@ -486,6 +492,7 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
             carpincho->nombre_semaforo_por_el_que_se_bloqueo = string_from_format("%s", nombre_semaforo);
             exec_a_block(id_carpincho); 
             queue_push(semaforo_wait->en_espera, carpincho);
+            printf("Ya deje en espera al carpincho");
         }
         else
         {
@@ -942,6 +949,7 @@ void exec_a_block(int id_carpincho){
 
     carpincho_a_bloquear->estado = BLOCKED; 
 
+    printf("CPU: %d",carpincho_a_bloquear->CPU_en_uso);
     sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); 
 
     sem_post(&sem_hay_bloqueados);
@@ -1199,9 +1207,9 @@ void asignar_hilo_CPU(data_carpincho *carpincho){
     queue_pop(CPU_libres);
     pthread_mutex_unlock(&sem_CPU_libres);
 
-    sem_post(&(usar_CPU[*id_CPU_disponible]));
-
     carpincho->CPU_en_uso = *id_CPU_disponible;
+
+    sem_post(&(usar_CPU[*id_CPU_disponible]));   
 
 }
 
