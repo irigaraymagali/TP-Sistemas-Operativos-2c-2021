@@ -1177,7 +1177,13 @@ int delete_process(int pid){
 
 void remove_paginas(void* elem){
     TablaDePaginasxProceso* tabla = (TablaDePaginasxProceso*) elem;
-    list_destroy_and_destroy_elements(tabla->paginas, free);
+    if (tabla->paginas != NULL){
+        if (list_is_empty(tabla->paginas)){
+            list_destroy(tabla->paginas);
+        } else {
+            list_destroy_and_destroy_elements(tabla->paginas, delete_page);
+        }
+    }
 }
 
 int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir, int tamanio){
@@ -1520,17 +1526,15 @@ uint32_t getProcessIdby(uint32_t nroDeFrame)
     Pagina *paginatemp;
         
     while (list_iterator_has_next(iterator)) {
-
         TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
-        
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
         
-        
-
         while (list_iterator_has_next(iterator2))
         {
             paginatemp = list_iterator_next(iterator2);
             if(paginatemp->frame == nroDeFrame){
+                list_iterator_destroy(iterator);
+                list_iterator_destroy(iterator2);
                 return temp->id;
             }
 
