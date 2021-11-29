@@ -54,7 +54,7 @@ int memalloc(int processId, int espacioAReservar){
     int ultimoFrame = 0;
     int tempLastHeap = 0;
     int espacioFinalDisponible = 0;
-    Pagina* paginaFInalEncontrada = malloc(sizeof(Pagina));
+    Pagina* paginaFInalEncontrada;
 
     if(entra == -1){
        /* 1-generar un nuevo alloc al final del espacio de direcciones
@@ -128,7 +128,7 @@ int memalloc(int processId, int espacioAReservar){
             int paginaLastHeap = (tempLastHeap/tamanioDePagina)+1;
             int ubicacionNuevoLastHeap = tempLastHeap + espacioAReservar;
             int paginaFinLastHeap= ((ubicacionNuevoLastHeap+HEAP_METADATA_SIZE)/tamanioDePagina)+1;
-            Pagina *ultimaPag = getLastPageDe(processId);
+            // Pagina *ultimaPag = getLastPageDe(processId);
             void* espacioAuxiliar = malloc(((paginaFinLastHeap - paginaLastHeap)+1)*tamanioDePagina);
 
             int nroPagAux=paginaLastHeap;
@@ -415,7 +415,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
 
 Pagina *getLastPageDe(int processId){
     uint32_t mayorNroDePagina = 0;
-    Pagina *ultimaPagina= malloc(sizeof(Pagina)); //Nose si necesitamos un malloc porque en caso de encontrar una pagina temporal creo estariamos guardando este malloc basura. PROBAR.
+    Pagina *ultimaPagina;
     
     TablaDePaginasxProceso* temp = get_pages_by(processId);
     if(list_is_empty(temp->paginas)){
@@ -1059,7 +1059,7 @@ Pagina *getPageDe(int processId,int nroPagina){
 void inicializarUnProceso(int idDelProceso){
     log_info(logger, "Inicializando el Proceso %d", idDelProceso);
 
-    HeapMetaData* nuevoHeap = malloc(sizeof(HeapMetaData));
+    HeapMetaData* nuevoHeap = malloc(sizeof(HeapMetaData)); // ¿Se pierde la data si le hacemos un free?
     nuevoHeap->prevAlloc = 0;
     nuevoHeap->nextAlloc = NULL_ALLOC; //nuevoHeap.nextAlloc = NULL; Tiene que ser un puntero si queremos que sea NULL. Sino -1
     nuevoHeap->isfree = 1;
@@ -1698,6 +1698,8 @@ TLB* fetch_entrada_tlb(uint32_t pid, uint32_t page){
             
             sleep(retardo_hit_tlb);
             pthread_mutex_unlock(&tlb_mutex);
+            list_iterator_destroy(iterator);
+
             return tlb;
         }
     }
@@ -1779,6 +1781,6 @@ void free_tlb(){
     if (list_is_empty(tlb_list)){
         list_destroy(tlb_list);
     } else {
-        list_destroy_and_destroy_elements(metrics_list, free);
+        list_destroy_and_destroy_elements(tlb_list, free);
     } 
 }

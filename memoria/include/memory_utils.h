@@ -47,6 +47,7 @@ pthread_mutex_t swamp_mutex, list_pages_mutex, lru_mutex, tlb_mutex, tlb_lru_mut
 pthread_mutex_t m_list_mutex;
 
 int max_tlb_hit, max_tlb_miss, max_entradas_tlb, retardo_hit_tlb, retardo_miss_tlb, entrada_fifo, tlb_lru_global;
+
 typedef struct 
 {
     uint32_t prevAlloc;
