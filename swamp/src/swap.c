@@ -414,7 +414,9 @@ void finalizar_proceso(int proceso) {
         free(swap_file_path);
         munmap(swap_file_map, swap_file_size);
         close(swap_file_fd);
+        log_info(log_file, "El proceso %d fue eliminado de swap.", proceso);
     }
+    log_info(log_file, "El proceso %d no se encontraba utilizando swap.", proceso);
     free(string_proceso);
 }
 

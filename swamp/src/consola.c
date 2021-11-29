@@ -149,7 +149,6 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             int proceso;
             memcpy(&proceso, recibido->payload, sizeof(int));
             finalizar_proceso(proceso);
-            log_info(log_file, "El proceso %d fue eliminado de swap.", proceso);
         }
 
         else {
