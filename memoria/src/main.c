@@ -314,18 +314,25 @@ void* deserialize_mem_write(int* pid, int* dir_logica, int* size, void* payload)
 }
 
 void free_memory(){
+    log_info(logger, "Cerrando Memoria...");
     log_destroy(logger);  
-    config_destroy(config);  
+    config_destroy(config); 
+
     pthread_mutex_destroy(&swamp_mutex);
     pthread_mutex_destroy(&lru_mutex);
     pthread_mutex_destroy(&tlb_mutex);
     pthread_mutex_destroy(&pid_global_mutex);
     pthread_mutex_destroy(&list_pages_mutex);
     pthread_mutex_destroy(&m_list_mutex);
+    pthread_mutex_destroy(&max_miss_tlb_mutex);
+    pthread_mutex_destroy(&max_hit_tlb_mutex);
+    pthread_mutex_destroy(&entrada_fifo_mutex);
+    pthread_mutex_destroy(&tlb_lru_mutex);
 
     free_tlb();
     list_destroy_and_destroy_elements(todasLasTablasDePaginas, remove_paginas);
 
+    close(swamp_fd);
     free(memoria);
     exit(EXIT_SUCCESS);
 }

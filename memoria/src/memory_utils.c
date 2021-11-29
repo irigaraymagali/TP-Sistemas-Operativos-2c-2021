@@ -1779,6 +1779,6 @@ void free_tlb(){
     if (list_is_empty(tlb_list)){
         list_destroy(tlb_list);
     } else {
-        list_destroy_and_destroy_elements(metrics_list, free);
+        list_destroy_and_destroy_elements(tlb_list, free);
     } 
 }
