@@ -18,5 +18,5 @@ fi
 FILE=memoria.out
 make $FILE
 if test -f "./$FILE"; then
-    valgrind --tool=helgrind ./$FILE
+    valgrind --tool=helgrind --log-file="helgrind.log" ./$FILE
 fi
