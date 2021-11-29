@@ -416,7 +416,9 @@ void finalizar_proceso(int proceso) {
         close(swap_file_fd);
         log_info(log_file, "El proceso %d fue eliminado de swap.", proceso);
     }
+    else {
     log_info(log_file, "El proceso %d no se encontraba utilizando swap.", proceso);
+    }
     free(string_proceso);
 }
 
