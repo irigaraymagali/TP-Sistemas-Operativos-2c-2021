@@ -11,7 +11,9 @@ void initPaginacion(){
     pthread_mutex_init(&tlb_mutex, NULL);
     pthread_mutex_init(&tlb_lru_mutex, NULL);
     pthread_mutex_init(&entrada_fifo_mutex, NULL);
+    pthread_mutex_init(&memory_mutex, NULL);
     pthread_mutex_init(&m_list_mutex, NULL);
+    
 
     tamanioDePagina = config_get_int_value(config, "TAMANIO_PAGINA");
 
@@ -49,6 +51,7 @@ void initPaginacion(){
 }
 
 int memalloc(int processId, int espacioAReservar){
+    log_info(logger,"arranco un memalloc----------------------------");
     int entra = entraEnElEspacioLibre(espacioAReservar, processId);
     uint32_t mayorNroDePagina = 0; // 0 porque indica que no tiene asignado ninguna pagina, las pags siempre arancan en 1
     int ultimoFrame = 0;
@@ -97,7 +100,7 @@ int memalloc(int processId, int espacioAReservar){
 
         if(espacioFinalDisponible >= espacioAReservar){
             offset = (ultimoFrame*tamanioDePagina) + (tempLastHeap - ((mayorNroDePagina-1) * tamanioDePagina)) ;
-
+            pthread_mutex_lock(&memory_mutex);
             uint32_t espacioTotal = tempLastHeap + espacioAReservar;
             memcpy(memoria + offset + sizeof(uint32_t), &espacioTotal, sizeof(uint32_t));
             offset = offset + 2*sizeof(uint32_t);
@@ -110,7 +113,7 @@ int memalloc(int processId, int espacioAReservar){
 
             memcpy(memoria + offset, &nuevoHeap->nextAlloc, sizeof(uint32_t));
             offset = offset + sizeof(uint32_t);
-
+            pthread_mutex_unlock(&memory_mutex);
             pthread_mutex_lock(&lru_mutex);
             lRUACTUAL++;
             paginaFInalEncontrada->lRU = lRUACTUAL;
@@ -133,6 +136,7 @@ int memalloc(int processId, int espacioAReservar){
 
             int nroPagAux=paginaLastHeap;
             int offsetEspacioAux=0;
+            pthread_mutex_lock(&memory_mutex);
             while (nroPagAux <= paginaFinLastHeap)
             {
                 int unFrame = getFrameDeUn(processId,nroPagAux);
@@ -142,7 +146,8 @@ int memalloc(int processId, int espacioAReservar){
                 nroPagAux++;
                 offsetEspacioAux+=tamanioDePagina;
             }
-            
+            pthread_mutex_unlock(&memory_mutex);
+
             offsetEspacioAux = tempLastHeap - (tamanioDePagina*(paginaLastHeap-1));
             offsetEspacioAux += sizeof(uint32_t);
             
@@ -163,6 +168,7 @@ int memalloc(int processId, int espacioAReservar){
             
             nroPagAux=paginaLastHeap;
             offsetEspacioAux=0;
+            pthread_mutex_lock(&memory_mutex);
             while(nroPagAux <= paginaFinLastHeap){
                 int framenecesitado = getFrameDeUn(processId, nroPagAux);
                 
@@ -171,6 +177,7 @@ int memalloc(int processId, int espacioAReservar){
                 nroPagAux++;
                 offsetEspacioAux+=tamanioDePagina;
             }
+            pthread_mutex_unlock(&memory_mutex);
             free(espacioAuxiliar);
         }
         temp->lastHeap = tempLastHeap + espacioAReservar;
@@ -198,8 +205,9 @@ int suspend_process(int pid) {
         Pagina* page = (Pagina*) list_iterator_next(iterator);
         int res;
         void* mem_aux = malloc(tamanioDePagina);
-        
+        pthread_mutex_lock(&memory_mutex);
         memcpy(mem_aux, memoria + (page->frame * tamanioDePagina), tamanioDePagina);
+        pthread_mutex_unlock(&memory_mutex);
         log_info(logger, "Enviando a Swamp la pagina %d del proceso %d", page->pagina, pid);
         void* payload = _serialize(pay_len, "%d%d%d%v", pid, page->pagina, tamanioDePagina, mem_aux);
         log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", page->pagina, pid);
@@ -212,7 +220,9 @@ int suspend_process(int pid) {
         }
 
         page->bitPresencia = 0;
+        pthread_mutex_lock(&memory_mutex);
         memcpy(memoria + (page->frame * tamanioDePagina), free_mem, tamanioDePagina);
+        pthread_mutex_unlock(&memory_mutex);
 
         free(mem_aux);
         free(v_res);
@@ -226,6 +236,7 @@ int suspend_process(int pid) {
 }
 
 void* memread(uint32_t pid, int dir_logica, int size){
+    log_info(logger,"arranco un memread----------------------------");
     void* read = malloc(size);
     int size_to_read, offset_to_read;
     int act_page = 1;
@@ -273,12 +284,14 @@ void* memread(uint32_t pid, int dir_logica, int size){
             int first_alloc_act_page = (act_frame * tamanioDePagina);
 
             void* page_aux = malloc(tamanioDePagina*2);
+            pthread_mutex_lock(&memory_mutex);
             memcpy(page_aux, memoria + first_alloc_act_page, tamanioDePagina);
             
             int next_frame = getFrameDeUn(pid, act_page + 1);
             int first_alloc_next_page = (next_frame * tamanioDePagina);
 
             memcpy(page_aux + tamanioDePagina, memoria + first_alloc_next_page, tamanioDePagina);
+            pthread_mutex_unlock(&memory_mutex);
             
             int alloc_on_frame = abs((dirAllocActual) - ((act_page-1) * tamanioDePagina));
 
@@ -313,8 +326,9 @@ void* memread(uint32_t pid, int dir_logica, int size){
                 getFrameDeUn(pid, act_page + 1);
             }
         }
-
+        pthread_mutex_lock(&memory_mutex);
         memcpy(read, memoria + offset_to_read, size_to_read);
+        pthread_mutex_unlock(&memory_mutex);
         read_len += size_to_read;
         dirAllocActual = heap->nextAlloc;
     }
@@ -353,13 +367,14 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
         int espacioEncontrado=0;
         int temp_last_heap = temp->lastHeap;
 
+        pthread_mutex_lock(&memory_mutex);
         while(allocActual < temp_last_heap  && espacioEncontrado==0){
             int paginaActual = (allocActual/tamanioDePagina) +1; 
 
             int frameActual = getFrameDeUn(processId, paginaActual);
 
             //void* espacioAuxiliar = malloc(2*tamanioDePagina);
-
+            
             memcpy(&nextAllocAux, memoria + (frameActual*tamanioDePagina)+sizeof(uint32_t),sizeof(uint32_t));
 
             memcpy(&isfreeAux, memoria + (frameActual*tamanioDePagina)+2*sizeof(uint32_t),sizeof(uint8_t));
@@ -396,7 +411,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
                     memcpy(&isfreeAux,espacioAuxiliar + offsetInicioAlloc + 2*sizeof(uint32_t),sizeof(uint8_t));
 
                     if(isfreeAux == FREE && (nextAllocAux - allocActual - HEAP_METADATA_SIZE) >= espacioAReservar){
-                    
+                    pthread_mutex_unlock(&memory_mutex);
                     return allocActual;
                     
                     }
@@ -406,9 +421,11 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
                 }
                 
             }else{
+                pthread_mutex_unlock(&memory_mutex);
                 return allocActual;
             }
         }
+        pthread_mutex_unlock(&memory_mutex);
     }
         
     return -1;
@@ -787,6 +804,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 }
 
 int memfree(int idProcess, int direccionLogicaBuscada){
+    log_info(logger,"arranco un memfree----------------------------");
     
     int paginaActual=1;
     int pagAnterior=0;
@@ -798,7 +816,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
     //int offsetNextAllocAnterior;
     uint8_t estadoAllocAnterior;
 
-
+    pthread_mutex_lock(&memory_mutex);
     while((dirAllocActual <= direccionLogicaBuscada) && dirAllocFinal>=direccionLogicaBuscada){
         
         if (dirAllocActual == direccionLogicaBuscada)
@@ -932,7 +950,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
                     free(paginasAuxiliares);
                 }
             }
-
+            pthread_mutex_unlock(&memory_mutex);
             return 1;
         }
         else
@@ -975,7 +993,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
         }
         
     }
-
+    pthread_mutex_unlock(&memory_mutex);
     return MATE_FREE_FAULT;
 }
 
@@ -1071,7 +1089,7 @@ void inicializarUnProceso(int idDelProceso){
     if(tipoDeAsignacionDinamica){
         int nuevoFrame = getframeNoAsignadoEnMemoria();
         int offset = nuevoFrame * tamanioDePagina;
-
+        pthread_mutex_lock(&memory_mutex);
         memcpy(memoria + offset, &nuevoHeap->prevAlloc,sizeof(u_int32_t));
 
         offset+= sizeof(u_int32_t);
@@ -1079,7 +1097,7 @@ void inicializarUnProceso(int idDelProceso){
 
         offset+= sizeof(u_int32_t);
         memcpy(memoria + offset, &nuevoHeap->isfree,sizeof(u_int8_t));
-
+        pthread_mutex_unlock(&memory_mutex);
         Pagina* nuevaPagina = malloc(sizeof(Pagina));
         nuevaPagina->pagina=1;
         pthread_mutex_lock(&lru_mutex);
@@ -1105,6 +1123,7 @@ void inicializarUnProceso(int idDelProceso){
                 int nuevoFrame =getframeNoAsignadoEnMemoria();
                 int offset = nuevoFrame * tamanioDePagina;
 
+                pthread_mutex_lock(&memory_mutex);
                 memcpy(memoria + offset, &nuevoHeap->prevAlloc,sizeof(u_int32_t));
 
                 offset+= sizeof(u_int32_t);
@@ -1112,6 +1131,7 @@ void inicializarUnProceso(int idDelProceso){
 
                 offset+= sizeof(u_int32_t);
                 memcpy(memoria + offset, &nuevoHeap->isfree,sizeof(u_int8_t));
+                pthread_mutex_unlock(&memory_mutex);
 
                 Pagina* nuevaPagina = malloc(sizeof(Pagina));
                 nuevaPagina->pagina=1;
@@ -1181,6 +1201,7 @@ void remove_paginas(void* elem){
 }
 
 int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir, int tamanio){
+    log_info(logger,"arranco un memwrite----------------------------");
     int paginaActual=1;
 
     TablaDePaginasxProceso *tablaDelProceso = get_pages_by(idProcess);
@@ -1188,7 +1209,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
     int dirAllocFinal = tablaDelProceso->lastHeap;
     int dirAllocActual=0;
 
-
+    pthread_mutex_lock(&memory_mutex);
     while((dirAllocActual <= direccionLogicaBuscada) && dirAllocFinal>direccionLogicaBuscada){
         
         if (dirAllocActual == direccionLogicaBuscada)
@@ -1251,7 +1272,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
                 }
             }
             
-
+            pthread_mutex_unlock(&memory_mutex);
             return 1;
         }
         else
@@ -1288,6 +1309,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
         }
 
     }
+    pthread_mutex_unlock(&memory_mutex);
     log_info(logger,"No se ha podido realizar la escritura");
     return MATE_WRITE_FAULT;
 }
@@ -1638,6 +1660,7 @@ void liberarFrame(uint32_t nroDeFrame){
 HeapMetaData* get_heap_metadata(int offset){
     HeapMetaData* newHeap = malloc(sizeof(HeapMetaData));
 
+    pthread_mutex_lock(&memory_mutex);
     memcpy(&newHeap->prevAlloc, memoria + offset, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
@@ -1645,6 +1668,7 @@ HeapMetaData* get_heap_metadata(int offset){
     offset = offset + sizeof(uint32_t);
 
     memcpy(&newHeap->isfree, memoria + offset, sizeof(uint8_t));
+    pthread_mutex_unlock(&memory_mutex);
 
     return newHeap;
 }

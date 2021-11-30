@@ -42,7 +42,7 @@ typedef enum {
     C_FRAME,
 } TLB_Condition;
 
-pthread_mutex_t swamp_mutex, list_pages_mutex, lru_mutex, tlb_mutex, tlb_lru_mutex, entrada_fifo_mutex, max_hit_tlb_mutex, max_miss_tlb_mutex;
+pthread_mutex_t swamp_mutex, list_pages_mutex, lru_mutex, tlb_mutex, tlb_lru_mutex, entrada_fifo_mutex, max_hit_tlb_mutex, max_miss_tlb_mutex, memory_mutex;
 
 pthread_mutex_t m_list_mutex;
 
