@@ -241,7 +241,6 @@ int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
 int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido) {
     char* string_proceso = string_itoa(proceso);
     t_list* tabla_paginas = (t_list*) dictionary_get(swap_dict, string_proceso); // Devuelve un puntero al t_list que representa a la tabla de paginas del archivo de swap que esta utilizando
-    free(string_proceso);
     if (tabla_paginas == NULL) { // Si es la primera pagina del proceso que se va a guardar en swap
         nodo_swap_list* swap_file_asignado = swap_file_menos_ocupado();
         if (swap_file_asignado == NULL) { // Si no hay frames disponibles en ningun archivo de swap
@@ -287,7 +286,6 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
             munmap(swap_file_map, swap_file_size);
             close(swap_file_fd);
             free(swap_file_path);
-
             return 1;
         }
     }
@@ -349,6 +347,7 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
                 return 1;
             }
         }
+    free(string_proceso);
     }
 }
 
