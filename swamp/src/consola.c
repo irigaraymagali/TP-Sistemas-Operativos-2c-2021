@@ -75,6 +75,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             memcpy(&pagina, recibido->payload + offset, sizeof(int));
             offset += 2 * sizeof(int); // Lo avanzo dos veces ya que el proximo es el tamaño del void* que tiene el contenido de la pagina y no me interesa porque se que es igual al swap_page_size.
             memcpy(contenido, recibido->payload + offset, swap_page_size);
+            log_info(log_file, "Memoria solicita guardar la pagina %d del proceso %s en swap.", pagina, proceso);
 
             int resultado = guardar_pagina(proceso, pagina, contenido);
             void* resultado_a_enviar = _serialize(swap_page_size, "%d", resultado);
@@ -109,13 +110,14 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             memcpy(&proceso, recibido->payload + offset, sizeof(int));
             offset += sizeof(int);
             memcpy(&pagina, recibido->payload + offset, sizeof(int));
+            log_info(log_file, "Memoria solicita el envio de la pagina %d del proceso %s.", pagina, proceso);
             
             void* pagina_leida = obtener_pagina(proceso, pagina);
             if (pagina_leida != NULL) {
                 void* pagina_a_enviar = _serialize(sizeof(int) + swap_page_size, "%d%v", swap_page_size, pagina_leida);
                 sleep(retardo_swamp);
                 if (_send_message(socket_conexion, "SWP", MEMORY_RECV_SWAP_SEND, pagina_a_enviar, sizeof(int) + swap_page_size, log_file)) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
-                    log_info(log_file, "Pagina %d del proceso %d enviada.", pagina, proceso);
+                    log_info(log_file, "Pagina %d del proceso %d enviada correctamente.", pagina, proceso);
                 }
 
                 else {
@@ -127,7 +129,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             else { // No entra nunca
                 void* codigo_error = _serialize(swap_page_size, "%d", 0);
                 if (_send_message(socket_conexion, "SWP", MEMORY_RECV_SWAP_SEND, codigo_error, sizeof(int), log_file)) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
-                    log_info(log_file, "Pagina %d del proceso %d enviada.", pagina, proceso);
+                    log_info(log_file, "Pagina %d del proceso %d enviada correctamente.", pagina, proceso);
                 }
 
                 else {
@@ -148,6 +150,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
         if (recibido->pay_len == sizeof(int)) {
             int proceso;
             memcpy(&proceso, recibido->payload, sizeof(int));
+            log_info(log_file, "Memoria solicita eliminar de swap todas las paginas del proceso %d.", proceso);
             finalizar_proceso(proceso);
         }
 
