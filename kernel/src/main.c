@@ -487,19 +487,19 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         carpincho->fd = fd;
 
         if(semaforo_wait->valor < 1){
-            log_info(logger, "Se hizo un wait de un semaforo menor a 1, se bloquea el carpincho");
+            log_info(logger, "Carpincho %d hizo un wait de un semaforo menor a 1, se bloquea", carpincho->id);
             free(carpincho->nombre_semaforo_por_el_que_se_bloqueo);
             carpincho->nombre_semaforo_por_el_que_se_bloqueo = string_from_format("%s", nombre_semaforo);
             exec_a_block(id_carpincho); 
             queue_push(semaforo_wait->en_espera, carpincho);
-            printf("Ya deje en espera al carpincho");
+            printf("Ya deje en espera al carpincho %d", carpincho->id);
         }
         else
         {
             list_add(carpincho->semaforos_retenidos, nombre_semaforo); 
             void* payload;
             payload = _serialize(sizeof(int), "%d", 0);
-            log_info(logger, "Se hizo un wait de un semaforo mayor a 1, carpincho puede seguir");        
+            log_info(logger, "Se hizo un wait de un semaforo mayor a 1, carpincho %d puede seguir",carpincho->id);        
             _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
             free(payload);
         }
@@ -602,9 +602,9 @@ bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo
 
 void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     
-    bool igual_a(void *dispositivo){
-        return es_igual_dispositivo(nombre_io, dispositivo);
-    }
+    //bool igual_a(void *dispositivo){
+    //    return es_igual_dispositivo(nombre_io, dispositivo);
+    //}
 
     // void * payload;
 
@@ -965,6 +965,36 @@ void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
     data_carpincho *carpincho_a_bloquear;
     carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
 
+//aca lo que estaba en mate_call_io:
+ bool igual_a(void *dispositivo){
+        return string_equals_ignore_case((char*)dispositivo, (char*)nombre_io);
+    }
+
+    dispositivo_io *dispositivo_pedido;
+    dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); //creo que aca es cuando rompes
+    
+    //hasta aca llega bien
+    if(dispositivo_pedido->en_uso){
+       queue_push(dispositivo_pedido->en_espera, carpincho_a_bloquear);  
+       log_info(logger, "El dispositivo IO que pidio el carpincho %d esta en uso", carpincho_a_bloquear->id);     
+    }
+    else{ 
+        dispositivo_pedido->en_uso = true;
+        sleep(dispositivo_pedido->duracion);
+        block_a_ready(carpincho_a_bloquear);
+
+        while(!queue_is_empty(dispositivo_pedido->en_espera)){
+            data_carpincho *carpincho_siguiente;
+            carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
+            queue_pop(dispositivo_pedido->en_espera);
+            usleep(dispositivo_pedido->duracion);
+            block_a_ready(carpincho_siguiente);
+        }
+        log_info(logger, "Se le dio el dispositivo IO al carpincho %d",carpincho_a_bloquear->id);
+    }
+
+//
+
     bool es_el_mismo(void* carpincho){
             return ((data_carpincho *) carpincho)->id == carpincho_a_bloquear->id;
         }
@@ -990,34 +1020,7 @@ void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
 
     log_info(logger, "El carpincho %d paso a BLOCKED por IO", carpincho_a_bloquear->id);
 
-//aca lo que estaba en mate_call_io:
- bool igual_a(void *dispositivo){
-        return string_equals_ignore_case((char*)dispositivo, (char*)nombre_io);
-    }
 
-    dispositivo_io *dispositivo_pedido;
-    dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); //creo que esto esta mal
- log_info(logger, "ANTES DEL IF LLEGO BIEN");
-    if(dispositivo_pedido->en_uso){
-       queue_push(dispositivo_pedido->en_espera, carpincho_a_bloquear);  
-       log_info(logger, "El dispositivo IO esta en uso");     
-    }
-    else{ 
-        dispositivo_pedido->en_uso = true;
-        sleep(dispositivo_pedido->duracion);
-        block_a_ready(carpincho_a_bloquear);
-
-        while(!queue_is_empty(dispositivo_pedido->en_espera)){
-            data_carpincho *carpincho_siguiente;
-            carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
-            queue_pop(dispositivo_pedido->en_espera);
-            usleep(dispositivo_pedido->duracion);
-            block_a_ready(carpincho_siguiente);
-        }
-        log_info(logger, "Se le dio el dispositivo IO al siguiente carpincho");
-    }
-
-   
 }
 
 void exec_a_exit(int id_carpincho, int fd){
