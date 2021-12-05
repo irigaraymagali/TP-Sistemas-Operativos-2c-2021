@@ -121,7 +121,8 @@ int memalloc(int processId, int espacioAReservar){
             paginaFInalEncontrada->bitUso = 1 ;
 
             temp->lastHeap = tempLastHeap + espacioAReservar;
-            
+
+            mandarPaginaAgonza(processId ,paginaFInalEncontrada->frame, paginaFInalEncontrada->pagina)        ;
 
             return (tempLastHeap );
         } else {
@@ -173,6 +174,7 @@ int memalloc(int processId, int espacioAReservar){
                 int framenecesitado = getFrameDeUn(processId, nroPagAux);
                 
                 memcpy(memoria + (framenecesitado*tamanioDePagina), espacioAuxiliar + offsetEspacioAux, tamanioDePagina);
+                mandarPaginaAgonza(processId ,framenecesitado, nroPagAux);
 
                 nroPagAux++;
                 offsetEspacioAux+=tamanioDePagina;
@@ -843,6 +845,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
                 memcpy(&nextAllocActual ,memoria + offset-sizeof(uint32_t), sizeof(uint32_t));
 
                 memcpy(&prevAllocActual ,memoria + offset-2*sizeof(uint32_t), sizeof(uint32_t));
+                
 
             }else{
                 void* paginasAuxiliares = malloc(tamanioDePagina*2);
@@ -863,7 +866,12 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 
                 memcpy(memoria + frameBuscado*tamanioDePagina, paginasAuxiliares, tamanioDePagina);
 
+                mandarPaginaAgonza(idProcess ,frameBuscado, paginaActual);
+
                 memcpy(memoria + frameFinal*tamanioDePagina, paginasAuxiliares+tamanioDePagina, tamanioDePagina);
+
+                mandarPaginaAgonza(idProcess ,frameFinal, paginaActual+1);
+
 
                 free(paginasAuxiliares);
             }
@@ -901,6 +909,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
                     int frameIterador = getFrameDeUn(idProcess,contador);
 
                     memcpy(memoria + frameIterador*tamanioDePagina, paginasAuxiliares + offsetAuxiliar, tamanioDePagina);
+                    mandarPaginaAgonza(idProcess ,frameIterador, contador);
 
                     contador++;
                     offsetAuxiliar += tamanioDePagina;
@@ -942,6 +951,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
                         int frameIterador = getFrameDeUn(idProcess,contador);
 
                         memcpy(memoria + frameIterador*tamanioDePagina, paginasAuxiliares + offsetAux, tamanioDePagina);
+                        mandarPaginaAgonza(idProcess ,frameIterador, contador);
 
                         contador++;
                         offsetAux += tamanioDePagina;
@@ -1234,6 +1244,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
             if (paginaFinDelAlloc == paginaActual)
             {
                 memcpy(memoria + offsetInicioAlloc, loQueQuierasEscribir, tamanio);
+                mandarPaginaAgonza(idProcess ,frameBuscado, paginaActual);
             }
             else
             {
@@ -1265,6 +1276,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
                     frameBuscado = getFrameDeUn(idProcess, nroPagAux);
                        
                     memcpy(memoria + (frameBuscado*tamanioDePagina) ,espacioAuxiliar + unOffset ,tamanioDePagina);
+                    mandarPaginaAgonza(idProcess ,frameBuscado, nroPagAux);
                     
                     unOffset +=tamanioDePagina;
 
@@ -1655,6 +1667,24 @@ void liberarFrame(uint32_t nroDeFrame){
     }
         
     list_iterator_destroy(iterator);
+}
+
+void mandarPaginaAgonza(int processID ,uint32_t frameDeMemoria, uint32_t nroDePagina){
+    int pay_len = 3*sizeof(int)+tamanioDePagina;
+    void* paginaAEnviar = malloc(tamanioDePagina);
+    memcpy(paginaAEnviar,memoria + (frameDeMemoria*tamanioDePagina),tamanioDePagina);
+    int pid = processID;
+    void* payload = _serialize(pay_len, "%d%d%d%v", pid, nroDePagina,tamanioDePagina,paginaAEnviar);  
+    log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", nroDePagina, pid);      
+    void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+    int iresp;
+    memcpy(&iresp, resp, sizeof(int));
+    if(iresp == 0){
+        log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", nroDePagina);
+    }
+    free(resp);
+    free(payload);
+    free(paginaAEnviar);
 }
 
 HeapMetaData* get_heap_metadata(int offset){

@@ -126,6 +126,7 @@ void utilizarAlgritmoDeAsignacion(int processID);
 void seleccionLRU(int processID);
 void seleccionClockMejorado(int idProcess);
 void liberarFrame(uint32_t nroDeFrame);
+void mandarPaginaAgonza(int processID ,uint32_t frameDeMemoria, uint32_t nroDePagina);
 Pagina *getMarcoDe(uint32_t nroDeFrame);
 void setAsUsedRecently(int idProcess, int nroDePagina);
 uint32_t getProcessIdby(uint32_t nroDeFrame);
