@@ -1242,6 +1242,8 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
  
             memcpy(&finDelAlloc, memoria + offset, sizeof(uint32_t));
 
+            finDelAlloc = finDelAlloc - 1 ;
+
             int offsetInicioAlloc = (frameBuscado*tamanioDePagina) + (dirAllocActual) - ((paginaActual-1) * tamanioDePagina) + HEAP_METADATA_SIZE;
             
             int paginaFinDelAlloc = (finDelAlloc/tamanioDePagina)+1;
