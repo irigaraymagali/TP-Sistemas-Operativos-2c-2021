@@ -797,7 +797,9 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 
         log_info(logger, "tomo el frame %d con Exito", tempPagina->frame);
 
-        add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
+        //if (tlb == NULL){
+            add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
+        //}
         
         return tempPagina->frame;
     }
@@ -1152,7 +1154,7 @@ void inicializarUnProceso(int idDelProceso){
                 nuevaPagina->isfree= BUSY;
                 nuevaPagina->frame = nuevoFrame;
                 nuevaPagina->bitPresencia =1;
-                nuevaPagina->bitModificado = 1;
+                nuevaPagina->bitModificado = 0;
 
                 
                 list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
@@ -1169,8 +1171,8 @@ void inicializarUnProceso(int idDelProceso){
                 pthread_mutex_unlock(&lru_mutex);
                 nuevaPagina->isfree= FREE;
                 nuevaPagina->frame = nuevoFrame;
-                nuevaPagina->bitPresencia =0;
-                nuevaPagina->bitModificado = 1;
+                nuevaPagina->bitPresencia = 1;
+                nuevaPagina->bitModificado = 0;
 
                 
                 list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
