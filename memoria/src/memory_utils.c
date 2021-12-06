@@ -164,7 +164,7 @@ int memalloc(int processId, int espacioAReservar){
             offsetEspacioAux += sizeof(uint32_t);
             memcpy(espacioAuxiliar+offsetEspacioAux, &nuevoHeap->nextAlloc, sizeof(uint32_t));
 
-            offsetEspacioAux += sizeof(uint8_t);
+            offsetEspacioAux += sizeof(uint32_t);
             memcpy(espacioAuxiliar+offsetEspacioAux, &nuevoHeap->isfree, sizeof(uint8_t));
             
             nroPagAux=paginaLastHeap;
@@ -366,7 +366,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
         uint8_t isfreeAux;
         int allocActual = 0; 
         // int dirPaginaSiguiente = 0;
-        // int dirPaginaActual;
+        // int dirPaginaActual;6
         int espacioEncontrado=0;
         int temp_last_heap = temp->lastHeap;
 
@@ -1233,7 +1233,7 @@ void remove_paginas(void* elem){
 }
 
 int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir, int tamanio){
-    //log_info(logger,"arranco un memwrite----------------------------");
+    log_info(logger,"arranco un memwrite----------------------------");
     int paginaActual=1;
 
     TablaDePaginasxProceso *tablaDelProceso = get_pages_by(idProcess);
@@ -1243,8 +1243,8 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
 
     pthread_mutex_lock(&memory_mutex);
     while((dirAllocActual <= direccionLogicaBuscada) && dirAllocFinal>direccionLogicaBuscada){
-        //log_info(logger,"EN memwrite---------dirAllocActual:%d",dirAllocActual);
-        //log_info(logger,"EN memwrite---------dirAllocFinal:%d",dirAllocFinal);
+        log_info(logger,"EN memwrite---------dirAllocActual:%d",dirAllocActual);
+        log_info(logger,"EN memwrite---------dirAllocFinal:%d",dirAllocFinal);
         if (dirAllocActual == direccionLogicaBuscada)
         {
             int finDelAlloc = 0;
@@ -1331,8 +1331,8 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
 
                 memcpy(&variablePrueba, memoria + offset - sizeof(uint32_t), sizeof(uint32_t));
 
-                //log_info(logger,"EN memwrite---------dirAllocActual en el if:%d",dirAllocActual);
-                //log_info(logger,"EN memwrite---------variablePrueba en el if:%d",variablePrueba);
+                log_info(logger,"EN memwrite---------dirAllocActual en el if:%d",dirAllocActual);
+                log_info(logger,"EN memwrite---------variablePrueba en el if:%d",variablePrueba);
 
             }else{
                 void* paginasAuxiliares = malloc(tamanioDePagina*2);
@@ -1347,7 +1347,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
 
                 memcpy(&dirAllocActual, paginasAuxiliares + posicionNextAllocDentroDelFrame, sizeof(uint32_t));
 
-                //log_info(logger,"EN memwrite---------dirAllocActual en el else:%d",dirAllocActual);
+                log_info(logger,"EN memwrite---------dirAllocActual en el else:%d",dirAllocActual);
 
                 free(paginasAuxiliares);
             }
