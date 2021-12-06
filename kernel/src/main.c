@@ -772,13 +772,15 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
-    void* payload = _serialize(sizeof(int) * 3, "%d%d%d", carpincho->id, origin, size);  
+
+    void* payload = _serialize(sizeof(int) * 3, "%d%d%d", carpincho->id, size, origin);  
     t_mensaje *buffer;
+    
     int socket_memoria;
     socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
 
     if(socket_memoria >= 0){
-        _send_message(socket_memoria, ID_KERNEL, MATE_MEMREAD,payload,sizeof(sizeof(int) * 3 + sizeof(int)),logger);   
+        _send_message(socket_memoria, ID_KERNEL, MATE_MEMREAD,payload,sizeof(int) * 3 + size,logger);   
         buffer = _receive_message(socket_memoria, logger);
         log_info(logger,"mandando a matelib la respuesta del memread :)");
         _send_message(fd, ID_KERNEL, 1, buffer->payload, sizeof(int), logger);
