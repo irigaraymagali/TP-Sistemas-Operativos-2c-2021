@@ -222,10 +222,10 @@ int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
             }
             else {
                 memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
-                fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
-                nuevo->proceso = proceso;
-                nuevo->pagina = pagina;
-                list_replace_and_destroy_element(tabla_paginas, frame_asignado, (void*) nuevo, fila_tabla_paginas_destroy);
+                fila_tabla_paginas* data = malloc(sizeof(fila_tabla_paginas));
+                data->proceso = proceso;
+                data->pagina = pagina;
+                list_replace_and_destroy_element(tabla_paginas, frame_asignado, (void*) data, fila_tabla_paginas_destroy);
                 munmap(swap_file_map, swap_file_size);
                 close(swap_file_fd);
                 free(swap_file_path);

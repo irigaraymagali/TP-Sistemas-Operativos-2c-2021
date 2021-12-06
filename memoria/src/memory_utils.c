@@ -762,8 +762,10 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
     TablaDePaginasxProceso* temp = get_pages_by(processId);
     
     Pagina *tempPagina;
-
-    TLB* tlb = fetch_entrada_tlb(processId, mayorNroDePagina);
+    TLB* tlb = NULL;
+    if(max_entradas_tlb > 0){
+        tlb = fetch_entrada_tlb(processId, mayorNroDePagina);
+    }
     if (tlb != NULL){
         tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
         if(tempPagina->bitPresencia == 1){
@@ -804,8 +806,9 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 
         log_info(logger, "tomo el frame %d con Exito", tempPagina->frame);
 
-        add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
-        
+        if (max_entradas_tlb > 0){
+            add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
+        }
         return tempPagina->frame;
     }
 
@@ -1018,7 +1021,11 @@ void deletePagina(int idProcess,int paginaActual){
 
     TablaDePaginasxProceso* tablaDePags =get_pages_by(idProcess);
     Pagina *tempPagina;
-    TLB* tlb = fetch_entrada_tlb(idProcess, paginaActual);
+    TLB* tlb = NULL;
+    if (max_entradas_tlb > 0){
+        tlb = fetch_entrada_tlb(idProcess, paginaActual);
+    }
+    
     if (tlb != NULL){
         list_remove(tablaDePags->paginas, tlb->pagina - 1);
         log_info(logger, "Deleteo la pag %d con Exito", tlb->pagina);
@@ -1072,14 +1079,23 @@ Pagina *getPageDe(int processId,int nroPagina){
     Pagina *tempPagina;
 
     t_list_iterator* iterator = list_iterator_create(temp->paginas);
-    TLB* tlb = fetch_entrada_tlb(processId, nroPagina);
+    TLB* tlb = NULL;
+    if (max_entradas_tlb > 0){
+        tlb = fetch_entrada_tlb(processId, nroPagina);
+    }
+
     if (tlb != NULL){
-        /* TESTEAR */
         tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
     } else {
         tempPagina = list_iterator_next(iterator);
         while (tempPagina->pagina != nroPagina) {
+            /*
+            if (!list_iterator_has_next(iterator)){
+                break;
+            } */
+            
             tempPagina = list_iterator_next(iterator);
+            
         }
     }
     list_iterator_destroy(iterator);
