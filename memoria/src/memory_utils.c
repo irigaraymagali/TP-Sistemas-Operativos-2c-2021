@@ -1084,12 +1084,17 @@ Pagina *getPageDe(int processId,int nroPagina){
     }
 
     if (tlb != NULL){
-        /* TESTEAR */
         tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
     } else {
         tempPagina = list_iterator_next(iterator);
         while (tempPagina->pagina != nroPagina) {
+            /*
+            if (!list_iterator_has_next(iterator)){
+                break;
+            } */
+            
             tempPagina = list_iterator_next(iterator);
+            
         }
     }
     list_iterator_destroy(iterator);

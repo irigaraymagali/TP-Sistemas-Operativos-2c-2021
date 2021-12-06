@@ -205,7 +205,13 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             log_info(logger, "Comenzando comando MATE_MEMREAD");
             deserialize_mem_read(&pid, &dir_logica, &size, payload);
             resp = memread(pid, dir_logica, size);
-            size_msg = size;
+            int result; 
+            memcpy(&result, resp, sizeof(int));
+            if (result == MATE_READ_FAULT){
+                size_msg = sizeof(int);
+            } else {
+                size_msg = size;
+            }
             break;
         case MATE_MEMWRITE:
             log_info(logger, "Comenzando comando MATE_MEMWRITE");
