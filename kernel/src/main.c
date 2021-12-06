@@ -581,7 +581,7 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         
         if(!queue_is_empty(semaforo_post->en_espera)){
             data_carpincho *carpincho_a_desbloquear;
-            carpincho_a_desbloquear = queue_peek(semaforo_post->en_espera);
+            carpincho_a_desbloquear = (data_carpincho *) queue_peek(semaforo_post->en_espera);
             queue_pop(semaforo_post->en_espera);
             carpincho_a_desbloquear->nombre_semaforo_por_el_que_se_bloqueo = NULL;
             data_carpincho *carpincho_que_hizo_post = encontrar_estructura_segun_id(id_carpincho);
@@ -891,16 +891,19 @@ void entrantes_a_ready(){
    int valor = 1; 
 
     while(1){
-        log_info(logger,"Carpincho ya tiene creada su estructura y quiere pasar a ready");
+        int gradoMultiprogramacion;
+        sem_getvalue(&sem_grado_multiprogramacion_libre, &gradoMultiprogramacion);
+        log_info(logger,"el grado de multiprogramacion libre cuando entra a entrantes_a_ready es: %d", gradoMultiprogramacion);
+        
         sem_wait(&hay_estructura_creada);
         sem_wait(&sem_grado_multiprogramacion_libre); 
-		
+
         if(!queue_is_empty(suspended_ready)) 
         {
             pthread_mutex_lock(&sem_cola_ready); 
             pthread_mutex_lock(&sem_cola_suspended_ready); 
 
-            carpincho_a_mover = queue_peek(suspended_ready);
+            carpincho_a_mover = (data_carpincho *) queue_peek(suspended_ready);
 
             list_add(ready, carpincho_a_mover);
             queue_pop(suspended_ready);
@@ -915,7 +918,7 @@ void entrantes_a_ready(){
             pthread_mutex_lock(&sem_cola_ready); 
             pthread_mutex_lock(&sem_cola_new);
 
-            carpincho_a_mover = queue_peek(new);
+            carpincho_a_mover = (data_carpincho *) queue_peek(new);
 
             list_add(ready, carpincho_a_mover); 
             queue_pop(new);
@@ -933,6 +936,9 @@ void entrantes_a_ready(){
         if(valor == 0){ 
             sem_post(&sem_programacion_lleno);
         }
+        sem_getvalue(&sem_grado_multiprogramacion_libre, &gradoMultiprogramacion);
+        log_info(logger,"el grado de multiprogramacion libre cuando termina el while de entrantes_a_ready es: %d", gradoMultiprogramacion);
+        
     }
 }
 
@@ -946,7 +952,15 @@ void ready_a_exec(){
     while(1){ 
 
         sem_wait(&cola_ready_con_elementos);   
+        log_info(logger, "Hay un carpincho en READY");
+
+        int valor2;
+         sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor2);
+        log_info(logger,"una vez que paso el wait de cola ready con elementos, el grado de multiprocesamiento libre es: %d", valor2);
+
+
         sem_wait(&sem_grado_multiprocesamiento_libre);
+        log_info(logger, "hay carpinchos esperando");
 
         if(string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_PLANIFICACION"), "SJF")){
             carpincho_a_mover = ready_a_exec_SJF(); 
@@ -1100,6 +1114,7 @@ void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
 void exec_a_exit(int id_carpincho, int fd){
     
     void *payload;
+    log_info(logger,"se va a eliminar al carpincho %d", id_carpincho);
 
     data_carpincho *carpincho_que_termino;
     carpincho_que_termino = encontrar_estructura_segun_id(id_carpincho);
@@ -1118,20 +1133,29 @@ void exec_a_exit(int id_carpincho, int fd){
     int respuesta_memoria;
     buffer = _receive_message(socket_memoria, logger);
     memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
-
     close(socket_memoria);
+
     int id_carpincho_eliminado;
     id_carpincho_eliminado = carpincho_que_termino->id;
+    int cpu_carpincho_eliminado;
+    cpu_carpincho_eliminado = carpincho_que_termino->CPU_en_uso;
     pthread_mutex_lock(&sem_cola_exec); 
     list_remove_and_destroy_by_condition(exec, es_el_mismo, liberar_carpincho); 
 	pthread_mutex_unlock(&sem_cola_exec);
 
-    log_info(logger, "El carpincho %d paso a EXIT", id_carpincho_eliminado);
-
-    sem_post(&(liberar_CPU[carpincho_que_termino->CPU_en_uso])); 
+    sem_post(&(liberar_CPU[cpu_carpincho_eliminado])); 
     sem_post(&sem_grado_multiprogramacion_libre);
+    int valor;
+    sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor);
+    log_info(logger,"el grado de multiprocesamiento libre es: %d", valor);
 
-    _send_message(fd, ID_KERNEL, 1, 0, sizeof(int), logger); 
+
+    log_info(logger, "El carpincho %d paso a EXIT", id_carpincho_eliminado);
+    log_info(logger, "Se liberó el CPU %d, se le va a responder al %d", cpu_carpincho_eliminado, fd );
+
+    payload = _serialize(sizeof(int), "%d", 0);
+    _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
+    
     free(payload);
 }
 
@@ -1156,11 +1180,11 @@ void block_a_ready(data_carpincho *carpincho_a_ready){
     pthread_mutex_unlock(&sem_cola_blocked);
     pthread_mutex_unlock(&sem_cola_ready);    
 
+
     carpincho_a_ready->estado = READY;
     sem_post(&cola_ready_con_elementos);
 
-    //sem_wait(&sem_hay_bloqueados);
-
+    log_info(logger, "El carpincho %d paso a ready e hizo el post a cola_ready_con_elementos", carpincho_a_ready->id);
     // no tiene que evaluar ni grado de multiprogramacion ni de multiproc porque ya estaba considerado. no responde nada a la lib porque todavia no esta en exec, solo paso a ready
 }
 
@@ -1235,8 +1259,10 @@ void suspender(){
 }
 
 bool estan_las_condiciones_para_suspender(){
-    int valor1 = sem_getvalue(&sem_grado_multiprogramacion_libre, &valor1);
-    int valor2 = sem_getvalue(&hay_estructura_creada, &valor2);
+    int valor1;
+    sem_getvalue(&sem_grado_multiprogramacion_libre, &valor1);
+    int valor2;
+    sem_getvalue(&hay_estructura_creada, &valor2);
     
     return valor1 == 0 && !list_is_empty(blocked) && valor2 > 0;
 }
@@ -1360,19 +1386,32 @@ void ejecuta(void *id_cpu){
         int *id = (int *) id_cpu;
     
         pthread_mutex_lock(&mutex_para_CPU); 
+        log_info(logger,"La función Ejecuta esta esperando que usen su semaforo");
 
         sem_wait(&usar_CPU[*id]); // espera hasta que algun carpincho haga post para usar ese cpu
         sem_wait(&CPU_libre[*id]); // ya no está más libre ese cpu
+        log_info(logger,"se está usando un semaforo");
 
         pthread_mutex_unlock(&mutex_para_CPU); 
         
         sem_wait(&liberar_CPU[*id]); // espera a que algun carpincho indique que quiere liberar el cpu
+        log_info(logger,"se hizo post a liberar_cpu, entonces Ejecuta puede seguir");        
         queue_push(CPU_libres, id);
+        log_info(logger,"La función Ejecuta ya liberó el CPU");
         
         pthread_mutex_lock(&mutex_para_CPU); 
+
         sem_post(&CPU_libre[*id]); 
+        int gradoMultiprocesamiento;
+        sem_getvalue(&sem_grado_multiprocesamiento_libre, &gradoMultiprocesamiento);
+        log_info(logger,"antes de hacer post en ejecuta al grado, el grado de multiprocesamiento libre es: %d", gradoMultiprocesamiento);
+
         sem_post(&sem_grado_multiprocesamiento_libre); //hay algun cpu libre
-        pthread_mutex_lock(&mutex_para_CPU); 
+         sem_getvalue(&sem_grado_multiprocesamiento_libre, &gradoMultiprocesamiento);
+
+        log_info(logger,"despues de hacer post en ejecuta al grado, el grado de multiprocesamiento libre es: %d", gradoMultiprocesamiento);
+        
+        pthread_mutex_unlock(&mutex_para_CPU); 
     }
 }
 
