@@ -16,7 +16,7 @@ int deserializar_numero(t_mensaje* buffer){
 void* armar_paquete(mate_inner_structure* estructura_interna){ // serializar estructura interna para mandar al carpincho
     int sem_len =  string_length(estructura_interna->semaforo);
     int sem_dis_io = string_length(estructura_interna->dispositivo_io);
-    log_info(logger, "Serializando la estructura del carpincho %d", estructura_interna->id);
+    log_info(logger, "Serializando la estructura del carpincho");
     return _serialize( sizeof(int) * 4 + sem_len + sem_dis_io, "%d%s%d%s", estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, estructura_interna->dispositivo_io);
 }
 
@@ -81,7 +81,7 @@ int mate_init(mate_instance *lib_ref, char *config)
         return socket_backend;  
     }
     else{
-        log_info(logger, "enviando mensaje a backend para que cree la estructura del carpincho");        
+        log_info(logger, "enviando mensaje a backend para que cree la estructura del carpincho");      
         _send_message(socket_backend, ID_MATE_LIB, MATE_INIT, payload, size, logger); // envia la estructura al backend para que inicialice todo
         int id_recibido;
         t_mensaje* buffer = _receive_message(socket_backend, logger);

@@ -285,12 +285,12 @@ void mate_init(int fd){
     carpincho->llegada_a_ready = 0;
     carpincho->RR = 0;
     carpincho->estado = NEW;
-    carpincho->CPU_en_uso = NULL;
+    carpincho->CPU_en_uso = 0;
     carpincho->tiempo_entrada_a_exec = 0;
     carpincho->fd = fd; 
     carpincho->semaforos_retenidos = list_create();
     carpincho->semaforo = string_new(); 
-    carpincho->valor_semaforo = NULL;
+    carpincho->valor_semaforo = 0;
     carpincho->dispositivo_io = string_new(); 
     carpincho->nombre_semaforo_por_el_que_se_bloqueo = string_new();
     carpincho->tiene_su_espera = 0;
@@ -311,7 +311,7 @@ void mate_init(int fd){
         _send_message(socket_memoria, ID_KERNEL, MATE_INIT, payload , sizeof(int), logger); 
         t_mensaje *buffer;
         buffer = _receive_message(socket_memoria, logger);
-        memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+        memcpy(&respuesta_memoria, buffer->payload, sizeof(int));
         
         close(socket_memoria); 
         free(buffer->identifier);
@@ -924,7 +924,7 @@ void ready_a_exec(){
 
         carpincho_a_mover->tiempo_entrada_a_exec = calcular_milisegundos(); 
 
-        payload =  _serialize(sizeof(int), "%d", 0);
+        payload = _serialize(sizeof(int), "%d", carpincho_a_mover->id);
         _send_message(carpincho_a_mover->fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
         
         valor = sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor);
