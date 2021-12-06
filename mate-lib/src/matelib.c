@@ -137,13 +137,13 @@ int mate_sem_wait(mate_instance *lib_ref, mate_sem_name sem)
 
 int mate_sem_post(mate_instance *lib_ref, mate_sem_name sem) 
 {
-    log_info(logger, "el carpincho con id %d pidió hacer post");         
+    log_info(logger, "un carpincho pidió hacer post");         
     return modificar_semaforo(MATE_SEM_POST, sem, lib_ref);
 }
 
 int mate_sem_destroy(mate_instance *lib_ref, mate_sem_name sem) 
 {
-    log_info(logger, "el carpincho con id %d pidió hacer destroy");         
+    log_info(logger, "un carpincho pidió hacer destroy");         
     return modificar_semaforo(MATE_SEM_DESTROY, sem, lib_ref);
 }
 
@@ -168,7 +168,6 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 
     conexion_con_backend = _send_message(socket_backend, ID_MATE_LIB, MATE_MEMALLOC, payload, sizeof(int)*2, logger); 
 
-    printf("\ngonza nadie te quiere \n");
     if(conexion_con_backend < 0 ){ 
         free(payload);
         log_info(logger, "no se pudo crear la conexión con backend para hacer memalloc pedida por el carpincho %d", estructura_interna->id);
@@ -187,7 +186,6 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
     
         free(payload);
         
-        printf("\nesto viene antes de return (mate_pointer) pointer; %d \n", pointer);
         return (mate_pointer) pointer;  
     } 
 }
@@ -233,7 +231,7 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     void* payload = _serialize(sizeof(int) * 3, "%d%d%d", estructura_interna->id, origin, size);
    
-    conexion_con_backend = _send_message(   socket_backend, ID_MATE_LIB, MATE_MEMREAD, payload, sizeof(int) * 3, logger); 
+    conexion_con_backend = _send_message( socket_backend, ID_MATE_LIB, MATE_MEMREAD, payload, sizeof(int) * 3, logger); 
 
     if(conexion_con_backend < 0 ){ 
         log_info(logger, "no se pudo crear la conexión con backend para hacer memread pedida por el carpincho %d", estructura_interna->id);

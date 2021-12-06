@@ -204,6 +204,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
         case MATE_MEMREAD:
             log_info(logger, "Comenzando comando MATE_MEMREAD");
             deserialize_mem_read(&pid, &dir_logica, &size, payload);
+            log_info(logger, "El pid recibido es %d, la dir_logica recibida es %d, el size recibido es %d", pid, dir_logica, size);
             resp = memread(pid, dir_logica, size);
             int result; 
             memcpy(&result, resp, sizeof(int));

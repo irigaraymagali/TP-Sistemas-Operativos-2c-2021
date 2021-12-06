@@ -326,8 +326,8 @@ void mate_init(int fd){
         log_info(logger, "La estructura del carpincho %d se creó correctamente en memoria", id_carpincho);
         list_add(lista_carpinchos, (void *) carpincho);
         queue_push(new, (void *)carpincho);
-        // sem_post(&hay_estructura_creada); hacer descomentar esto despues de las pruebas
-        _send_message(fd, ID_KERNEL, MATE_INIT, payload, sizeof(int), logger);
+         sem_post(&hay_estructura_creada);
+        //_send_message(fd, ID_KERNEL, MATE_INIT, payload, sizeof(int), logger);
     }
     else{
         log_info(logger, "El módulo memoria no pudo crear la estructura");
@@ -773,14 +773,14 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
 
-    void* payload = _serialize(sizeof(int) * 3, "%d%d%d", carpincho->id, size, origin);  
+    void* payload = _serialize(sizeof(int) * 3, "%d%d%d", carpincho->id, origin, size);  
     t_mensaje *buffer;
     
     int socket_memoria;
     socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
 
     if(socket_memoria >= 0){
-        _send_message(socket_memoria, ID_KERNEL, MATE_MEMREAD,payload,sizeof(int) * 3 + size,logger);   
+        _send_message(socket_memoria, ID_KERNEL, MATE_MEMREAD,payload,sizeof(int) * 3,logger);   
         buffer = _receive_message(socket_memoria, logger);
         log_info(logger,"mandando a matelib la respuesta del memread :)");
         _send_message(fd, ID_KERNEL, 1, buffer->payload, sizeof(int), logger);
@@ -907,6 +907,8 @@ void ready_a_exec(){
 
         asignar_hilo_CPU(carpincho_a_mover); 
 
+        log_info(logger, "Se asignó el hilo CPU: %d",carpincho_a_mover->CPU_en_uso);
+
         pthread_mutex_lock(&sem_cola_ready); 
 		pthread_mutex_lock(&sem_cola_exec);
 
@@ -956,13 +958,14 @@ void exec_a_block(int id_carpincho){
 
     carpincho_a_bloquear->estado = BLOCKED; 
 
-    printf("CPU: %d",carpincho_a_bloquear->CPU_en_uso);
     sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); 
-
+    
+    log_info(logger, "Se liberó el CPU: %d ", carpincho_a_bloquear->CPU_en_uso);
+    
     sem_post(&sem_hay_bloqueados);
     sem_post(&hay_bloqueados_para_deadlock);
 
-    log_info(logger, "El carpincho %d paso a BLOCKED", carpincho_a_bloquear->id);
+    log_info(logger, "El carpincho %d paso a BLOCKED porque pidió un semaforo ocupado", carpincho_a_bloquear->id);
 }
 
 
@@ -1052,12 +1055,13 @@ void exec_a_exit(int id_carpincho, int fd){
     memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
 
     close(socket_memoria);
-
+    int id_carpincho_eliminado;
+    id_carpincho_eliminado = carpincho_que_termino->id;
     pthread_mutex_lock(&sem_cola_exec); 
     list_remove_and_destroy_by_condition(exec, es_el_mismo, liberar_carpincho); 
 	pthread_mutex_unlock(&sem_cola_exec);
 
-    log_info(logger, "El carpincho %d paso a EXIT", carpincho_que_termino->id);
+    log_info(logger, "El carpincho %d paso a EXIT", id_carpincho_eliminado);
 
     sem_post(&(liberar_CPU[carpincho_que_termino->CPU_en_uso])); 
     sem_post(&sem_grado_multiprogramacion_libre);
