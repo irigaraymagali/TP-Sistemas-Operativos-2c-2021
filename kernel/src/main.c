@@ -518,6 +518,7 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     
     void *payload;
+    int valor_previo_semaforo;
 
     bool esIgualA(void *semaforo){
         return esIgualASemaforo(nombre_semaforo, semaforo);
@@ -527,6 +528,7 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 
         semaforo *semaforo_post;
         semaforo_post = list_find(semaforos_carpinchos, (void *) esIgualA);
+        valor_previo_semaforo = semaforo_post->valor;
         semaforo_post->valor ++; 
 
         payload = _serialize(sizeof(int), "%d", 0);
@@ -551,7 +553,9 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
                suspended_blocked_a_suspended_ready(carpincho_a_desbloquear);
             }
         }
-        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
+        log_info(logger, "se pidió hacer un POST al semáforo %s que tenía valor %d y ahora cambió a %d", nombre_semaforo, valor_previo_semaforo, semaforo_post->valor);
+        
+        _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger);
     }
     else
     {
@@ -1314,38 +1318,45 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     int offset = 0;
     int ptr_len = 0;
 
-    printf("\nque linda que es la vida %d\n",opcode);
     if(strcmp(id, ID_MATE_LIB) == 0){ 
         switch(opcode){
             case MATE_INIT:
+                log_info(logger, "se pidió un MATE INIT");
                 mate_init(fd);
             break;
             case MATE_CLOSE: 
+                log_info(logger, "se pidió un MATE CLOSE");
                 estructura_interna = deserializar(payload);
                 mate_close(estructura_interna->id,fd); 
             break;
             case MATE_SEM_INIT: 
+                log_info(logger, "se pidió un MATE SEM INIT");
                 estructura_interna = deserializar(payload);
                 mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
             break;
             case MATE_SEM_WAIT: 
+                log_info(logger, "se pidió un MATE SEM WAIT");
                 estructura_interna = deserializar(payload);
                 mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_SEM_POST: 
+                log_info(logger, "se pidió un MATE SEM POST");
                 estructura_interna = deserializar(payload);
                 mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_SEM_DESTROY:
+                log_info(logger, "se pidió un MATE SEM DESTROY");
                 estructura_interna = deserializar(payload);
                 mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_CALL_IO:
+                log_info(logger, "se pidió un MATE CALL IO");
                 estructura_interna = deserializar(payload);
                 mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
             break;       
             case MATE_MEMALLOC: 
                 // id_carpincho
+                log_info(logger, "se pidió un MATE MEMALLOC");
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
                 // size_memoria
@@ -1355,6 +1366,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_memalloc(id_carpincho, size_memoria, fd);      
             break;      
             case MATE_MEMFREE:
+                log_info(logger, "se pidió un MATE MEMFREE");
                 // id_carpincho
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
@@ -1365,6 +1377,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_memfree(id_carpincho, addr_memfree, fd);      
             break;      
             case MATE_MEMREAD: 
+                log_info(logger, "se pidió un MATE MEMREAD");
                 // id_carpincho
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
@@ -1378,8 +1391,8 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_memread(id_carpincho, origin_memread, size_memoria, fd);            
             break;
             case MATE_MEMWRITE:  
+                log_info(logger, "se pidió un MATE MEMWRITE");
                 // id_carpincho
-                printf("\nque buen TP :) \n");
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
 
