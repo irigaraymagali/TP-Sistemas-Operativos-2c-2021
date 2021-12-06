@@ -492,6 +492,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
 
             list_add(temp->paginas, nuevaPagina); // ACA puede haber segun helgrind RACE CONDITION -> Array de mutex o un mutex para lista de paginas distinto a la de la tabla.
 
+            //add_entrada_tlb(processId, nuevaPagina->pagina, nuevaPagina->frame);
             cantidadDePaginasAAgregar--;
         }
     }else{
@@ -526,6 +527,8 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                     list_iterator_destroy(iterator);
 
                     list_add(temp->paginas, nuevaPagina);
+                    //add_entrada_tlb(processId, nuevaPagina->pagina, nuevaPagina->frame);
+
                     cantidadDePaginasAAgregar--;
                
                     /*  COMENTO ESTO PORQUE ES LO VIEJO Y NO SE SI EN ALGUN CASO ESPECIFICO ME PUEDA PASAR QUE NO TENGA QUE MALLOCQUEAR
@@ -546,18 +549,20 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                     cantidadDePaginasAAgregar--;*/
                 
             }else{
+                log_warning(logger, "Entro en la Zona prohibida. Que acaba de pasar?");
                 paginaSiguienteALaUltima->isfree = BUSY;
                 pthread_mutex_lock(&lru_mutex);
                 lRUACTUAL++;
                 paginaSiguienteALaUltima->lRU = lRUACTUAL;
                 pthread_mutex_unlock(&lru_mutex);
                 paginaSiguienteALaUltima->bitUso=1;
-                paginaSiguienteALaUltima->bitModificado=1;
-                paginaSiguienteALaUltima->bitPresencia=1;
+                paginaSiguienteALaUltima->bitModificado = 0;
+                paginaSiguienteALaUltima->bitPresencia = 1;
 
                 list_iterator_destroy(iterator);
             
-            cantidadDePaginasAAgregar--;}
+                cantidadDePaginasAAgregar--;
+            }
         }
     }      
 }
@@ -601,7 +606,6 @@ int getNewEmptyFrame(int idProcess){
                     if(tempPagina->isfree == FREE && tempPagina->bitPresencia==1){
                         list_iterator_destroy(iterator);
                         list_iterator_destroy(iterator2);
-                        add_entrada_tlb(idProcess, tempPagina->pagina, tempPagina->frame);
                         pthread_mutex_unlock(&list_pages_mutex);
                         return tempPagina->frame;
                     }
@@ -757,16 +761,20 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
     TablaDePaginasxProceso* temp = get_pages_by(processId);
     
     Pagina *tempPagina;
-
-    TLB* tlb = fetch_entrada_tlb(processId, mayorNroDePagina);
+    TLB* tlb = NULL;
+    if(max_entradas_tlb > 0){
+        tlb = fetch_entrada_tlb(processId, mayorNroDePagina);
+    }
     if (tlb != NULL){
-        /* TESTEAR */
         tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
+        if(tempPagina->bitPresencia == 1){
+            log_info(logger, "Hubo un TLB HIT: Devuelvo el Frame %d con exito", tlb->frame);
+            return tlb->frame;
+        }
     } else {
        tempPagina = getPageDe(processId, mayorNroDePagina);
     }
 
-    
 
     if(tempPagina->pagina == mayorNroDePagina){
         if(tempPagina->bitPresencia==0){
@@ -797,10 +805,9 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 
         log_info(logger, "tomo el frame %d con Exito", tempPagina->frame);
 
-        //if (tlb == NULL){
+        if (max_entradas_tlb > 0){
             add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
-        //}
-        
+        }
         return tempPagina->frame;
     }
 
@@ -1013,7 +1020,11 @@ void deletePagina(int idProcess,int paginaActual){
 
     TablaDePaginasxProceso* tablaDePags =get_pages_by(idProcess);
     Pagina *tempPagina;
-    TLB* tlb = fetch_entrada_tlb(idProcess, paginaActual);
+    TLB* tlb = NULL;
+    if (max_entradas_tlb > 0){
+        tlb = fetch_entrada_tlb(idProcess, paginaActual);
+    }
+    
     if (tlb != NULL){
         list_remove(tablaDePags->paginas, tlb->pagina - 1);
         log_info(logger, "Deleteo la pag %d con Exito", tlb->pagina);
@@ -1067,16 +1078,24 @@ Pagina *getPageDe(int processId,int nroPagina){
     Pagina *tempPagina;
 
     t_list_iterator* iterator = list_iterator_create(temp->paginas);
-    TLB* tlb = fetch_entrada_tlb(processId, nroPagina);
+    TLB* tlb = NULL;
+    if (max_entradas_tlb > 0){
+        tlb = fetch_entrada_tlb(processId, nroPagina);
+    }
+
     if (tlb != NULL){
-        /* TESTEAR */
         tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
     } else {
         tempPagina = list_iterator_next(iterator);
         while (tempPagina->pagina != nroPagina) {
+            /*
+            if (!list_iterator_has_next(iterator)){
+                break;
+            } */
+            
             tempPagina = list_iterator_next(iterator);
+            
         }
-        add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
     }
     list_iterator_destroy(iterator);
     return tempPagina;
@@ -1236,8 +1255,10 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
             int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
 
             int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
-
+ 
             memcpy(&finDelAlloc, memoria + offset, sizeof(uint32_t));
+
+            finDelAlloc = finDelAlloc - 1 ;
 
             int offsetInicioAlloc = (frameBuscado*tamanioDePagina) + (dirAllocActual) - ((paginaActual-1) * tamanioDePagina) + HEAP_METADATA_SIZE;
             
@@ -1718,8 +1739,19 @@ HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset){
 }
 
 void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
-    log_info(logger, "Agregando una nueva entrada en la TLB");
+    log_info(logger, "Agregando una nueva entrada en la TLB: Proceso %d, Pagina %d, Frame %d", pid, page, frame);
     pthread_mutex_lock(&tlb_mutex);
+
+    bool has_exist_instance(void* elem){
+        TLB* tlb = (TLB*) elem;
+        return (tlb->pid == pid && tlb->pagina == page && tlb->frame == frame);
+    }
+
+    if (list_any_satisfy(tlb_list, has_exist_instance)){
+        log_warning(logger, "Ya existe una Entrada de TLB para el Proceso %d, Pagina %d, Frame %d", pid, page, frame);
+        pthread_mutex_unlock(&tlb_mutex);
+        return;
+    }
 
     TLB* new_instance = new_entrada_tlb(pid, page, frame);
     if (list_size(tlb_list) < max_entradas_tlb) {
@@ -1801,12 +1833,15 @@ TLB* fetch_entrada_tlb(uint32_t pid, uint32_t page){
         if (tlb->pid == pid && tlb->pagina == page){
             sum_metric(pid, TLB_HIT);
             log_info(logger, "TLB HIT: Proceso %d Pagina %d y Frame %d", pid, page, tlb->frame);
-            
+            pthread_mutex_lock(&max_hit_tlb_mutex);
+            max_tlb_hit++;
+            pthread_mutex_unlock(&max_hit_tlb_mutex);
+
             pthread_mutex_lock(&tlb_lru_mutex);
             tlb->lru = tlb_lru_global;
             tlb_lru_global++;
             pthread_mutex_unlock(&tlb_lru_mutex);
-            
+
             sleep(retardo_hit_tlb);
             pthread_mutex_unlock(&tlb_mutex);
             list_iterator_destroy(iterator);
@@ -1818,6 +1853,9 @@ TLB* fetch_entrada_tlb(uint32_t pid, uint32_t page){
     pthread_mutex_unlock(&tlb_mutex);
 
     log_info(logger, "TLB MISS: Proceso %d Pagina %d", pid, page);
+    pthread_mutex_lock(&max_miss_tlb_mutex);
+    max_tlb_miss++;
+    pthread_mutex_unlock(&max_miss_tlb_mutex);
     sum_metric(pid, TLB_MISS);
     sleep(retardo_miss_tlb);
 

@@ -27,8 +27,6 @@ int main(int argc, char ** argv){
     memwrite(1,0,"carpincho",10);*/
 
     signal(SIGINT, print_metrics);
-    signal(SIGUSR1, print_dump);
-    signal(SIGUSR2, clean_tlb);
 
     _start_server(config_get_string_value(config, PORT_CONFIG), handler, logger);
 }
@@ -207,7 +205,13 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             log_info(logger, "Comenzando comando MATE_MEMREAD");
             deserialize_mem_read(&pid, &dir_logica, &size, payload);
             resp = memread(pid, dir_logica, size);
-            size_msg = size;
+            int result; 
+            memcpy(&result, resp, sizeof(int));
+            if (result == MATE_READ_FAULT){
+                size_msg = sizeof(int);
+            } else {
+                size_msg = size;
+            }
             break;
         case MATE_MEMWRITE:
             log_info(logger, "Comenzando comando MATE_MEMWRITE");
@@ -243,6 +247,8 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
 
     _send_message(fd, ID_MEMORIA, opcode, resp, size_msg, logger);
     free(resp);
+    signal(SIGUSR1, print_dump);
+    signal(SIGUSR2, clean_tlb);
 }
 
 int deserialize_init_process(char* id, void* payload){
