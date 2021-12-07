@@ -18,7 +18,41 @@ int main(int argc, char ** argv){
     logger = log_create("./cfg/kernel.log", "[Kernel]", true, LOG_LEVEL_INFO);
 	char *puerto_escucha = config_get_string_value(config, "PUERTO_ESCUCHA");        
     
+    /* 
+    dispositivo_io* algo = malloc(sizeof(dispositivo_io));
+    dispositivo_io* algo2 = malloc(sizeof(dispositivo_io));
+
+    algo->nombre = string_from_format("%s","pelopincho");
+    algo->duracion = 10;
+    algo->en_uso = false;
+    algo->en_espera = queue_create();  
+    char* pelopincho = string_from_format("%s","pelopincho");
+    t_list* lista = list_create();
+    list_add(lista, (void*) algo);
+    algo2 = list_find(lista, (void*) funcion_de_busqueda);
+    if(algo2!=NULL){
+        log_error(logger,"son iguales");
+    } else{
+        log_error(logger,"son distintos");
+    }
+    bool funcion_de_busqueda(void *dispositivo){
+        dispositivo_io* aux = (dispositivo_io *) dispositivo;
+        return string_equals_ignore_case(aux->nombre, (char*)nombre_io);
+    }
+    */
+
     crear_estructura_dispositivo();
+
+/* 
+    t_list_iterator* list_iterator = list_iterator_create(lista_dispositivos_io);
+    while (list_iterator_has_next(list_iterator)) {
+    dispositivo_io* dispositivo_leido = list_iterator_next(list_iterator);
+    log_error(logger, "dispositivo_leido->nombre: %s", dispositivo_leido->nombre);
+    log_warning(logger, "dispositivo_leido->duracion: %d", dispositivo_leido->duracion);
+}
+    log_error(logger, "size: %d", list_size(lista_dispositivos_io));
+*/
+
     inicializar_semaforos();
 	inicializar_colas();
     crear_hilos_CPU();
@@ -42,6 +76,7 @@ int main(int argc, char ** argv){
     pthread_join ( deteccion_deadlock , NULL ) ;    
 
 }
+
 
 void port_fixer() {
 
@@ -265,7 +300,7 @@ data_carpincho* deserializar(void* buffer){
     offset += sizeof(int);
 
     memcpy(estructura_interna->dispositivo_io, buffer + offset, io_len);
-    estructura_interna->dispositivo_io[sem_len] = '\0';
+    estructura_interna->dispositivo_io[io_len] = '\0';
 
     return estructura_interna;
 } 
@@ -285,7 +320,7 @@ void mate_init(int fd){
     carpincho->llegada_a_ready = 0;
     carpincho->RR = 0;
     carpincho->estado = NEW;
-    carpincho->CPU_en_uso = 0;
+    carpincho->CPU_en_uso = 9999;
     carpincho->tiempo_entrada_a_exec = 0;
     carpincho->fd = fd; 
     carpincho->semaforos_retenidos = list_create();
@@ -294,6 +329,8 @@ void mate_init(int fd){
     carpincho->dispositivo_io = string_new(); 
     carpincho->nombre_semaforo_por_el_que_se_bloqueo = string_new();
     carpincho->tiene_su_espera = 0;
+
+    log_info(logger, "El carpincho %d hizo un INIT", carpincho->id);
 
     void *payload;
     payload = _serialize(sizeof(int), "%d", carpincho->id);
@@ -340,6 +377,8 @@ void mate_init(int fd){
 }
 
 void mate_close(int id_carpincho, int fd){
+
+    log_info(logger, "El carpincho %d hizo un CLOSE", id_carpincho);
     
     data_carpincho *carpincho_a_cerrar;
     carpincho_a_cerrar = encontrar_estructura_segun_id(id_carpincho);
@@ -440,6 +479,8 @@ bool esIgualASemaforo(char* nombre_semaforo, void *semaforo_igual){
 
 void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo, int fd){  
 
+    log_info(logger, "El carpincho %d hizo un SEM INIT", id_carpincho);
+
     bool esIgualA(void *semaforo_igual){
         return esIgualASemaforo(nombre_semaforo, semaforo_igual);
     }
@@ -487,12 +528,12 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         carpincho->fd = fd;
 
         if(semaforo_wait->valor < 1){
-            log_info(logger, "Carpincho %d hizo un wait de un semaforo menor a 1, se bloquea", carpincho->id);
+            log_info(logger, "Carpincho %d hizo un WAIT de un semaforo menor a 1, se bloquea", id_carpincho);
             free(carpincho->nombre_semaforo_por_el_que_se_bloqueo);
             carpincho->nombre_semaforo_por_el_que_se_bloqueo = string_from_format("%s", nombre_semaforo);
             exec_a_block(id_carpincho); 
             queue_push(semaforo_wait->en_espera, carpincho);
-            printf("Ya deje en espera al carpincho %d", carpincho->id);
+            printf("Ya deje en espera al carpincho %d", id_carpincho);
         }
         else
         {
@@ -516,6 +557,8 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 }
 
 void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
+
+    log_info(logger, "El carpincho %d hizo un POST", id_carpincho);
     
     void *payload;
     int valor_previo_semaforo;
@@ -567,6 +610,8 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
 }
 
 void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
+
+    log_info(logger, "El carpincho %d hizo un SEM DESTROY", id_carpincho);
     void* payload; 
 
     bool esIgualA(void *semaforo){
@@ -605,6 +650,8 @@ bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo
 } 
 
 void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
+
+    log_info(logger, "El carpincho %d hizo MATE CALL IO", id_carpincho);
     
     //bool igual_a(void *dispositivo){
     //    return es_igual_dispositivo(nombre_io, dispositivo);
@@ -647,7 +694,7 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     // }
 
     //dispositivo_io *dispositivo_pedido; 
-    exec_a_block_io(id_carpincho,nombre_io);
+    exec_a_block_io(id_carpincho, nombre_io);
     //data_carpincho *carpincho;
     //carpincho = encontrar_estructura_segun_id(id_carpincho);
     //carpincho->estado = BLOCKED;
@@ -703,6 +750,7 @@ int contar_elementos(char** elementos) {
 //////////////// FUNCIONES MEMORIA ///////////////////
 
 void mate_memalloc(int id_carpincho, int size, int fd){  // martin => hay que revisar lo que le mandamos a la lib, porque espera que le devolvamos al carpincho un mate_pointer
+    log_info(logger, "El carpincho %d hizo MATE MEMALLOC", id_carpincho);
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
@@ -735,6 +783,7 @@ void mate_memalloc(int id_carpincho, int size, int fd){  // martin => hay que re
 }
 
 void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
+    log_info(logger, "El carpincho %d hizo MATE MEMFREE", id_carpincho);
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
@@ -769,6 +818,7 @@ void mate_memfree(int id_carpincho, mate_pointer addr, int fd){
 }
 
 void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // martin => está bien lo que estamos retornando al carpincho?
+    log_info(logger, "El carpincho %d hizo MATE MEMREAD", id_carpincho);
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
@@ -798,6 +848,7 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
 }
 
 void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, int fd){
+    log_info(logger, "El carpincho %d hizo MATE MEMWRITE", id_carpincho);
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
     carpincho->fd = fd;
@@ -975,14 +1026,26 @@ void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
     carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
 
 //aca lo que estaba en mate_call_io:
+/* 
  bool igual_a(void *dispositivo){
-        return string_equals_ignore_case((char*)dispositivo, (char*)nombre_io);
+        dispositivo_io* aux = (dispositivo_io *) dispositivo;
+        return string_equals_ignore_case(dispositivo->nombre, (char*)nombre_io);
     }
+*/
+
+dispositivo_io* encontrar_dispositivo(char* nombre_dispositivo) {
+    int es_igual_a(dispositivo_io* dispositivo) {
+        return string_equals_ignore_case(dispositivo->nombre, nombre_dispositivo);
+    }
+    return list_find(lista_dispositivos_io, (void*) es_igual_a);
+}
+
 
     dispositivo_io *dispositivo_pedido;
-    dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); //creo que aca es cuando rompes
-    
-    //hasta aca llega bien
+   // dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a);
+   dispositivo_pedido = encontrar_dispositivo((char*)nombre_io);
+
+
     if(dispositivo_pedido->en_uso){
        queue_push(dispositivo_pedido->en_espera, carpincho_a_bloquear);  
        log_info(logger, "El dispositivo IO que pidio el carpincho %d esta en uso", carpincho_a_bloquear->id);     
@@ -1327,42 +1390,42 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     if(strcmp(id, ID_MATE_LIB) == 0){ 
         switch(opcode){
             case MATE_INIT:
-                log_info(logger, "se pidió un MATE INIT");
+                //log_info(logger, "se pidió un MATE INIT");
                 mate_init(fd);
             break;
             case MATE_CLOSE: 
-                log_info(logger, "se pidió un MATE CLOSE");
+                //log_info(logger, "se pidió un MATE CLOSE");
                 estructura_interna = deserializar(payload);
                 mate_close(estructura_interna->id,fd); 
             break;
             case MATE_SEM_INIT: 
-                log_info(logger, "se pidió un MATE SEM INIT");
+                //log_info(logger, "se pidió un MATE SEM INIT");
                 estructura_interna = deserializar(payload);
                 mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
             break;
             case MATE_SEM_WAIT: 
-                log_info(logger, "se pidió un MATE SEM WAIT");
+                //log_info(logger, "se pidió un MATE SEM WAIT");
                 estructura_interna = deserializar(payload);
                 mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_SEM_POST: 
-                log_info(logger, "se pidió un MATE SEM POST");
+                //log_info(logger, "se pidió un MATE SEM POST");
                 estructura_interna = deserializar(payload);
                 mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_SEM_DESTROY:
-                log_info(logger, "se pidió un MATE SEM DESTROY");
+                //log_info(logger, "se pidió un MATE SEM DESTROY");
                 estructura_interna = deserializar(payload);
                 mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_CALL_IO:
-                log_info(logger, "se pidió un MATE CALL IO");
+                //log_info(logger, "se pidió un MATE CALL IO");
                 estructura_interna = deserializar(payload);
                 mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
             break;       
             case MATE_MEMALLOC: 
                 // id_carpincho
-                log_info(logger, "se pidió un MATE MEMALLOC");
+                //log_info(logger, "se pidió un MATE MEMALLOC");
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
                 // size_memoria
@@ -1372,7 +1435,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_memalloc(id_carpincho, size_memoria, fd);      
             break;      
             case MATE_MEMFREE:
-                log_info(logger, "se pidió un MATE MEMFREE");
+                //log_info(logger, "se pidió un MATE MEMFREE");
                 // id_carpincho
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
@@ -1383,7 +1446,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_memfree(id_carpincho, addr_memfree, fd);      
             break;      
             case MATE_MEMREAD: 
-                log_info(logger, "se pidió un MATE MEMREAD");
+                //log_info(logger, "se pidió un MATE MEMREAD");
                 // id_carpincho
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
@@ -1397,7 +1460,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_memread(id_carpincho, origin_memread, size_memoria, fd);            
             break;
             case MATE_MEMWRITE:  
-                log_info(logger, "se pidió un MATE MEMWRITE");
+                //log_info(logger, "se pidió un MATE MEMWRITE");
                 // id_carpincho
                 memcpy(&id_carpincho, payload, sizeof(int));
                 offset += sizeof(int);
