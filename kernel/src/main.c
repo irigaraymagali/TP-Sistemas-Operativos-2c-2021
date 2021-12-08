@@ -168,6 +168,9 @@ void inicializar_colas(){
 
     pthread_mutex_init(&mutex_para_CPU, NULL);
 
+    pthread_mutex_init(&sem_io_uso, NULL);
+    pthread_mutex_init(&sem_cola_io, NULL);
+
 }
 
 void inicializar_semaforos(){ 
@@ -363,7 +366,7 @@ void mate_init(int fd){
         log_info(logger, "La estructura del carpincho %d se creó correctamente en memoria", id_carpincho);
         list_add(lista_carpinchos, (void *) carpincho);
         queue_push(new, (void *)carpincho);
-         sem_post(&hay_estructura_creada);
+        sem_post(&hay_estructura_creada);
         //_send_message(fd, ID_KERNEL, MATE_INIT, payload, sizeof(int), logger);
     }
     else{
@@ -596,7 +599,7 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
                suspended_blocked_a_suspended_ready(carpincho_a_desbloquear);
             }
         }
-        log_info(logger, "se pidió hacer un POST al semáforo %s que tenía valor %d y ahora cambió a %d", nombre_semaforo, valor_previo_semaforo, semaforo_post->valor);
+        log_info(logger, "Se pidió hacer un POST al semáforo %s que tenía valor %d y ahora cambió a %d", nombre_semaforo, valor_previo_semaforo, semaforo_post->valor);
         
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger);
     }
@@ -888,6 +891,7 @@ void entrantes_a_ready(){
    int valor = 1; 
 
     while(1){
+        log_info(logger,"Carpincho ya tiene creada su estructura y quiere pasar a ready");
         sem_wait(&hay_estructura_creada);
         sem_wait(&sem_grado_multiprogramacion_libre); 
 		
@@ -1025,48 +1029,6 @@ void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
     data_carpincho *carpincho_a_bloquear;
     carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
 
-//aca lo que estaba en mate_call_io:
-/* 
- bool igual_a(void *dispositivo){
-        dispositivo_io* aux = (dispositivo_io *) dispositivo;
-        return string_equals_ignore_case(dispositivo->nombre, (char*)nombre_io);
-    }
-*/
-
-dispositivo_io* encontrar_dispositivo(char* nombre_dispositivo) {
-    int es_igual_a(dispositivo_io* dispositivo) {
-        return string_equals_ignore_case(dispositivo->nombre, nombre_dispositivo);
-    }
-    return list_find(lista_dispositivos_io, (void*) es_igual_a);
-}
-
-
-    dispositivo_io *dispositivo_pedido;
-   // dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a);
-   dispositivo_pedido = encontrar_dispositivo((char*)nombre_io);
-
-
-    if(dispositivo_pedido->en_uso){
-       queue_push(dispositivo_pedido->en_espera, carpincho_a_bloquear);  
-       log_info(logger, "El dispositivo IO que pidio el carpincho %d esta en uso", carpincho_a_bloquear->id);     
-    }
-    else{ 
-        dispositivo_pedido->en_uso = true;
-        sleep(dispositivo_pedido->duracion);
-        block_a_ready(carpincho_a_bloquear);
-
-        while(!queue_is_empty(dispositivo_pedido->en_espera)){
-            data_carpincho *carpincho_siguiente;
-            carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
-            queue_pop(dispositivo_pedido->en_espera);
-            usleep(dispositivo_pedido->duracion);
-            block_a_ready(carpincho_siguiente);
-        }
-        log_info(logger, "Se le dio el dispositivo IO al carpincho %d",carpincho_a_bloquear->id);
-    }
-
-//
-
     bool es_el_mismo(void* carpincho){
             return ((data_carpincho *) carpincho)->id == carpincho_a_bloquear->id;
         }
@@ -1084,15 +1046,55 @@ dispositivo_io* encontrar_dispositivo(char* nombre_dispositivo) {
 
     carpincho_a_bloquear->estado = BLOCKED; 
 
-    printf("CPU: %d",carpincho_a_bloquear->CPU_en_uso);
     sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); 
+    log_info(logger, "Se libero el CPU %d",carpincho_a_bloquear->CPU_en_uso);
 
     sem_post(&sem_hay_bloqueados);
     sem_post(&hay_bloqueados_para_deadlock);
 
     log_info(logger, "El carpincho %d paso a BLOCKED por IO", carpincho_a_bloquear->id);
 
+    dispositivo_io* encontrar_dispositivo(char* nombre_dispositivo) {
+    int es_igual_a(dispositivo_io* dispositivo) {
+        return string_equals_ignore_case(dispositivo->nombre, nombre_dispositivo);
+    }
+    return list_find(lista_dispositivos_io, (void*) es_igual_a);
+    }
 
+    dispositivo_io *dispositivo_pedido;
+    dispositivo_pedido = encontrar_dispositivo((char*)nombre_io);
+
+    if(dispositivo_pedido->en_uso){
+       pthread_mutex_lock(&sem_cola_io);
+       queue_push(dispositivo_pedido->en_espera, carpincho_a_bloquear);  
+       pthread_mutex_unlock(&sem_cola_io);
+       log_info(logger, "El dispositivo IO que pidio el carpincho %d esta en uso", carpincho_a_bloquear->id);     
+    }
+    else{ 
+        pthread_mutex_lock(&sem_io_uso);
+        dispositivo_pedido->en_uso = true;
+        pthread_mutex_unlock(&sem_io_uso);
+        log_info(logger, "Se le dio el dispositivo IO al carpincho %d",carpincho_a_bloquear->id);
+        sleep((dispositivo_pedido->duracion)/1000);
+       
+        block_a_ready(carpincho_a_bloquear);
+
+        while(!queue_is_empty(dispositivo_pedido->en_espera)){
+            data_carpincho *carpincho_siguiente;
+            pthread_mutex_lock(&sem_cola_io);
+            carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
+            queue_pop(dispositivo_pedido->en_espera);
+            pthread_mutex_unlock(&sem_cola_io);
+            log_info(logger, "Se le dio el dispositivo IO al carpincho %d",carpincho_siguiente->id);
+            sleep((dispositivo_pedido->duracion)/1000);
+            block_a_ready(carpincho_siguiente);
+        }
+        pthread_mutex_lock(&sem_io_uso);
+        dispositivo_pedido->en_uso = false;
+        log_info(logger, "El carpincho %d libero el dispositivo IO",carpincho_a_bloquear->id);
+        pthread_mutex_unlock(&sem_io_uso);
+
+    }
 }
 
 void exec_a_exit(int id_carpincho, int fd){
@@ -1148,16 +1150,16 @@ void block_a_ready(data_carpincho *carpincho_a_ready){
 
     list_add(ready, carpincho_a_ready);
     list_remove_by_condition(blocked, es_el_mismo);
+    
+    log_info(logger, "El carpincho %d paso a READY", carpincho_a_ready->id);
 
     pthread_mutex_unlock(&sem_cola_blocked);
-    pthread_mutex_unlock(&sem_cola_ready);
-
-    log_info(logger, "El carpincho %d paso a READY", carpincho_a_ready->id);
+    pthread_mutex_unlock(&sem_cola_ready);    
 
     carpincho_a_ready->estado = READY;
     sem_post(&cola_ready_con_elementos);
 
-    sem_wait(&sem_hay_bloqueados);
+    //sem_wait(&sem_hay_bloqueados);
 
     // no tiene que evaluar ni grado de multiprogramacion ni de multiproc porque ya estaba considerado. no responde nada a la lib porque todavia no esta en exec, solo paso a ready
 }
@@ -1390,7 +1392,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     if(strcmp(id, ID_MATE_LIB) == 0){ 
         switch(opcode){
             case MATE_INIT:
-                //log_info(logger, "se pidió un MATE INIT");
+                log_info(logger, "se pidió un MATE INIT");
                 mate_init(fd);
             break;
             case MATE_CLOSE: 
@@ -1513,7 +1515,7 @@ void detectar_deadlock(){
     data_carpincho *c2;
     while(1){
         sem_wait(&hay_bloqueados_para_deadlock); 
-        sleep(tiempo_deadlock);
+        sleep(tiempo_deadlock/1000);
 
         agregando_a_lista_posible_deadlock();
 
