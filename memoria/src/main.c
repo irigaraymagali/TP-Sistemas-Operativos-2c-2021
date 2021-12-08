@@ -94,18 +94,18 @@ void print_dump(){
     write_dump(dump_file, "\n---------------------------------------------------------------------------------------------------\n");
     write_dump(dump_file, dump_title);
     
-    t_list_iterator* iterator = list_iterator_create(tlb_list);
-    int total_entradas = 3;
-
-    for (int i = 0; i < total_entradas; i++){
+    for (int i = 0; i < max_entradas_tlb; i++){
         TLB* tlb;
         Dump* dump = malloc(sizeof(Dump));
         dump->entrada = i;
         dump->status = string_new();
+        if (i < list_size(tlb_list)){
+            tlb = list_get(tlb_list, i);
+        } else {
+            tlb = NULL;
+        }
 
-        if (list_iterator_has_next(iterator)){
-            tlb = list_iterator_next(iterator);
-
+        if (tlb != NULL && tlb->pid != UINT32_MAX){
             string_append(&dump->status, "OCUPADO");
             dump->pid = string_itoa(tlb->pid);
             dump->page = string_itoa(tlb->pagina);
@@ -204,7 +204,6 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
         case MATE_MEMREAD:
             log_info(logger, "Comenzando comando MATE_MEMREAD");
             deserialize_mem_read(&pid, &dir_logica, &size, payload);
-            log_info(logger, "El pid recibido es %d, la dir_logica recibida es %d, el size recibido es %d", pid, dir_logica, size);
             resp = memread(pid, dir_logica, size);
             int result; 
             memcpy(&result, resp, sizeof(int));
