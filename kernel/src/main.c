@@ -1,12 +1,8 @@
 #include "main.h"
 
-// cuando quiera lleanr la estructura con palabras, tengo que hacer el malloc.
-
 int main(int argc, char ** argv){
 
     config = config_create("./cfg/kernel.conf");
-
-    // port_fixer();
 
     id_carpincho = 1; 
 
@@ -17,41 +13,8 @@ int main(int argc, char ** argv){
 
     logger = log_create("./cfg/kernel.log", "[Kernel]", true, LOG_LEVEL_INFO);
 	char *puerto_escucha = config_get_string_value(config, "PUERTO_ESCUCHA");        
-    
-    /* 
-    dispositivo_io* algo = malloc(sizeof(dispositivo_io));
-    dispositivo_io* algo2 = malloc(sizeof(dispositivo_io));
-
-    algo->nombre = string_from_format("%s","pelopincho");
-    algo->duracion = 10;
-    algo->en_uso = false;
-    algo->en_espera = queue_create();  
-    char* pelopincho = string_from_format("%s","pelopincho");
-    t_list* lista = list_create();
-    list_add(lista, (void*) algo);
-    algo2 = list_find(lista, (void*) funcion_de_busqueda);
-    if(algo2!=NULL){
-        log_error(logger,"son iguales");
-    } else{
-        log_error(logger,"son distintos");
-    }
-    bool funcion_de_busqueda(void *dispositivo){
-        dispositivo_io* aux = (dispositivo_io *) dispositivo;
-        return string_equals_ignore_case(aux->nombre, (char*)nombre_io);
-    }
-    */
 
     crear_estructura_dispositivo();
-
-/* 
-    t_list_iterator* list_iterator = list_iterator_create(lista_dispositivos_io);
-    while (list_iterator_has_next(list_iterator)) {
-    dispositivo_io* dispositivo_leido = list_iterator_next(list_iterator);
-    log_error(logger, "dispositivo_leido->nombre: %s", dispositivo_leido->nombre);
-    log_warning(logger, "dispositivo_leido->duracion: %d", dispositivo_leido->duracion);
-}
-    log_error(logger, "size: %d", list_size(lista_dispositivos_io));
-*/
 
     inicializar_semaforos();
 	inicializar_colas();
@@ -67,6 +30,8 @@ int main(int argc, char ** argv){
     pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); 
     pthread_t deteccion_deadlock;
     pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
+    pthread_t bloqueados_io;
+    pthread_create(&bloqueados_io, NULL, (void*) exec_a_block_io, NULL);
     
     _start_server(puerto_escucha, handler, logger);
 
@@ -75,70 +40,6 @@ int main(int argc, char ** argv){
     pthread_join ( planficador_mediano_plazo , NULL ) ;
     pthread_join ( deteccion_deadlock , NULL ) ;    
 
-}
-
-
-void port_fixer() {
-
-    // FIX PUERTO PROPIO
-
-    if (config_get_int_value(config, "PUERTO_ESCUCHA") == 5980) {
-        char* puerto = string_from_format("%d", 5981);
-        config_set_value(config, "PUERTO_ESCUCHA", puerto);
-        config_save_in_file(config, "./cfg/kernel.conf");
-        free(puerto);
-    }
-
-    else if (config_get_int_value(config, "PUERTO_ESCUCHA") == 5981) {
-        char* puerto = string_from_format("%d", 5982);
-        config_set_value(config, "PUERTO_ESCUCHA", puerto);
-        config_save_in_file(config, "./cfg/kernel.conf");
-        free(puerto);
-    }
-
-    else if (config_get_int_value(config, "PUERTO_ESCUCHA") == 5982) {
-        char* puerto = string_from_format("%d", 5983);
-        config_set_value(config, "PUERTO_ESCUCHA", puerto);
-        config_save_in_file(config, "./cfg/kernel.conf");
-        free(puerto);
-    }
-
-    else {
-        char* puerto = string_from_format("%d", 5980);
-        config_set_value(config, "PUERTO_ESCUCHA", puerto);
-        config_save_in_file(config, "./cfg/kernel.conf");
-        free(puerto);
-    }
-
-    // FIX PUERTO MEMORIA
-
-    if (config_get_int_value(config, "PUERTO_MEMORIA") == 5080) {
-        char* puerto = string_from_format("%d", 5081);
-        config_set_value(config, "PUERTO_ESCUCHA", puerto);
-        config_save_in_file(config, "./cfg/kernel.conf");
-        free(puerto);
-    }
-
-    else if (config_get_int_value(config, "PUERTO_MEMORIA") == 5081) {
-        char* puerto = string_from_format("%d", 5082);
-        config_set_value(config, "PUERTO_ESCUCHA", puerto);
-        config_save_in_file(config, "./cfg/kernel.conf");
-        free(puerto);
-    }
-
-    else if (config_get_int_value(config, "PUERTO_MEMORIA") == 5082) {
-        char* puerto = string_from_format("%d", 5083);
-        config_set_value(config, "PUERTO_ESCUCHA", puerto);
-        config_save_in_file(config, "./cfg/kernel.conf");
-        free(puerto);
-    }
-
-    else {
-        char* puerto = string_from_format("%d", 5080);
-        config_set_value(config, "PUERTO_ESCUCHA", puerto);
-        config_save_in_file(config, "./cfg/kernel.conf");
-        free(puerto);
-    }
 }
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
@@ -166,8 +67,11 @@ void inicializar_colas(){
     CPU_libres = queue_create();
     pthread_mutex_init(&sem_CPU_libres, NULL);
 
-    pthread_mutex_init(&mutex_para_CPU, NULL);
+    carpinchos_pidiendo_io = queue_create();
+    pthread_mutex_init(&sem_cola_pidiendo_io, NULL);
 
+
+    pthread_mutex_init(&mutex_para_CPU, NULL);
     pthread_mutex_init(&sem_io_uso, NULL);
     pthread_mutex_init(&sem_cola_io, NULL);
 
@@ -178,18 +82,19 @@ void inicializar_semaforos(){
     int grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
     int grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
 
-    sem_init(&sem_grado_multiprogramacion_libre,0,grado_multiprogramacion);  
-	sem_init(&sem_grado_multiprocesamiento_libre, 0,grado_multiprocesamiento); 
-    sem_init(&hay_estructura_creada,0,0);
-    sem_init(&cola_ready_con_elementos,0,0);
-    sem_init(&cola_exec_con_elementos,0,0);
-    sem_init(&cola_blocked_con_elementos,0,0);
-    sem_init(&cola_suspended_blocked_con_elementos,0,0);
-    sem_init(&cola_suspended_ready_con_elementos,0,0); 
-    sem_init(&sem_programacion_lleno,0,0);
-    sem_init(&sem_procesamiento_lleno,0,0);
-    sem_init(&sem_hay_bloqueados,0,0);
-    sem_init(&hay_bloqueados_para_deadlock,0,0);
+    sem_init(&sem_grado_multiprogramacion_libre,1,grado_multiprogramacion);  
+	sem_init(&sem_grado_multiprocesamiento_libre, 1,grado_multiprocesamiento); 
+    sem_init(&hay_estructura_creada,1,0);
+    sem_init(&cola_ready_con_elementos,1,0);
+    sem_init(&cola_exec_con_elementos,1,0);
+    sem_init(&cola_blocked_con_elementos,1,0);
+    sem_init(&cola_suspended_blocked_con_elementos,1,0);
+    sem_init(&cola_suspended_ready_con_elementos,1,0); 
+    sem_init(&sem_programacion_lleno,1,0);
+    sem_init(&sem_procesamiento_lleno,1,0);
+    sem_init(&sem_hay_bloqueados,1,0);
+    sem_init(&hay_bloqueados_para_deadlock,1,0);
+    sem_init(&hay_carpinchos_pidiendo_io,1,0);
 }
 
 
@@ -657,72 +562,19 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
     log_info(logger, "El carpincho %d hizo MATE CALL IO", id_carpincho);
     
-    //bool igual_a(void *dispositivo){
-    //    return es_igual_dispositivo(nombre_io, dispositivo);
-    //}
+    data_carpincho *carpincho;
+    carpincho = encontrar_estructura_segun_id(id_carpincho);
 
-    // void * payload;
+    log_info(logger,"se encontro la estructura del carpincho %d", id_carpincho);
+                
+    pthread_mutex_lock(&sem_cola_pidiendo_io); 
+    log_info(logger,"el carpincho %d entro al mutex", id_carpincho);
+    queue_push(carpinchos_pidiendo_io, (void*)carpincho);
+    pthread_mutex_unlock(&sem_cola_pidiendo_io); 
+    log_info(logger,"el carpincho %d salio del mutex", id_carpincho);
+    sem_post(&hay_carpinchos_pidiendo_io);
+    log_info(logger,"el carpincho %d hizo el post", id_carpincho);
 
-    // if(list_any_satisfy(lista_dispositivos_io, (void*) igual_a)){  
-        
-    //     dispositivo_io *dispositivo_pedido; 
-    //     exec_a_block(id_carpincho);
-    //     data_carpincho *carpincho;
-    //     carpincho = encontrar_estructura_segun_id(id_carpincho);
-    //     carpincho->estado = BLOCKED;
-    //     dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); 
-
-    //     if(dispositivo_pedido->en_uso){
-    //        queue_push(dispositivo_pedido->en_espera, carpincho);  
-    //        log_info(logger, "El dispositivo IO esta en uso");     
-    //     }
-    //     else{ 
-    //         dispositivo_pedido->en_uso = true;
-    //         usleep(dispositivo_pedido->duracion);
-    //         block_a_ready(carpincho);
-    //         while(!queue_is_empty(dispositivo_pedido->en_espera)){
-    //             data_carpincho *carpincho_siguiente;
-    //             carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
-    //             queue_pop(dispositivo_pedido->en_espera);
-    //             usleep(dispositivo_pedido->duracion);
-    //             block_a_ready(carpincho_siguiente);
-    //         }
-    //         log_info(logger, "Se le dio el dispositivo IO");
-    //     }
-    // }
-    // else
-    // {
-    //     log_info(logger, "Se pidio un dispositivo IO que no existe");
-    //      payload = _serialize(sizeof(int), "%d", -1);
-    //     _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
-    // }
-
-    //dispositivo_io *dispositivo_pedido; 
-    exec_a_block_io(id_carpincho, nombre_io);
-    //data_carpincho *carpincho;
-    //carpincho = encontrar_estructura_segun_id(id_carpincho);
-    //carpincho->estado = BLOCKED;
-    /* 
-    dispositivo_pedido = (dispositivo_io *)list_find(lista_dispositivos_io, igual_a); 
-    if(dispositivo_pedido->en_uso){
-       queue_push(dispositivo_pedido->en_espera, carpincho);  
-       log_info(logger, "El dispositivo IO esta en uso");     
-    }
-    else{ 
-        dispositivo_pedido->en_uso = true;
-        usleep(dispositivo_pedido->duracion);
-        block_a_ready(carpincho);
-        while(!queue_is_empty(dispositivo_pedido->en_espera)){
-            data_carpincho *carpincho_siguiente;
-            carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
-            queue_pop(dispositivo_pedido->en_espera);
-            usleep(dispositivo_pedido->duracion);
-            block_a_ready(carpincho_siguiente);
-        }
-        log_info(logger, "Se le dio el dispositivo IO");
-    }
-*/
-    // free(payload);
 }
 
 void crear_estructura_dispositivo(){ 
@@ -1014,6 +866,49 @@ void exec_a_block(int id_carpincho){
             return ((data_carpincho *) carpincho)->id == carpincho_a_bloquear->id;
         }
 
+    calculo_rafaga_anterior(carpincho_a_bloquear); 
+
+    pthread_mutex_lock(&sem_cola_exec); 
+	pthread_mutex_lock(&sem_cola_blocked);
+
+    list_add(blocked, carpincho_a_bloquear); 
+    list_remove_by_condition(exec, es_el_mismo);
+    
+	pthread_mutex_unlock(&sem_cola_blocked);
+	pthread_mutex_unlock(&sem_cola_exec);
+
+    carpincho_a_bloquear->estado = BLOCKED;
+    carpincho_a_bloquear->tiempo_salida_a_exec = calcular_milisegundos(); 
+
+    sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); 
+    
+    log_info(logger, "Se liberó el CPU: %d ", carpincho_a_bloquear->CPU_en_uso);
+    
+    sem_post(&sem_hay_bloqueados);
+    sem_post(&hay_bloqueados_para_deadlock);
+
+    log_info(logger, "El carpincho %d paso a BLOCKED", carpincho_a_bloquear->id);
+}
+
+
+void exec_a_block_io(){
+
+    sem_wait(&hay_carpinchos_pidiendo_io);
+
+    log_info(logger,"estoy en exec_a_block_io");
+
+    data_carpincho* carpincho_a_bloquear;
+
+    pthread_mutex_lock(&sem_cola_pidiendo_io); 
+
+    carpincho_a_bloquear = (data_carpincho*)queue_peek(carpinchos_pidiendo_io);
+    queue_pop(carpinchos_pidiendo_io);
+    
+	pthread_mutex_unlock(&sem_cola_pidiendo_io);
+
+    bool es_el_mismo(void* carpincho){
+            return ((data_carpincho *) carpincho)->id == carpincho_a_bloquear->id;
+        }
 
     calculo_rafaga_anterior(carpincho_a_bloquear); 
 
@@ -1036,40 +931,7 @@ void exec_a_block(int id_carpincho){
     sem_post(&sem_hay_bloqueados);
     sem_post(&hay_bloqueados_para_deadlock);
 
-    log_info(logger, "El carpincho %d paso a BLOCKED porque pidió un semaforo ocupado", carpincho_a_bloquear->id);
-}
-
-
-void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
-
-    data_carpincho *carpincho_a_bloquear;
-    carpincho_a_bloquear = encontrar_estructura_segun_id(id_carpincho);
-
-    bool es_el_mismo(void* carpincho){
-            return ((data_carpincho *) carpincho)->id == carpincho_a_bloquear->id;
-        }
-
-    calculo_rafaga_anterior(carpincho_a_bloquear); 
-
-    pthread_mutex_lock(&sem_cola_exec); 
-	pthread_mutex_lock(&sem_cola_blocked);
-
-    list_add(blocked, carpincho_a_bloquear); 
-    list_remove_by_condition(exec, es_el_mismo);
-    
-	pthread_mutex_unlock(&sem_cola_blocked);
-	pthread_mutex_unlock(&sem_cola_exec);
-
-    carpincho_a_bloquear->estado = BLOCKED;
-    carpincho_a_bloquear->tiempo_salida_a_exec = calcular_milisegundos(); 
-
-    sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); 
-    log_info(logger, "Se libero el CPU %d",carpincho_a_bloquear->CPU_en_uso);
-
-    sem_post(&sem_hay_bloqueados);
-    sem_post(&hay_bloqueados_para_deadlock);
-
-    log_info(logger, "El carpincho %d paso a BLOCKED por IO", carpincho_a_bloquear->id);
+    log_info(logger, "El carpincho %d paso a BLOCKED por pedir IO", carpincho_a_bloquear->id);
 
     dispositivo_io* encontrar_dispositivo(char* nombre_dispositivo) {
     int es_igual_a(dispositivo_io* dispositivo) {
@@ -1077,6 +939,9 @@ void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
     }
     return list_find(lista_dispositivos_io, (void*) es_igual_a);
     }
+
+    char* nombre_io;
+    nombre_io = carpincho_a_bloquear->dispositivo_io;
 
     dispositivo_io *dispositivo_pedido;
     dispositivo_pedido = encontrar_dispositivo((char*)nombre_io);
@@ -1093,7 +958,7 @@ void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
         pthread_mutex_unlock(&sem_io_uso);
         log_info(logger, "Se le dio el dispositivo IO al carpincho %d",carpincho_a_bloquear->id);
         sleep((dispositivo_pedido->duracion)/1000);
-       
+
         block_a_ready(carpincho_a_bloquear);
 
         while(!queue_is_empty(dispositivo_pedido->en_espera)){
@@ -1441,7 +1306,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_close(estructura_interna->id,fd); 
             break;
             case MATE_SEM_INIT: 
-                //log_info(logger, "se pidió un MATE SEM INIT");
+                log_info(logger, "se pidió un MATE SEM INIT");
                 estructura_interna = deserializar(payload);
                 mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
             break;
@@ -1461,9 +1326,11 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_CALL_IO:
-                //log_info(logger, "se pidió un MATE CALL IO");
+                log_info(logger, "se pidió un MATE CALL IO");
                 estructura_interna = deserializar(payload);
                 mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
+              
+
             break;       
             case MATE_MEMALLOC: 
                 // id_carpincho

@@ -215,7 +215,8 @@ int suspend_process(int pid) {
         void* payload = _serialize(pay_len, "%d%d%d%v", pid, page->pagina, tamanioDePagina, mem_aux);
         log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", page->pagina, pid);
         void* v_res = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);        // SI SWAMP NO TIENE MAS ESPACIO DEBERIAMOS RECIBIR ALGO.
-        
+        delete_entrada_tlb(pid, page->pagina, page->frame);
+
         memcpy(&res, v_res, sizeof(int));
         if(res == 0){
             log_error(logger, "Swamp no pudo setear la pagina %d en disco", page->pagina);
@@ -264,22 +265,13 @@ void* memread(uint32_t pid, int dir_logica, int size){
         return err_msg;
     }
 
-    heap = get_heap_metadata(dir_logica);
-    if(heap->isfree != BUSY && heap->isfree != FREE){
-        log_error(logger, "La direccion logica recibida es incorrecta");
-        return err_msg;
-    }
-    if(heap->isfree == FREE){
-        log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
-        return err_msg;
-    }
-
     while(read_len < size){
         int div_heap = 0;
-
         act_page = (dirAllocActual / tamanioDePagina) + 1;       
         int act_frame = getFrameDeUn(pid, act_page);
-        int page_len = act_page*(tamanioDePagina);
+        int resto = (dirAllocActual % tamanioDePagina);
+        int dir_fisica = (act_frame * tamanioDePagina) + resto;
+        int page_len = act_page * tamanioDePagina;
 
         int size_all_heap = (((dirAllocActual + HEAP_METADATA_SIZE)/ tamanioDePagina) + 1);
         if(act_page != size_all_heap){
@@ -308,36 +300,62 @@ void* memread(uint32_t pid, int dir_logica, int size){
             
             free(page_aux);
         } else {
-            heap = get_heap_metadata(dirAllocActual);
+            heap = get_heap_metadata(dir_fisica);
+            if(heap->isfree != BUSY && heap->isfree != FREE){
+                log_error(logger, "La direccion logica recibida es incorrecta");
+                return err_msg;
+            }
+            if(heap->isfree == FREE){
+                log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
+                return err_msg;
+            }
         }
 
-        offset_to_read = dirAllocActual + HEAP_METADATA_SIZE;
-        int alloc_len = abs(heap->nextAlloc - offset_to_read);
+        int offset_without_alloc = dirAllocActual + HEAP_METADATA_SIZE;
+        offset_to_read = (dir_fisica + HEAP_METADATA_SIZE);
+        int alloc_len = abs(heap->nextAlloc - offset_without_alloc);
         size_to_read = alloc_len;
 
         if (size < size_to_read){
             size_to_read = size;
         } else if ((read_len + size_to_read) > size){
-                size_to_read = size - read_len;
+            size_to_read = size - read_len;
         }
         int last_dir_page = (act_page * page_len);
         if (heap->nextAlloc > last_dir_page){
-            int nxt_long_alloc = last_dir_page - heap->nextAlloc;
-            int act_long_alloc = alloc_len - nxt_long_alloc;
+            int nxt_long_alloc = abs(last_dir_page - heap->nextAlloc);
+            int act_long_alloc = abs(alloc_len - nxt_long_alloc);
 
             if (size_to_read > act_long_alloc && div_heap == 0){
-                getFrameDeUn(pid, act_page + 1);
+                size_to_read = act_long_alloc;
+                pthread_mutex_lock(&memory_mutex);
+                memcpy(read + read_len, memoria + offset_to_read, act_long_alloc);
+                read_len += act_long_alloc;
+
+                int next_frame = getFrameDeUn(pid, act_page + 1);
+                int next_dir_fisica = (next_frame * tamanioDePagina);
+
+                memcpy(read + read_len, memoria + next_dir_fisica, nxt_long_alloc);
+                read_len += nxt_long_alloc;
+                dirAllocActual = heap->nextAlloc;
+                pthread_mutex_unlock(&memory_mutex);
+            } else {
+                pthread_mutex_lock(&memory_mutex);
+                memcpy(read + read_len, memoria + offset_to_read, size_to_read);
+                pthread_mutex_unlock(&memory_mutex);
+                read_len += size_to_read;
+                dirAllocActual = heap->nextAlloc;
             }
+        } else {
+            pthread_mutex_lock(&memory_mutex);
+            memcpy(read + read_len, memoria + offset_to_read, size_to_read);
+            pthread_mutex_unlock(&memory_mutex);
+            read_len += size_to_read;
+            dirAllocActual = heap->nextAlloc;
         }
-        pthread_mutex_lock(&memory_mutex);
-        memcpy(read, memoria + offset_to_read, size_to_read);
-        pthread_mutex_unlock(&memory_mutex);
-        read_len += size_to_read;
-        dirAllocActual = heap->nextAlloc;
     }
 
     log_info(logger, "Lectura realizada con exito");
-
     return read;
 } 
 
@@ -493,7 +511,6 @@ void agregarXPaginasPara(int processId, int espacioRestante){
 
             list_add(temp->paginas, nuevaPagina); // ACA puede haber segun helgrind RACE CONDITION -> Array de mutex o un mutex para lista de paginas distinto a la de la tabla.
 
-            //add_entrada_tlb(processId, nuevaPagina->pagina, nuevaPagina->frame);
             cantidadDePaginasAAgregar--;
         }
     }else{
@@ -528,7 +545,6 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                     list_iterator_destroy(iterator);
 
                     list_add(temp->paginas, nuevaPagina);
-                    //add_entrada_tlb(processId, nuevaPagina->pagina, nuevaPagina->frame);
 
                     cantidadDePaginasAAgregar--;
                
@@ -550,7 +566,6 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                     cantidadDePaginasAAgregar--;*/
                 
             }else{
-                log_warning(logger, "Entro en la Zona prohibida. Que acaba de pasar?");
                 paginaSiguienteALaUltima->isfree = BUSY;
                 pthread_mutex_lock(&lru_mutex);
                 lRUACTUAL++;
@@ -806,6 +821,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 
         log_info(logger, "tomo el frame %d con Exito", tempPagina->frame);
 
+        log_info(logger, "Proceso %d, Numero de pagina %d", processId, tempPagina->pagina);
         if (max_entradas_tlb > 0){
             add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
         }
@@ -1079,25 +1095,11 @@ Pagina *getPageDe(int processId,int nroPagina){
     Pagina *tempPagina;
 
     t_list_iterator* iterator = list_iterator_create(temp->paginas);
-    TLB* tlb = NULL;
-    if (max_entradas_tlb > 0){
-        tlb = fetch_entrada_tlb(processId, nroPagina);
+    tempPagina = list_iterator_next(iterator);
+    while (tempPagina->pagina != nroPagina) {
+        tempPagina = list_iterator_next(iterator);   
     }
-
-    if (tlb != NULL){
-        tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
-    } else {
-        tempPagina = list_iterator_next(iterator);
-        while (tempPagina->pagina != nroPagina) {
-            /*
-            if (!list_iterator_has_next(iterator)){
-                break;
-            } */
-            
-            tempPagina = list_iterator_next(iterator);
-            
-        }
-    }
+    
     list_iterator_destroy(iterator);
     return tempPagina;
 }
@@ -1442,6 +1444,9 @@ void seleccionLRU(int processID){
     void* payload = _serialize(pay_len, "%d%d%d%v", processID, numeroDePagVictima,tamanioDePagina,paginaAEnviar); 
     log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", numeroDePagVictima, processID);      
     void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+    
+    delete_entrada_tlb(processID, numeroDePagVictima, frameVictima);
+
     int iresp;
 
     memcpy(&iresp, resp, sizeof(int));
@@ -1485,6 +1490,8 @@ void seleccionClockMejorado(int idProcess){
                 void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
                 log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
                 void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+                delete_entrada_tlb(pid, paginaEncontrada->pagina, paginaEncontrada->frame);
+
                 int iresp;
                 memcpy(&iresp, resp, sizeof(int));
                 if(iresp == 0){
@@ -1512,6 +1519,8 @@ void seleccionClockMejorado(int idProcess){
                 void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
                 log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
                 void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+                delete_entrada_tlb(pid, paginaEncontrada->pagina, paginaEncontrada->frame);
+
                 int iresp;
                 memcpy(&iresp, resp, sizeof(int));
                 if(iresp == 0){
@@ -1548,6 +1557,8 @@ void seleccionClockMejorado(int idProcess){
                 void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
                 log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
                 void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+                delete_entrada_tlb(pid, paginaEncontrada->pagina, paginaEncontrada->frame);
+
                 int iresp;
                 memcpy(&iresp, resp, sizeof(int));
                 if(iresp == 0){
@@ -1578,6 +1589,8 @@ void seleccionClockMejorado(int idProcess){
                         void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
                         log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
                         void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+                        delete_entrada_tlb(pid, paginaEncontrada->pagina, paginaEncontrada->frame);
+                        
                         int iresp;
                         memcpy(&iresp, resp, sizeof(int));
                         if(iresp == 0){
@@ -1711,6 +1724,7 @@ void mandarPaginaAgonza(int processID ,uint32_t frameDeMemoria, uint32_t nroDePa
     void* payload = _serialize(pay_len, "%d%d%d%v", pid, nroDePagina,tamanioDePagina,paginaAEnviar);  
     log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", nroDePagina, pid);      
     void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
+
     int iresp;
     memcpy(&iresp, resp, sizeof(int));
     if(iresp == 0){
@@ -1749,11 +1763,22 @@ HeapMetaData* set_heap_metadata(HeapMetaData* heap, int offset){
     return heap;
 }
 
+bool has_empty_instance(void* elem){
+        if (elem == NULL){
+            return false;
+        }
+        TLB* tlb = (TLB*) elem;
+        return (tlb->pid == UINT32_MAX && tlb->pagina == UINT32_MAX && tlb->frame == UINT32_MAX);
+}
+
 void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
     log_info(logger, "Agregando una nueva entrada en la TLB: Proceso %d, Pagina %d, Frame %d", pid, page, frame);
     pthread_mutex_lock(&tlb_mutex);
 
     bool has_exist_instance(void* elem){
+        if (elem == NULL){
+            return false;
+        }
         TLB* tlb = (TLB*) elem;
         return (tlb->pid == pid && tlb->pagina == page && tlb->frame == frame);
     }
@@ -1765,8 +1790,23 @@ void add_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
     }
 
     TLB* new_instance = new_entrada_tlb(pid, page, frame);
+    TLB* deleted_instance = (TLB *) list_find(tlb_list, has_empty_instance);
+    if (deleted_instance != NULL){
+        deleted_instance->pid = new_instance->pid;
+        deleted_instance->pagina = new_instance->pagina;
+        deleted_instance->frame = new_instance->frame;
+        deleted_instance->fifo = new_instance->fifo;
+        deleted_instance->lru = new_instance->lru;
+        free(new_instance);
+
+        set_pid_metric_if_missing(pid);
+        pthread_mutex_unlock(&tlb_mutex);
+        log_info(logger, "Entrada de TLB insertada en un espacio vacío con exito");
+        return;
+    }
+
     if (list_size(tlb_list) < max_entradas_tlb) {
-       list_add(tlb_list, new_instance); 
+        list_add(tlb_list, new_instance); 
     } else {
         replace_entrada(new_instance);
     }
@@ -1781,6 +1821,10 @@ TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
     new_instance->pid = pid;
     new_instance->pagina = page;
     new_instance->frame = frame;
+    pthread_mutex_lock(&entrada_fifo_mutex);
+    new_instance->fifo = entrada_fifo;
+    entrada_fifo++;
+    pthread_mutex_unlock(&entrada_fifo_mutex);
     pthread_mutex_lock(&tlb_lru_mutex);
     new_instance->lru = tlb_lru_global;
     tlb_lru_global++;
@@ -1790,29 +1834,20 @@ TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
 }
 
 void replace_entrada(TLB* new_instance){
-    if (string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_REEMPLAZO_TLB"), "FIFO")){
-        pthread_mutex_lock(&entrada_fifo_mutex);
-        /* TODO: LOGUEAR EL REEMPLAZO */
-
-        log_info(logger, "Reemplazo por FIFO, entrada %d", entrada_fifo);
-        TLB* tlb_to_replace = list_get(tlb_list, entrada_fifo);
+    if (string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_REEMPLAZO_TLB"), "FIFO")){    
+        log_info(logger, "Reemplazo por FIFO");
+        TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_fifo_tlb);
         log_info(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
         log_info(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
 
         tlb_to_replace->pid = new_instance->pid;
         tlb_to_replace->pagina = new_instance->pagina;
         tlb_to_replace->frame = new_instance->frame;
+        tlb_to_replace->fifo = new_instance->fifo;
         tlb_to_replace->lru = new_instance->lru;
 
-        entrada_fifo++;
-        if (max_entradas_tlb <= entrada_fifo){
-            entrada_fifo = 0;
-        }
-
-        free(new_instance);
-        pthread_mutex_unlock(&entrada_fifo_mutex);
     } else {
-        log_info(logger, "Reemplazo por LRU, entrada %d", entrada_fifo);
+        log_info(logger, "Reemplazo por LRU");
         TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_lru_tlb);
         log_info(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
         log_info(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
@@ -1820,9 +1855,10 @@ void replace_entrada(TLB* new_instance){
         tlb_to_replace->pid = new_instance->pid;
         tlb_to_replace->pagina = new_instance->pagina;
         tlb_to_replace->frame = new_instance->frame;
+        tlb_to_replace->fifo = new_instance->fifo;
         tlb_to_replace->lru = new_instance->lru;
-        free(new_instance);
     }
+    free(new_instance);
 }
 
 void* get_minimum_lru_tlb(void* actual, void* next){
@@ -1832,8 +1868,49 @@ void* get_minimum_lru_tlb(void* actual, void* next){
     if (actual_tlb->lru < next_tlb->lru){
         return actual;
     }
-
     return next;
+}
+
+void* get_minimum_fifo_tlb(void* actual, void* next){
+    TLB* actual_tlb = (TLB*) actual;
+    TLB* next_tlb = (TLB*) next;
+
+    if (actual_tlb->fifo < next_tlb->fifo){
+        return actual;
+
+    }
+    return next;
+}
+
+void delete_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
+    if (max_entradas_tlb == 0){
+        return;
+    }
+    pthread_mutex_lock(&tlb_mutex);
+    log_info(logger, "Eliminando Proceso: %d, Pagina: %d, Frame: %d de TLB", pid, page, frame);
+    bool has_exist_instance(void* elem){
+        if (elem == NULL){
+            return false;
+        }
+
+        TLB* tlb = (TLB*) elem;
+        return (tlb->pid == pid && tlb->pagina == page && tlb->frame == frame);
+    }
+    TLB* tlb = (TLB *) list_find(tlb_list, has_exist_instance);
+
+    if (tlb != NULL){
+        log_info(logger, "Se encontró con Exito la entrada de TLB a eliminar");
+        tlb->pid = UINT32_MAX;
+        tlb->pagina = UINT32_MAX;
+        tlb->frame = UINT32_MAX;
+        tlb->fifo = UINT32_MAX;
+        tlb->lru = UINT32_MAX;
+    } else {
+        log_warning(logger, "No se encontró con Exito la entrada de TLB a eliminar");
+    }
+
+    log_info(logger, "Entrada eliminada con Exito", pid, page, frame);
+    pthread_mutex_unlock(&tlb_mutex);
 }
 
 TLB* fetch_entrada_tlb(uint32_t pid, uint32_t page){
