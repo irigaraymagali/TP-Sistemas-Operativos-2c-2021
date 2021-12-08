@@ -122,6 +122,7 @@ int frameAsignado(int unFrame);
 int memfree(int idProcess, int direccionLogica);
 Pagina *getPageDe(int processId,int nroPagina);
 void deletePagina(int idProcess,int paginaActual);
+void setPaginaAsModificado(int processId, int mayorNroDePagina);
 
 void utilizarAlgritmoDeAsignacion(int processID);
 void seleccionLRU(int processID);
