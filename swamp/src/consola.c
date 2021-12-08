@@ -29,15 +29,23 @@ void recibir_mensajes() {
         cerrar_swamp();
     }*/
 
-    while(1) {
-        recibido = _receive_message(client_socket, log_file);
-        if (!string_equals_ignore_case(recibido->identifier, ID_MEMORIA)){
-            free_t_mensaje(recibido);
-            cerrar_swamp();
-        }
+    // while(1) {
+    //     recibido = _receive_message(client_socket, log_file);
+    //     if (!string_equals_ignore_case(recibido->identifier, ID_MEMORIA)){
+    //         free_t_mensaje(recibido);
+    //         cerrar_swamp();
+    //     }
+    //     consola(recibido, client_socket);
+    //     free_t_mensaje(recibido);
+    // }
+
+    recibido = _receive_message(client_socket, log_file);
+    while(string_equals_ignore_case(recibido->identifier, ID_MEMORIA)) {
         consola(recibido, client_socket);
         free_t_mensaje(recibido);
+        recibido = _receive_message(client_socket, log_file);
     }
+    cerrar_swamp();
 }
 
 void consola(t_mensaje* recibido, int socket_conexion) {
@@ -94,6 +102,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             else {
                 log_error(log_file, "Error al enviar la pagina %d del proceso %d.", pagina, proceso);
             }
+            free(contenido);
             free(resultado_a_enviar);
         }
 

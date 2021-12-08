@@ -99,11 +99,13 @@ int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
 
         if (swap_file_asignado == NULL) { // Si no hay frames disponibles en ningun archivo de swap
             log_error(log_file, "No hay espacio disponible en swap.");
+            free(string_proceso);
             return 0;
         }
         
         else if (marcos_por_carpincho > swap_file_frames_count - swap_file_used_frames) { // Si el archivo de swap con mas frames disponibles no tiene suficientes para satisfacer los marcos por carpincho
             log_error(log_file, "No hay espacio disponible en swap.");
+            free(string_proceso);
             return 0;
         }
 
@@ -172,7 +174,7 @@ int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
             //////////////////////////////////////////////////////////////////////////////////////////////////////
             ////////////////////////////// RECONTRA BETA VERSION HAY QUE PROBARLO ///////////////////////////////
             ////////////////////////////////////////////////////////////////////////////////////////////////////
-
+            free(string_proceso);
             return 1;
         }
     }
@@ -196,7 +198,7 @@ int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
             close(swap_file_fd);
             free(swap_file_path);
             free(nuevo);
-
+            free(string_proceso);
             return 1;
         }
 
@@ -218,6 +220,7 @@ int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
                 close(swap_file_fd);
                 free(swap_file_path);
                 free(nuevo);
+                free(string_proceso);
                 return 0;
             }
             else {
@@ -230,10 +233,10 @@ int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
                 close(swap_file_fd);
                 free(swap_file_path);
                 free(nuevo);
+                free(string_proceso);
                 return 1;
             }
         }
-    free(string_proceso);
     }
 }
 
@@ -245,6 +248,7 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
         nodo_swap_list* swap_file_asignado = swap_file_menos_ocupado();
         if (swap_file_asignado == NULL) { // Si no hay frames disponibles en ningun archivo de swap
             log_error(log_file, "No hay espacio disponible en swap.");
+            free(string_proceso);
             return 0;
         }
 
@@ -294,6 +298,7 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
             munmap(swap_file_map, swap_file_size);
             close(swap_file_fd);
             free(swap_file_path);
+            free(string_proceso);
             return 1;
         }
     }
@@ -325,18 +330,20 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
             close(swap_file_fd);
             free(swap_file_path);
             free(nuevo);
-
+            free(string_proceso);
             return 1;
         }
 
         else { // Si tengo que guardar una pagina nueva
             if (tabla_paginas_size(tabla_paginas) == swap_file_size / swap_page_size) { // Si todos los frames estan ocupados
                 log_error(log_file, "No hay frames disponibles en el archivo %s correspondiente al proceso %d.", get_swap_file_name(tabla_paginas), proceso);
+                free(string_proceso);
                 return 0;
             }
 
             else if (tabla_paginas_size(tabla_paginas) > swap_file_size / swap_page_size) {
                 log_error(log_file, "Se rompio todo.");
+                free(string_proceso);
                 return 0;
             }
 
@@ -366,11 +373,10 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
                 munmap(swap_file_map, swap_file_size);
                 close(swap_file_fd);
                 free(swap_file_path);
-
+                free(string_proceso);
                 return 1;
             }
         }
-    free(string_proceso);
     }
 }
 
