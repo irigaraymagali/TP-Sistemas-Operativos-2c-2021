@@ -58,10 +58,12 @@ typedef struct data_carpincho // la data que le importa tener al backend, hacer 
     char estado; 
     int CPU_en_uso;
     int tiempo_entrada_a_exec; // para calcular milisegundos en exec
+    int tiempo_salida_a_exec; // para calcular milisegundos en exec
     int fd; // para saber a quien le tiene que responder
     char *semaforo; // guarda el char porque es lo que nos manda el carpincho
     int valor_semaforo; // guarda int porque es lo que nos guarda el carpincho
     char *dispositivo_io; 
+
 
     char *nombre_semaforo_por_el_que_se_bloqueo; //nombre del semaforo por el que se bloqueo --> sacarlo cuando se desbloquee
     t_list *semaforos_retenidos; //nombre de los semaforos a los que paso su wait --> lista de semaforos

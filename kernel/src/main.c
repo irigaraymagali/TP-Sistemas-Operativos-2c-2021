@@ -325,6 +325,7 @@ void mate_init(int fd){
     carpincho->estado = NEW;
     carpincho->CPU_en_uso = 9999;
     carpincho->tiempo_entrada_a_exec = 0;
+    carpincho->tiempo_salida_a_exec = 0;
     carpincho->fd = fd; 
     carpincho->semaforos_retenidos = list_create();
     carpincho->semaforo = string_new(); 
@@ -1025,7 +1026,8 @@ void exec_a_block(int id_carpincho){
 	pthread_mutex_unlock(&sem_cola_blocked);
 	pthread_mutex_unlock(&sem_cola_exec);
 
-    carpincho_a_bloquear->estado = BLOCKED; 
+    carpincho_a_bloquear->estado = BLOCKED;
+    carpincho_a_bloquear->tiempo_salida_a_exec = calcular_milisegundos(); 
 
     sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); 
     
@@ -1058,7 +1060,8 @@ void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
 	pthread_mutex_unlock(&sem_cola_blocked);
 	pthread_mutex_unlock(&sem_cola_exec);
 
-    carpincho_a_bloquear->estado = BLOCKED; 
+    carpincho_a_bloquear->estado = BLOCKED;
+    carpincho_a_bloquear->tiempo_salida_a_exec = calcular_milisegundos(); 
 
     sem_post(&(liberar_CPU[carpincho_a_bloquear->CPU_en_uso])); 
     log_info(logger, "Se libero el CPU %d",carpincho_a_bloquear->CPU_en_uso);
@@ -1099,7 +1102,7 @@ void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io){
             carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
             queue_pop(dispositivo_pedido->en_espera);
             pthread_mutex_unlock(&sem_cola_io);
-            log_info(logger, "Se le dio el dispositivo IO al carpincho %d",carpincho_siguiente->id);
+            log_info(logger, "Se le dio el dispositivo IO al carpincho %d porque lo estaba esperando en la cola",carpincho_siguiente->id);
             sleep((dispositivo_pedido->duracion)/1000);
             block_a_ready(carpincho_siguiente);
         }
@@ -1288,7 +1291,8 @@ data_carpincho* ready_a_exec_SJF(){
                     min_hasta_el_momento = estimacion_actual;
                     carpincho_menor = carpincho_actual;
                 }
-            }           
+            }
+            carpincho_menor->estimacion_anterior = carpincho_menor->estimacion_siguiente;
     }
     list_iterator_destroy(list_iterator);
 
@@ -1329,10 +1333,7 @@ void calculo_estimacion_siguiente(data_carpincho *carpincho){
 }
 
 void calculo_rafaga_anterior(data_carpincho *carpincho){ // para SJF
-
-    int tiempo_salida = calcular_milisegundos();
-
-    carpincho->rafaga_anterior = carpincho->tiempo_entrada_a_exec - tiempo_salida; 
+    carpincho->rafaga_anterior = carpincho->tiempo_salida_a_exec - carpincho->tiempo_entrada_a_exec; 
 }
 
 void calculo_RR(data_carpincho *carpincho){ // para HRRN
@@ -1386,11 +1387,11 @@ void ejecuta(void *id_cpu){
         int *id = (int *) id_cpu;
     
         pthread_mutex_lock(&mutex_para_CPU); 
-        log_info(logger,"La función Ejecuta esta esperando que usen su semaforo");
+        log_info(logger,"La función Ejecuta esta esperando que usen su hilo");
 
         sem_wait(&usar_CPU[*id]); // espera hasta que algun carpincho haga post para usar ese cpu
         sem_wait(&CPU_libre[*id]); // ya no está más libre ese cpu
-        log_info(logger,"se está usando un semaforo");
+        log_info(logger,"se está usando un hilo CPU");
 
         pthread_mutex_unlock(&mutex_para_CPU); 
         
