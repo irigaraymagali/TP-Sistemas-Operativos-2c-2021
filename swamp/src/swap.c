@@ -282,6 +282,14 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
             ////////////////////////////////////////////////////////////////////////////////////////////////////
 
             // Guardo la pagina recibida en el archivo de swap
+
+            int laFalopaquereciboswap;
+            log_error(log_file, "Frame utilizado: %d", frame_asignado);
+            memcpy(&laFalopaquereciboswap, contenido, sizeof(int32_t));
+            log_warning(log_file,"RECIBIDO -> Proceso %d, pagina %d. Contenido: %d", proceso, pagina, laFalopaquereciboswap);
+            memcpy(&laFalopaquereciboswap, contenido + sizeof(int32_t), sizeof(int32_t));
+            log_warning(log_file,"RECIBIDO -> Proceso %d, pagina %d. Contenido: %d", proceso, pagina, laFalopaquereciboswap);
+
             memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
             munmap(swap_file_map, swap_file_size);
             close(swap_file_fd);
@@ -305,6 +313,14 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
             nuevo->pagina = pagina;
             int frame_asignado = get_frame_number(nuevo);
             memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
+
+            int laFalopaquereciboswap;
+            log_error(log_file, "Frame utilizado: %d", frame_asignado);
+            memcpy(&laFalopaquereciboswap, contenido, sizeof(int32_t));
+            log_warning(log_file,"RECIBIDO -> Proceso %d, pagina %d. Contenido: %d", proceso, pagina, laFalopaquereciboswap);
+            memcpy(&laFalopaquereciboswap, contenido + sizeof(int32_t), sizeof(int32_t));
+            log_warning(log_file,"RECIBIDO -> Proceso %d, pagina %d. Contenido: %d", proceso, pagina, laFalopaquereciboswap);
+            
             munmap(swap_file_map, swap_file_size);
             close(swap_file_fd);
             free(swap_file_path);
@@ -335,8 +351,15 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
                 fila_tabla_paginas* nuevo = malloc(sizeof(fila_tabla_paginas));
                 nuevo->proceso = proceso;
                 nuevo->pagina = pagina;
-                list_add(tabla_paginas, (void*) nuevo);
                 int frame_asignado = get_first_free_frame_number(nuevo, swap_file_map);
+                list_add(tabla_paginas, (void*) nuevo);
+
+                int laFalopaquereciboswap;
+                log_error(log_file, "Frame utilizado: %d", frame_asignado);
+                memcpy(&laFalopaquereciboswap, contenido, sizeof(int32_t));
+                log_warning(log_file,"RECIBIDO -> Proceso %d, pagina %d. Contenido: %d", proceso, pagina, laFalopaquereciboswap);
+                memcpy(&laFalopaquereciboswap, contenido + sizeof(int32_t), sizeof(int32_t));
+                log_warning(log_file,"RECIBIDO -> Proceso %d, pagina %d. Contenido: %d", proceso, pagina, laFalopaquereciboswap);
 
                 // Guardo la pagina recibida en el archivo de swap
                 memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
@@ -375,6 +398,14 @@ void* obtener_pagina(int proceso, int pagina) {
         int frame_asignado = get_frame_number(aux);
         memcpy(contenido, swap_file_map + swap_page_size * frame_asignado, swap_page_size);
         //contenido[swap_page_size] = '\0';
+
+        int laFalopaquereciboswap;
+        log_error(log_file, "Frame leido: %d", frame_asignado);
+        memcpy(&laFalopaquereciboswap, contenido, sizeof(int32_t));
+        log_warning(log_file,"ENVIADO -> Proceso %d, pagina %d. Contenido: %d", proceso, pagina, laFalopaquereciboswap);
+        memcpy(&laFalopaquereciboswap, contenido + sizeof(int32_t), sizeof(int32_t));
+        log_warning(log_file,"ENVIADO -> Proceso %d, pagina %d. Contenido: %d", proceso, pagina, laFalopaquereciboswap);
+
         free(aux);
         free(swap_file_path);
     }
@@ -476,12 +507,12 @@ int get_first_free_frame_number(fila_tabla_paginas* nodo, void* swap_file_map) {
         }
 
         else {
-            if (!frame_is_empty(i, swap_file_map)) {
-                i++;
+            if (nodo_actual->pagina == 9999) {
+                break;
             }
 
             else {
-                break;
+                i++;
             }
         }
     }
