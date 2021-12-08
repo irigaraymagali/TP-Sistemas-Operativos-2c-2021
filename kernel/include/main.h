@@ -80,6 +80,7 @@ t_list*  exit_list;
 t_list* blocked;
 t_list* suspended_blocked;
 t_queue* suspended_ready;
+t_queue* carpinchos_pidiendo_io;
 
 t_queue* CPU_libres;
     
@@ -105,6 +106,8 @@ pthread_mutex_t sem_CPU_libres;
 pthread_mutex_t mutex_para_CPU;
 pthread_mutex_t sem_cola_io;
 pthread_mutex_t sem_io_uso;
+pthread_mutex_t sem_cola_pidiendo_io;
+
 
 // log
 t_log *logger;
@@ -130,6 +133,7 @@ sem_t sem_programacion_lleno;
 sem_t sem_procesamiento_lleno;
 sem_t sem_hay_bloqueados;
 sem_t hay_bloqueados_para_deadlock;
+sem_t hay_carpinchos_pidiendo_io;
     sem_t liberar_CPU[1000];
     sem_t CPU_libre[1000];
     sem_t usar_CPU[1000];
@@ -191,4 +195,4 @@ void liberar_carpincho(void *carpincho);
 
 void port_fixer();
 
-void exec_a_block_io(int id_carpincho,  mate_io_resource nombre_io);
+void exec_a_block_io();
