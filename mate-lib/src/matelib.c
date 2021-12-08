@@ -1,7 +1,6 @@
 #include "matelib.h"
 
 int deserializar_numero(t_mensaje* buffer){
-
     int numero;
     memcpy(&numero, buffer->payload, sizeof(int));
     free(buffer->identifier);
@@ -44,7 +43,7 @@ int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_intern
     free(payload);
 
     if(conexion_con_backend < 0 ){ 
-        log_info(logger, "no se pudo crear la conexión con backend para el carpincho %d", estructura_interna->id);
+        log_info(logger, "No se pudo crear la conexión con BACKEND para el Carpincho %d", estructura_interna->id);
         return conexion_con_backend;  
     }
     else{
@@ -57,37 +56,36 @@ int conexion_con_backend(int id_funcion, mate_inner_structure* estructura_intern
 
  // Funciones generales --------------------------------------------------------------
 
-int mate_init(mate_instance *lib_ref, char *config)
-{
-    
+int mate_init(mate_instance *lib_ref, char *config) {
     // post pruebas => ver si trae problemas tener un solo log
     logger = log_create("./matelib.log", "[Mate-Lib]", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
+    t_config* datos_configuracion = config_create(config);
+    if (datos_configuracion == NULL){
+        log_error(logger, "Error en el Archivo de Configuración recibido. PATH: %s", config);
+        return -1;
+    }
 
     mate_inner_structure* estructura_interna = nueva_estructura_interna();
-
     int sem_len =  string_length(estructura_interna->semaforo);
     int len_dis_io = string_length(estructura_interna->dispositivo_io);
     int size =  sizeof(int) * 4 + sem_len + len_dis_io;
     void* payload = armar_paquete(estructura_interna);
-    t_config* datos_configuracion = config_create(config);
+    
     socket_backend = _connect(config_get_string_value(datos_configuracion, "IP_BACKEND"), config_get_string_value(datos_configuracion, "PUERTO_BACKEND"), logger);
     
-    printf("socket: %d\n", socket_backend);
-
     if(socket_backend < 0 ){ 
-        log_info(logger, "no se pudo crear la conexión con backend para que cree la estructura del carpincho");
-        printf("\nestoy aca\n");
+        log_info(logger, "No se pudo crear la conexión con BACKEND para que cree la Estructura del Carpincho");
         free(payload);
         return socket_backend;  
     }
     else{
-        log_info(logger, "enviando mensaje a backend para que cree la estructura del carpincho");      
+        log_info(logger, "Enviando mensaje a backend para que cree la estructura del carpincho");      
         _send_message(socket_backend, ID_MATE_LIB, MATE_INIT, payload, size, logger); // envia la estructura al backend para que inicialice todo
         int id_recibido;
         t_mensaje* buffer = _receive_message(socket_backend, logger);
         id_recibido = deserializar_numero(buffer);
         estructura_interna->id = id_recibido;
-        log_info(logger, "el backend ya creó la estructura del carpincho y su id es %d", estructura_interna->id);
+        log_info(logger, "El BACKEND creó la estructura del Carpincho y su ID es %d", estructura_interna->id);
 
     //post pruebas => podríamos revisar aca que onda que solo esta vez les pasamos la referencia
 
@@ -103,7 +101,7 @@ int mate_close(mate_instance *lib_ref)
 {
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     //free(lib_ref->group_info);
-    log_info(logger, "pidiendo al backend que elimine al carpincho %d", estructura_interna->id);
+    log_info(logger, "Pidiendo al BACKEND que Elimine al Carpincho %d", estructura_interna->id);
     return conexion_con_backend(MATE_CLOSE, estructura_interna);
 }
 
@@ -112,7 +110,7 @@ int mate_close(mate_instance *lib_ref)
 int mate_sem_init(mate_instance *lib_ref, mate_sem_name sem, unsigned int value) 
 {
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
-    log_info(logger, "el carpincho con id %d pidió inicializar al semaforo %s con valor %d", estructura_interna->id, sem, value);    
+    log_info(logger, "El Carpincho con id %d pidió inicializar al Semaforo %s con valor %d", estructura_interna->id, sem, value);    
     string_append(&estructura_interna->semaforo, (char*) sem);
     // free(estructura_interna->semaforo);
     // estructura_interna->semaforo = string_from_format("%s", sem);
@@ -122,28 +120,28 @@ int mate_sem_init(mate_instance *lib_ref, mate_sem_name sem, unsigned int value)
 
 int modificar_semaforo(int id_funcion, mate_sem_name sem, mate_instance* lib_ref){
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
-    log_info(logger, "el carpincho con id %d pidio el semaforo %s", estructura_interna->id,(char *) sem);             
+    log_info(logger, "El Carpincho con ID %d, Pidio el Semaforo %s", estructura_interna->id,(char *) sem);             
     // estructura_interna->semaforo = sem;
     free(estructura_interna->semaforo);
     estructura_interna->semaforo = string_from_format("%s", sem);
     return conexion_con_backend(id_funcion, estructura_interna);
 }
 
-int mate_sem_wait(mate_instance *lib_ref, mate_sem_name sem) 
-{   
-    log_info(logger, "el carpincho pidió hacer wait");         
+int mate_sem_wait(mate_instance *lib_ref, mate_sem_name sem) {   
+    mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
+    log_info(logger, "El Carpincho %d pidió hacer WAIT", estructura_interna->id);         
     return modificar_semaforo(MATE_SEM_WAIT, sem, lib_ref);
 }
 
-int mate_sem_post(mate_instance *lib_ref, mate_sem_name sem) 
-{
-    log_info(logger, "un carpincho pidió hacer post");         
+int mate_sem_post(mate_instance *lib_ref, mate_sem_name sem) {
+    mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
+    log_info(logger, "El Carpincho %d pidió hacer POST", estructura_interna->id);         
     return modificar_semaforo(MATE_SEM_POST, sem, lib_ref);
 }
 
-int mate_sem_destroy(mate_instance *lib_ref, mate_sem_name sem) 
-{
-    log_info(logger, "un carpincho pidió hacer destroy");         
+int mate_sem_destroy(mate_instance *lib_ref, mate_sem_name sem) {
+    mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
+    log_info(logger, "El carpincho %d pidió hacer DESTROY", estructura_interna->id);         
     return modificar_semaforo(MATE_SEM_DESTROY, sem, lib_ref);
 }
 
@@ -163,6 +161,7 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 {
     mate_pointer conexion_con_backend;
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
+    log_info(logger, "Realizando el proceso MEMALLOC para el carpincho %d", estructura_interna->id);
 
     void* payload = _serialize(sizeof(int) * 2, "%d%d", estructura_interna->id, size);
 
@@ -170,16 +169,16 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 
     if(conexion_con_backend < 0 ){ 
         free(payload);
-        log_info(logger, "no se pudo crear la conexión con backend para hacer memalloc pedida por el carpincho %d", estructura_interna->id);
+        log_info(logger, "No se pudo crear la conexión con BACKEND para hacer MEMALLOC pedida por el Carpincho %d", estructura_interna->id);
         return conexion_con_backend;  
     }
     else{
         int pointer;
         t_mensaje* buffer;
-        log_info(logger, "pidiendo a backend el memalloc pedida por el carpincho %d", estructura_interna->id);
+        log_info(logger, "Pidiendo a BACKEND el MEMALLOC pedida por el Carpincho %d", estructura_interna->id);
         buffer = _receive_message(socket_backend, logger);
         memcpy(&pointer, buffer->payload, sizeof(int));
-        log_info(logger, "el resultado del memalloc pedida por el carpincho %d fue %d", estructura_interna->id, pointer );        
+        log_info(logger, "El resultado del MEMALLOC pedida por el Carpincho %d fue %d", estructura_interna->id, pointer );        
         free(buffer->identifier);
         free(buffer->payload);
         free(buffer);
@@ -194,13 +193,15 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
 {
     int conexion_con_backend;
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
+    log_info(logger, "Realizando el proceso MEMFREE para el carpincho %d", estructura_interna->id);
+
     void* payload = _serialize(sizeof(int) + sizeof(mate_pointer), "%d%d", estructura_interna->id, addr);
     conexion_con_backend = _send_message( socket_backend, ID_MATE_LIB, MATE_MEMFREE, payload, sizeof(int) + sizeof(mate_pointer), logger); 
 
     free(payload);
 
     if(conexion_con_backend < 0 ){ 
-        log_info(logger, "no se pudo crear la conexión con backend para hacer memfree pedida por el carpincho %d", estructura_interna->id);
+        log_info(logger, "No se pudo crear la conexión con BACKEND para hacer MEMFREE pedida por el Carpincho %d", estructura_interna->id);
         return conexion_con_backend;  
     }
     else{
@@ -212,9 +213,9 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
 
         memcpy(&resultado, buffer->payload, sizeof(int));
         if (resultado > 0){
-            log_info(logger,"Se pudo hacer el memfree pedido por el carpincho %d", estructura_interna->id);       
+            log_info(logger,"Se pudo hacer el MEMFREE pedido por el Carpincho %d", estructura_interna->id);       
         } else {
-            log_error(logger,"no se pudo hacer el memfree pedido por el carpincho %d", estructura_interna->id);
+            log_error(logger,"No se pudo hacer el MEMFREE pedido por el Carpincho %d", estructura_interna->id);
         }
 
          free(buffer->payload);
@@ -229,12 +230,14 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
 {
     int conexion_con_backend;
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
+    log_info(logger, "Realizando el proceso MEMREAD para el carpincho %d", estructura_interna->id);
+
     void* payload = _serialize(sizeof(int) * 3, "%d%d%d", estructura_interna->id, origin, size);
    
     conexion_con_backend = _send_message( socket_backend, ID_MATE_LIB, MATE_MEMREAD, payload, sizeof(int) * 3, logger); 
 
     if(conexion_con_backend < 0 ){ 
-        log_info(logger, "no se pudo crear la conexión con backend para hacer memread pedida por el carpincho %d", estructura_interna->id);
+        log_info(logger, "No se pudo crear la conexión con BACKEND para hacer MEMREAD pedida por el Carpincho %d", estructura_interna->id);
         free(payload);
         return conexion_con_backend;  
     }
@@ -247,7 +250,7 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
 
         memcpy(&resultado, buffer->payload, sizeof(int));
         if (resultado == -6){
-            log_error(logger, "No se pudo leer el contenido con exito");
+            log_error(logger, "Memoria no pudo leer el contenido con exito");
             return resultado;  
         }
 
@@ -265,11 +268,13 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
 {
     int conexion_con_backend;
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
+    log_info(logger, "Realizando el proceso MEMWRITE para el carpincho %d", estructura_interna->id);
+
     void* payload = _serialize(sizeof(int) * 3 + size, "%d%d%d%v", estructura_interna->id, dest, size, origin);
     conexion_con_backend = _send_message(socket_backend, ID_MATE_LIB, MATE_MEMWRITE, payload, sizeof(int) * 3 + size, logger); 
 
     if(conexion_con_backend < 0 ){ 
-        log_info(logger, "no se pudo crear la conexión con backend para hacer memwrite pedida por el carpincho %d", estructura_interna->id);
+        log_info(logger, "No se pudo crear la conexión con BACKEND para hacer MEMWRITE pedida por el Carpincho %d", estructura_interna->id);
         free(payload);
         return conexion_con_backend;  
     }
@@ -281,9 +286,9 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
 
         memcpy(&resultado, buffer->payload, sizeof(int));
         if (resultado > 0){
-            log_info(logger,"Se pudo hacer el memwrite pedido por el carpincho %d", estructura_interna->id);           
+            log_info(logger,"Se pudo hacer el MEMWRITE pedido por el Carpincho %d", estructura_interna->id);           
         } else {
-            log_error(logger,"no se pudo hacer el memwrite pedido por el carpincho %d", estructura_interna->id);
+            log_error(logger,"No se pudo hacer el MEMWRITE pedido por el Carpincho %d", estructura_interna->id);
         }
          free(buffer->payload);
          free(buffer->identifier);
