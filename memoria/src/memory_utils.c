@@ -119,6 +119,7 @@ int memalloc(int processId, int espacioAReservar){
             paginaFInalEncontrada->lRU = lRUACTUAL;
             pthread_mutex_unlock(&lru_mutex);
             paginaFInalEncontrada->bitUso = 1 ;
+            paginaFInalEncontrada->bitModificado = 1 ;
 
             temp->lastHeap = tempLastHeap + espacioAReservar;
 
@@ -175,6 +176,7 @@ int memalloc(int processId, int espacioAReservar){
                 
                 memcpy(memoria + (framenecesitado*tamanioDePagina), espacioAuxiliar + offsetEspacioAux, tamanioDePagina);
                 mandarPaginaAgonza(processId ,framenecesitado, nroPagAux);
+                setPaginaAsModificado(processId,nroPagAux);
                 //log_info(logger,"EN memwrite---------dirAllocActual:%d",);
                 
                 nroPagAux++;
@@ -190,6 +192,18 @@ int memalloc(int processId, int espacioAReservar){
     return entra;
 
 }
+
+void setPaginaAsModificado(int processId, int mayorNroDePagina){
+    Pagina *tempPagina;
+
+    //pthread_mutex_lock(&list_pages_mutex);
+    tempPagina = getPageDe(processId, mayorNroDePagina);
+
+
+    tempPagina->bitModificado = 1;
+    //pthread_mutex_unlock(&list_pages_mutex);
+}
+
 
 int suspend_process(int pid) {
     log_info(logger, "Suspendiendo el Proceso %d...", pid);
