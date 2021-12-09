@@ -1497,7 +1497,7 @@ void utilizarAlgritmoDeAsignacion(int processID){
 
 void seleccionLRU(int processID){
 
-    uint32_t LRUmenor=9999; //recordar que lo que se busca es el LRU menor
+    uint32_t LRUmenor=99999; //recordar que lo que se busca es el LRU menor
     uint32_t frameVictima=0;
     uint32_t numeroDePagVictima;
 
@@ -1505,16 +1505,17 @@ void seleccionLRU(int processID){
     {
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
-        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
         
         while (list_iterator_has_next(iterator)) {
-        
+            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+
+
             t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
         
-            Pagina *paginatemp = list_iterator_next(iterator2);
 
             while (list_iterator_has_next(iterator2))
             {
+                Pagina *paginatemp = list_iterator_next(iterator2);
                 /* code */
                 if(paginatemp->lRU < LRUmenor && paginatemp->bitPresencia==1){
                     LRUmenor= paginatemp->lRU;
@@ -1522,11 +1523,9 @@ void seleccionLRU(int processID){
                     numeroDePagVictima = paginatemp->pagina;
                 }
 
-                paginatemp = list_iterator_next(iterator2);
             }
         
             list_iterator_destroy(iterator2);
-            temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
         }
         
         list_iterator_destroy(iterator);
@@ -1537,10 +1536,10 @@ void seleccionLRU(int processID){
 
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
         
-        Pagina *paginatemp = list_iterator_next(iterator2);
 
         while (list_iterator_has_next(iterator2))
         {
+            Pagina *paginatemp = list_iterator_next(iterator2);
         
             if(paginatemp->lRU < LRUmenor && paginatemp->bitPresencia==1){
                 LRUmenor= paginatemp->lRU;
@@ -1548,7 +1547,6 @@ void seleccionLRU(int processID){
                 numeroDePagVictima = paginatemp->pagina;
             }
 
-            paginatemp = list_iterator_next(iterator2);
         }
         
         list_iterator_destroy(iterator2);
