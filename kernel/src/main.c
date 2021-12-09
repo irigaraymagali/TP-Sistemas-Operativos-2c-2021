@@ -565,16 +565,62 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
 
-    log_info(logger,"se encontro la estructura del carpincho %d", id_carpincho);
-                
-    pthread_mutex_lock(&sem_cola_pidiendo_io); 
-    log_info(logger,"el carpincho %d entro al mutex", id_carpincho);
-    queue_push(carpinchos_pidiendo_io, (void*)carpincho);
-    pthread_mutex_unlock(&sem_cola_pidiendo_io); 
-    log_info(logger,"el carpincho %d salio del mutex", id_carpincho);
-    sem_post(&hay_carpinchos_pidiendo_io);
-    log_info(logger,"el carpincho %d hizo el post", id_carpincho);
+    exec_a_block(id_carpincho);
 
+    log_info(logger, "El carpincho %d ya se bloqueó y ahora está pidiendo que le den el dispositivo io", id_carpincho);
+
+    dispositivo_io* encontrar_dispositivo(char* nombre_dispositivo) {
+            int es_igual_a(dispositivo_io* dispositivo) {
+                return string_equals_ignore_case(dispositivo->nombre, nombre_dispositivo);
+            }
+            return list_find(lista_dispositivos_io, (void*) es_igual_a);
+        }
+
+    char* nombre_io;
+    nombre_io = carpincho_a_bloquear->dispositivo_io;
+
+    dispositivo_io *dispositivo_pedido;
+    dispositivo_pedido = encontrar_dispositivo((char*)nombre_io);
+
+    asignar_dispotivo_io(carpincho, dispositivo_pedido);
+
+}
+
+void asignar_dispotivo_io(data_carpincho* carpincho, dispositivo_io* dispositivo_pedido){
+    
+    log_info(logger, "El carpincho %d está pidiendo que le asignen su dispositivo io", carpincho->id);
+    
+    if(dispositivo_pedido->en_uso){
+        pthread_mutex_lock(&sem_cola_io);
+        queue_push(dispositivo_pedido->en_espera, carpincho_a_bloquear);  
+        pthread_mutex_unlock(&sem_cola_io);
+        log_info(logger, "El dispositivo IO que pidio el carpincho %d esta en uso, lo mete en la cola para esperar", carpincho_a_bloquear->id);     
+    }
+    else{
+        pthread_mutex_lock(&sem_io_uso);
+        dispositivo_pedido->en_uso = true;
+        pthread_mutex_unlock(&sem_io_uso);
+        log_info(logger, "Se le dio el dispositivo IO al carpincho %d porque no había nadie pidiéndolo",carpincho_a_bloquear->id);
+        sleep((dispositivo_pedido->duracion)/1000);
+        block_a_ready(carpincho_a_bloquear);
+
+        if(!queue_is_empty(dispositivo_pedido->en_espera)){
+            data_carpincho *carpincho_siguiente;
+            pthread_mutex_lock(&sem_cola_io);
+                carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
+                queue_pop(dispositivo_pedido->en_espera);
+            pthread_mutex_unlock(&sem_cola_io);
+
+            pthread_mutex_lock(&sem_io_uso);
+                dispositivo_pedido->en_uso = false;
+                log_info(logger, "El carpincho %d liberó el dispositivo io %s, ahora va a validar si alguien más lo necesita", carpincho->id, dispositivo_pedido->nombre);
+                asignar_dispotivo_io(carpincho_siguiente, dispositivo_pedido);
+            pthread_mutex_unlock(&sem_io_uso);
+        }
+        else{
+            log_info(logger, "No hay más carpinchos que quieran el dispositivo %s", dispositivo_pedido->nombre);
+        }
+    }
 }
 
 void crear_estructura_dispositivo(){ 
@@ -892,7 +938,7 @@ void exec_a_block(int id_carpincho){
 
 
 void exec_a_block_io(){
-
+/*
 while(1){
 
     sem_wait(&hay_carpinchos_pidiendo_io);
@@ -981,7 +1027,11 @@ else{
     }
 
    }
+   */
 }
+
+
+
 
 void exec_a_exit(int id_carpincho, int fd){
     
