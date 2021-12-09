@@ -741,7 +741,7 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
 void entrantes_a_ready(){
 
    data_carpincho *carpincho_a_mover;
-   int valor = 1; 
+   int valor; 
 
     while(1){
         int gradoMultiprogramacion;
@@ -785,7 +785,7 @@ void entrantes_a_ready(){
         carpincho_a_mover->estado = READY;
         sem_post(&cola_ready_con_elementos); 
 
-        valor = sem_getvalue(&sem_grado_multiprogramacion_libre, &valor);
+        sem_getvalue(&sem_grado_multiprogramacion_libre, &valor);
         if(valor == 0){ 
             sem_post(&sem_programacion_lleno);
         }
@@ -797,7 +797,7 @@ void entrantes_a_ready(){
 
 void ready_a_exec(){  
 
-    int valor = 1;
+    int valor;
     void *payload;
 
     data_carpincho *carpincho_a_mover;
@@ -849,8 +849,8 @@ void ready_a_exec(){
         payload = _serialize(sizeof(int), "%d", carpincho_a_mover->id);
         _send_message(carpincho_a_mover->fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
         
-        valor = sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor);
-        if( valor == 0){ 
+        sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor);
+        if(valor == 0){ 
             sem_post(&sem_procesamiento_lleno);
         }
     }
@@ -893,6 +893,8 @@ void exec_a_block(int id_carpincho){
 
 void exec_a_block_io(){
 
+while(1){
+
     sem_wait(&hay_carpinchos_pidiendo_io);
 
     log_info(logger,"estoy en exec_a_block_io");
@@ -934,10 +936,10 @@ void exec_a_block_io(){
     log_info(logger, "El carpincho %d paso a BLOCKED por pedir IO", carpincho_a_bloquear->id);
 
     dispositivo_io* encontrar_dispositivo(char* nombre_dispositivo) {
-    int es_igual_a(dispositivo_io* dispositivo) {
-        return string_equals_ignore_case(dispositivo->nombre, nombre_dispositivo);
-    }
-    return list_find(lista_dispositivos_io, (void*) es_igual_a);
+        int es_igual_a(dispositivo_io* dispositivo) {
+            return string_equals_ignore_case(dispositivo->nombre, nombre_dispositivo);
+        }
+        return list_find(lista_dispositivos_io, (void*) es_igual_a);
     }
 
     char* nombre_io;
@@ -952,7 +954,7 @@ void exec_a_block_io(){
        pthread_mutex_unlock(&sem_cola_io);
        log_info(logger, "El dispositivo IO que pidio el carpincho %d esta en uso", carpincho_a_bloquear->id);     
     }
-    else{ 
+else{ 
         pthread_mutex_lock(&sem_io_uso);
         dispositivo_pedido->en_uso = true;
         pthread_mutex_unlock(&sem_io_uso);
@@ -977,6 +979,8 @@ void exec_a_block_io(){
         pthread_mutex_unlock(&sem_io_uso);
 
     }
+
+   }
 }
 
 void exec_a_exit(int id_carpincho, int fd){
@@ -1058,6 +1062,8 @@ void block_a_ready(data_carpincho *carpincho_a_ready){
 
 void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
 
+
+
     bool esIgualACarpincho (void* carpincho_lista){
        return ((data_carpincho *) carpincho_lista)->id == carpincho->id;
     }   
@@ -1084,10 +1090,18 @@ void suspender(){
         sem_wait(&sem_procesamiento_lleno);
         sem_wait(&sem_programacion_lleno);
         sem_wait(&sem_hay_bloqueados);
+        log_info(logger, "Hay un carpincho que se podria suspender");
 
         data_carpincho *carpincho_a_suspender; 
 
-        if(estan_las_condiciones_para_suspender()){
+        int valor2;
+
+        sem_getvalue(&hay_estructura_creada, &valor2);
+        log_info(logger,"Cheuqeando: hay estructura = %d", valor2);
+
+
+        if(valor2>0){
+            log_info(logger, "Ahora tambien hay un carpincho esperando pasar a ready");
 
             int longitud = list_size(blocked);
 
@@ -1122,18 +1136,11 @@ void suspender(){
             sem_post(&sem_grado_multiprogramacion_libre); 
             free(payload); 
         }
+        log_info(logger, "No se dieron las condiciones para susupender");
     }
      
 }
 
-bool estan_las_condiciones_para_suspender(){
-    int valor1;
-    sem_getvalue(&sem_grado_multiprogramacion_libre, &valor1);
-    int valor2;
-    sem_getvalue(&hay_estructura_creada, &valor2);
-    
-    return valor1 == 0 && !list_is_empty(blocked) && valor2 > 0;
-}
 
 ////////////////////////// ALGORITMOS ////////////////////////
 
@@ -1273,7 +1280,7 @@ void ejecuta(void *id_cpu){
         log_info(logger,"antes de hacer post en ejecuta al grado, el grado de multiprocesamiento libre es: %d", gradoMultiprocesamiento);
 
         sem_post(&sem_grado_multiprocesamiento_libre); //hay algun cpu libre
-         sem_getvalue(&sem_grado_multiprocesamiento_libre, &gradoMultiprocesamiento);
+        sem_getvalue(&sem_grado_multiprocesamiento_libre, &gradoMultiprocesamiento);
 
         log_info(logger,"despues de hacer post en ejecuta al grado, el grado de multiprocesamiento libre es: %d", gradoMultiprocesamiento);
         
