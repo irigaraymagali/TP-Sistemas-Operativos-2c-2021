@@ -326,6 +326,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
             
             int alloc_on_frame = abs((dirAllocActual) - ((act_page-1) * tamanioDePagina));
 
+            heap = malloc(sizeof(HeapMetaData));
             memcpy(&heap->prevAlloc, page_aux + alloc_on_frame, sizeof(uint32_t));
             int offset = alloc_on_frame + sizeof(uint32_t);
            
@@ -2037,6 +2038,7 @@ void* send_message_swamp(int command, void* payload, int pay_len){
     if (_send_message(swamp_fd, ID_MEMORIA, command, payload, pay_len, logger) < 0){
         log_error(logger, "Error al enviar mensaje a Swamp");
         void* err_msg = _serialize(sizeof(int), "%d", 0);
+        pthread_mutex_unlock(&swamp_mutex);
         return err_msg;
     }
 
