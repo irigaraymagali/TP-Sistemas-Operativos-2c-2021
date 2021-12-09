@@ -94,7 +94,7 @@ void inicializar_semaforos(){
     sem_init(&sem_procesamiento_lleno,1,0);
     sem_init(&sem_hay_bloqueados,1,0);
     sem_init(&hay_bloqueados_para_deadlock,1,0);
-    sem_init(&hay_carpinchos_pidiendo_io,1,0);
+  //  sem_init(&hay_carpinchos_pidiendo_io,1,0);
 }
 
 
@@ -565,6 +565,8 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     data_carpincho *carpincho;
     carpincho = encontrar_estructura_segun_id(id_carpincho);
 
+    carpincho->fd = fd;
+
     exec_a_block(id_carpincho);
 
     log_info(logger, "El carpincho %d ya se bloqueó y ahora está pidiendo que le den el dispositivo io", id_carpincho);
@@ -576,13 +578,18 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
             return list_find(lista_dispositivos_io, (void*) es_igual_a);
         }
 
-    char* nombre_io;
-    nombre_io = carpincho_a_bloquear->dispositivo_io;
-
     dispositivo_io *dispositivo_pedido;
     dispositivo_pedido = encontrar_dispositivo((char*)nombre_io);
-
-    asignar_dispotivo_io(carpincho, dispositivo_pedido);
+    
+    if(dispositivo_pedido->en_uso){
+        //pthread_mutex_lock(&sem_cola_io);
+        queue_push(dispositivo_pedido->en_espera, carpincho);  
+        //pthread_mutex_unlock(&sem_cola_io);
+        log_info(logger, "El dispositivo IO que pidio el carpincho %d esta en uso, lo mete en la cola para esperar", carpincho->id);     
+    }
+    else{
+        asignar_dispotivo_io(carpincho, dispositivo_pedido);
+    }
 
 }
 
@@ -590,37 +597,34 @@ void asignar_dispotivo_io(data_carpincho* carpincho, dispositivo_io* dispositivo
     
     log_info(logger, "El carpincho %d está pidiendo que le asignen su dispositivo io", carpincho->id);
     
-    if(dispositivo_pedido->en_uso){
-        pthread_mutex_lock(&sem_cola_io);
-        queue_push(dispositivo_pedido->en_espera, carpincho_a_bloquear);  
-        pthread_mutex_unlock(&sem_cola_io);
-        log_info(logger, "El dispositivo IO que pidio el carpincho %d esta en uso, lo mete en la cola para esperar", carpincho_a_bloquear->id);     
-    }
-    else{
-        pthread_mutex_lock(&sem_io_uso);
+        //pthread_mutex_lock(&sem_io_uso);
         dispositivo_pedido->en_uso = true;
-        pthread_mutex_unlock(&sem_io_uso);
-        log_info(logger, "Se le dio el dispositivo IO al carpincho %d porque no había nadie pidiéndolo",carpincho_a_bloquear->id);
+        //pthread_mutex_unlock(&sem_io_uso);
+        log_info(logger, "Se le dio el dispositivo IO al carpincho %d porque no había nadie pidiéndolo",carpincho->id);
         sleep((dispositivo_pedido->duracion)/1000);
-        block_a_ready(carpincho_a_bloquear);
+        log_info(logger, "el carpincho %d termino de usar el dispositivo IO",carpincho->id);
+
+        block_a_ready(carpincho);
 
         if(!queue_is_empty(dispositivo_pedido->en_espera)){
             data_carpincho *carpincho_siguiente;
-            pthread_mutex_lock(&sem_cola_io);
+           // pthread_mutex_lock(&sem_cola_io);
                 carpincho_siguiente = (data_carpincho*)queue_peek(dispositivo_pedido->en_espera);
                 queue_pop(dispositivo_pedido->en_espera);
-            pthread_mutex_unlock(&sem_cola_io);
+            //pthread_mutex_unlock(&sem_cola_io);
 
-            pthread_mutex_lock(&sem_io_uso);
+            //pthread_mutex_lock(&sem_io_uso);
                 dispositivo_pedido->en_uso = false;
                 log_info(logger, "El carpincho %d liberó el dispositivo io %s, ahora va a validar si alguien más lo necesita", carpincho->id, dispositivo_pedido->nombre);
                 asignar_dispotivo_io(carpincho_siguiente, dispositivo_pedido);
-            pthread_mutex_unlock(&sem_io_uso);
+            //pthread_mutex_unlock(&sem_io_uso);
         }
         else{
+           // pthread_mutex_lock(&sem_io_uso);
+            dispositivo_pedido->en_uso = false;
+            //pthread_mutex_unlock(&sem_io_uso);
             log_info(logger, "No hay más carpinchos que quieran el dispositivo %s", dispositivo_pedido->nombre);
         }
-    }
 }
 
 void crear_estructura_dispositivo(){ 
@@ -854,7 +858,7 @@ void ready_a_exec(){
         log_info(logger, "Hay un carpincho en READY");
 
         int valor2;
-         sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor2);
+        sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor2);
         log_info(logger,"una vez que paso el wait de cola ready con elementos, el grado de multiprocesamiento libre es: %d", valor2);
 
 
@@ -899,6 +903,7 @@ void ready_a_exec(){
         if(valor == 0){ 
             sem_post(&sem_procesamiento_lleno);
         }
+        log_info(logger,"ya terminó de pasar el carpincho a exec y avisar a la lib");
     }
     free(payload);
 }
@@ -1309,8 +1314,7 @@ void ejecuta(void *id_cpu){
         int *id = (int *) id_cpu;
     
         pthread_mutex_lock(&mutex_para_CPU); 
-        log_info(logger,"La función Ejecuta esta esperando que usen su hilo");
-
+        
         sem_wait(&usar_CPU[*id]); // espera hasta que algun carpincho haga post para usar ese cpu
         sem_wait(&CPU_libre[*id]); // ya no está más libre ese cpu
         log_info(logger,"se está usando un hilo CPU");
@@ -1318,21 +1322,18 @@ void ejecuta(void *id_cpu){
         pthread_mutex_unlock(&mutex_para_CPU); 
         
         sem_wait(&liberar_CPU[*id]); // espera a que algun carpincho indique que quiere liberar el cpu
-        log_info(logger,"se hizo post a liberar_cpu, entonces Ejecuta puede seguir");        
         queue_push(CPU_libres, id);
         log_info(logger,"La función Ejecuta ya liberó el CPU");
         
         pthread_mutex_lock(&mutex_para_CPU); 
 
         sem_post(&CPU_libre[*id]); 
-        int gradoMultiprocesamiento;
-        sem_getvalue(&sem_grado_multiprocesamiento_libre, &gradoMultiprocesamiento);
-        log_info(logger,"antes de hacer post en ejecuta al grado, el grado de multiprocesamiento libre es: %d", gradoMultiprocesamiento);
 
         sem_post(&sem_grado_multiprocesamiento_libre); //hay algun cpu libre
+        
+        int gradoMultiprocesamiento;
         sem_getvalue(&sem_grado_multiprocesamiento_libre, &gradoMultiprocesamiento);
-
-        log_info(logger,"despues de hacer post en ejecuta al grado, el grado de multiprocesamiento libre es: %d", gradoMultiprocesamiento);
+        log_info(logger,"cambió el grado de multiprocesamiento libre a: %d", gradoMultiprocesamiento);
         
         pthread_mutex_unlock(&mutex_para_CPU); 
     }
@@ -1386,7 +1387,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 log_info(logger, "se pidió un MATE CALL IO");
                 estructura_interna = deserializar(payload);
                 mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
-              
+
 
             break;       
             case MATE_MEMALLOC: 

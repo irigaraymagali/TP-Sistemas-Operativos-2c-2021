@@ -27,11 +27,11 @@ typedef struct mate_instance
     void *group_info; // un puntero a algun tipo de estructura que vamos a llenar despues con todas las referencias necesarias para mantener vivas las conexiones y para operar con la misma
 } mate_instance;
 
-int socket_backend;
+
 t_log* logger;
 int id_carpincho;
 
-
+t_config* datos_configuracion;
 // TODO: Docstrings
 
 //------------------General Functions---------------------/
