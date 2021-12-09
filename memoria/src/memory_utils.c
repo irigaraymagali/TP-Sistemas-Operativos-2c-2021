@@ -1500,6 +1500,7 @@ void seleccionLRU(int processID){
     uint32_t LRUmenor=99999; //recordar que lo que se busca es el LRU menor
     uint32_t frameVictima=0;
     uint32_t numeroDePagVictima;
+    int processVictima;
 
     if (tipoDeAsignacionDinamica)
     {
@@ -1521,6 +1522,7 @@ void seleccionLRU(int processID){
                     LRUmenor= paginatemp->lRU;
                     frameVictima = paginatemp->frame;
                     numeroDePagVictima = paginatemp->pagina;
+                    processVictima = temp->id;
                 }
 
             }
@@ -1545,6 +1547,7 @@ void seleccionLRU(int processID){
                 LRUmenor= paginatemp->lRU;
                 frameVictima = paginatemp->frame;
                 numeroDePagVictima = paginatemp->pagina;
+                processVictima = processID;
             }
 
         }
@@ -1573,6 +1576,7 @@ void seleccionLRU(int processID){
     free(payload);
     free(paginaAEnviar);
 
+    log_info(logger,"El Algoritmo LRU ha seleccionado el frame: %d, nro de pag:%d y pid:%d",frameVictima,numeroDePagVictima,processVictima);
     liberarFrame(frameVictima);
 }
 
@@ -1616,6 +1620,7 @@ void seleccionClockMejorado(int idProcess){
                 free(resp);
                 free(payload);
                 free(paginaAEnviar);
+                log_info(logger,"El Algoritmo Clock ha seleccionado el frame: %d, nro de pag:%d y pid:%d",paginaEncontrada->frame,paginaEncontrada->pagina,pid);
                 liberarFrame(paginaEncontrada->frame);
             }
 
@@ -1645,6 +1650,7 @@ void seleccionClockMejorado(int idProcess){
                 free(resp);
                 free(payload);
                 free(paginaAEnviar);
+                log_info(logger,"El Algoritmo Clock ha seleccionado el frame: %d, nro de pag:%d y pid:%d",paginaEncontrada->frame,paginaEncontrada->pagina,pid);
                 liberarFrame(paginaEncontrada->frame);
             }
             }
@@ -1683,7 +1689,7 @@ void seleccionClockMejorado(int idProcess){
                 free(resp);
                 free(payload);
                 free(paginaAEnviar);
-
+                log_info(logger,"El Algoritmo Clock ha seleccionado el frame: %d, nro de pag:%d y pid:%d",paginaEncontrada->frame,paginaEncontrada->pagina,pid);
                 liberarFrame(paginaEncontrada->frame);
             }else{
                 paginaEncontrada->bitUso =0;
@@ -1715,7 +1721,7 @@ void seleccionClockMejorado(int idProcess){
                         free(resp);
                         free(payload);
                         free(paginaAEnviar);
-
+                        log_info(logger,"El Algoritmo Clock ha seleccionado el frame: %d, nro de pag:%d y pid:%d",paginaEncontrada->frame,paginaEncontrada->pagina,pid);
                         liberarFrame(paginaEncontrada->frame);
                     }else{
                         paginaEncontrada->bitUso =0;
