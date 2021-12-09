@@ -198,10 +198,10 @@ int memalloc(int processId, int espacioAReservar){
     {
        log_info(logger,"se encontro un alloc intermedio");
 
-        int ubicacionLogicaDelIsfree = ((entra+HEAP_METADATA_SIZE-1)/tamanioDePagina)+1;
+        int ubicacionLogicaDelIsfree = (entra+HEAP_METADATA_SIZE-1);
         int paginaDeLaUbicacionLogicaDelIsfree = (ubicacionLogicaDelIsfree/tamanioDePagina) + 1 ;
         int unFrame = getFrameDeUn(processId,paginaDeLaUbicacionLogicaDelIsfree);
-        int offset = (unFrame * tamanioDePagina) +  (ubicacionLogicaDelIsfree - (paginaDeLaUbicacionLogicaDelIsfree * tamanioDePagina));
+        int offset = (unFrame * tamanioDePagina) +  (ubicacionLogicaDelIsfree - ((paginaDeLaUbicacionLogicaDelIsfree-1) * tamanioDePagina));
         int isfree = BUSY;
         
         memcpy(memoria+ offset, &isfree,sizeof(uint8_t));
