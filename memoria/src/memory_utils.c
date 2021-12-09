@@ -610,6 +610,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             nuevaPagina->bitModificado = 0;
             nuevaPagina->bitPresencia = 1;
             nuevaPagina->bitUso=1;
+            log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
             pthread_mutex_lock(&lru_mutex);
             lRUACTUAL++;
             nuevaPagina->lRU = lRUACTUAL;
@@ -649,7 +650,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                     nuevaPagina->bitUso=1;
                     nuevaPagina->bitModificado=1;
                     nuevaPagina->bitPresencia=1;
-
+                    log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
                     list_iterator_destroy(iterator);
 
                     list_add(temp->paginas, nuevaPagina);
@@ -904,6 +905,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         if(tempPagina->bitPresencia==0){
             utilizarAlgritmoDeAsignacion(processId);
             tempPagina->frame = getNewEmptyFrame(processId);
+            log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",tempPagina->frame,tempPagina->pagina,processId);
             int pay_len = 2*sizeof(int);
             void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina); 
             log_info(logger, "Pidiendo La Pagina %d del Proceso %d a Swamp", mayorNroDePagina, processId);      
