@@ -316,8 +316,6 @@ void mate_close(int id_carpincho, int fd){
         memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
 
         close(socket_memoria);
-        
-        int fd = carpincho_a_cerrar->fd;
 
         pthread_mutex_lock(&sem_cola_blocked);
         list_remove_and_destroy_by_condition(blocked, es_el_carpincho, free); //martin => esta bien asi?
@@ -347,8 +345,6 @@ void mate_close(int id_carpincho, int fd){
 
         close(socket_memoria);
         
-        int fd = carpincho_a_cerrar->fd;
-
         list_remove_by_condition(lista_carpinchos, es_el_carpincho);
         
         pthread_mutex_lock(&sem_cola_suspended_blocked);
@@ -363,7 +359,6 @@ void mate_close(int id_carpincho, int fd){
 
     // post pruebas => chequear si es necesario que se haga post a todos los semaforos que tenia retenido el carpincho
     log_info(logger, "La estructura del carpincho %d se eliminó correctamente", id_carpincho);
-    close(fd);// martin => eliminar file descriptor o terminar la conexion con close --> close(fd) ?? 
 }
 
 void liberar_carpincho(void *carpincho){
@@ -569,8 +564,6 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
     exec_a_block(id_carpincho);
 
-    log_info(logger, "El carpincho %d ya se bloqueó y ahora está pidiendo que le den el dispositivo io", id_carpincho);
-
     dispositivo_io* encontrar_dispositivo(char* nombre_dispositivo) {
             int es_igual_a(dispositivo_io* dispositivo) {
                 return string_equals_ignore_case(dispositivo->nombre, nombre_dispositivo);
@@ -600,7 +593,6 @@ void asignar_dispotivo_io(data_carpincho* carpincho, dispositivo_io* dispositivo
         //pthread_mutex_lock(&sem_io_uso);
         dispositivo_pedido->en_uso = true;
         //pthread_mutex_unlock(&sem_io_uso);
-        log_info(logger, "Se le dio el dispositivo IO al carpincho %d porque no había nadie pidiéndolo",carpincho->id);
         sleep((dispositivo_pedido->duracion)/1000);
         log_info(logger, "el carpincho %d termino de usar el dispositivo IO",carpincho->id);
 
@@ -798,8 +790,8 @@ void entrantes_a_ready(){
         sem_getvalue(&sem_grado_multiprogramacion_libre, &gradoMultiprogramacion);
         log_info(logger,"el grado de multiprogramacion libre cuando entra a entrantes_a_ready es: %d", gradoMultiprogramacion);
         
-        sem_wait(&hay_estructura_creada);
         sem_wait(&sem_grado_multiprogramacion_libre); 
+        sem_wait(&hay_estructura_creada);
 
         if(!queue_is_empty(suspended_ready)) 
         {
@@ -840,8 +832,6 @@ void entrantes_a_ready(){
             sem_post(&sem_programacion_lleno);
         }
         sem_getvalue(&sem_grado_multiprogramacion_libre, &gradoMultiprogramacion);
-        log_info(logger,"el grado de multiprogramacion libre cuando termina el while de entrantes_a_ready es: %d", gradoMultiprogramacion);
-        
     }
 }
 
@@ -855,15 +845,11 @@ void ready_a_exec(){
     while(1){ 
 
         sem_wait(&cola_ready_con_elementos);   
-        log_info(logger, "Hay un carpincho en READY");
 
         int valor2;
         sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor2);
-        log_info(logger,"una vez que paso el wait de cola ready con elementos, el grado de multiprocesamiento libre es: %d", valor2);
-
 
         sem_wait(&sem_grado_multiprocesamiento_libre);
-        log_info(logger, "hay carpinchos esperando");
 
         if(string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_PLANIFICACION"), "SJF")){
             carpincho_a_mover = ready_a_exec_SJF(); 
@@ -1111,8 +1097,7 @@ void block_a_ready(data_carpincho *carpincho_a_ready){
     carpincho_a_ready->estado = READY;
     sem_post(&cola_ready_con_elementos);
 
-    log_info(logger, "El carpincho %d paso a ready e hizo el post a cola_ready_con_elementos", carpincho_a_ready->id);
-    // no tiene que evaluar ni grado de multiprogramacion ni de multiproc porque ya estaba considerado. no responde nada a la lib porque todavia no esta en exec, solo paso a ready
+     // no tiene que evaluar ni grado de multiprogramacion ni de multiproc porque ya estaba considerado. no responde nada a la lib porque todavia no esta en exec, solo paso a ready
 }
 
 void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
@@ -1157,7 +1142,9 @@ void suspender(){
 
         if(valor2>0){
             log_info(logger, "Ahora tambien hay un carpincho esperando pasar a ready");
-
+           
+            ///////seguir por acá con prueba de suspensión
+           
             int longitud = list_size(blocked);
 
             pthread_mutex_lock(&sem_cola_blocked);
@@ -1355,7 +1342,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     if(strcmp(id, ID_MATE_LIB) == 0){ 
         switch(opcode){
             case MATE_INIT:
-                log_info(logger, "se pidió un MATE INIT");
+                //log_info(logger, "se pidió un MATE INIT");
                 mate_init(fd);
             break;
             case MATE_CLOSE: 
@@ -1364,7 +1351,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_close(estructura_interna->id,fd); 
             break;
             case MATE_SEM_INIT: 
-                log_info(logger, "se pidió un MATE SEM INIT");
+                //log_info(logger, "se pidió un MATE SEM INIT");
                 estructura_interna = deserializar(payload);
                 mate_sem_init(estructura_interna->id, estructura_interna->semaforo, estructura_interna->valor_semaforo, fd);            
             break;
@@ -1384,7 +1371,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_sem_destroy(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_CALL_IO:
-                log_info(logger, "se pidió un MATE CALL IO");
+                //log_info(logger, "se pidió un MATE CALL IO");
                 estructura_interna = deserializar(payload);
                 mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
 
