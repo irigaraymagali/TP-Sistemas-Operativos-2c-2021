@@ -232,6 +232,14 @@ int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
             nuevo->proceso = proceso;
             nuevo->pagina = 9999;
             int frame_asignado = get_frame_number(nuevo);
+
+            int laFalopaquereciboswap;
+            log_error(log_file, "Frame utilizado: %d", frame_asignado);
+            memcpy(&laFalopaquereciboswap, contenido, sizeof(int32_t));
+            log_warning(log_file,"RECIBIDO -> Proceso %d, pagina %d. Contenido: %d", proceso, pagina, laFalopaquereciboswap);
+            memcpy(&laFalopaquereciboswap, contenido + sizeof(int32_t), sizeof(int32_t));
+            log_warning(log_file,"RECIBIDO -> Proceso %d, pagina %d. Contenido: %d", proceso, pagina, laFalopaquereciboswap);
+
             if (frame_asignado == tabla_paginas_size(tabla_paginas)) {
                 log_error(log_file, "El proceso %d no posee frames libres en el archivo %s.", proceso, swap_file_name);
                 munmap(swap_file_map, swap_file_size);
