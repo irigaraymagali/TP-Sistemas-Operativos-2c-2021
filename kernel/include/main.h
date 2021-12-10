@@ -195,3 +195,4 @@ void liberar_carpincho(void *carpincho);
 void port_fixer();
 
 void asignar_dispotivo_io(data_carpincho* carpincho, dispositivo_io* dispositivo_pedido);
+

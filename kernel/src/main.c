@@ -570,20 +570,19 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
 
     log_info(logger,"termine de pasar de exec a block al carpincho %d", id_carpincho);
 
-    bool es_igual_a(void* dispositivo_recibido) {
+    bool es_igual_a_dispositivo(void* dispositivo_recibido) {
         dispositivo_io* dispositivo;
         dispositivo = (dispositivo_io *) dispositivo_recibido; 
         return string_equals_ignore_case(dispositivo->nombre, nombre_dispositivo);
     }
-
     dispositivo_io* encontrar_dispositivo(char* nombre_dispositivo) {
             dispositivo_io* dispositivo_encontrado;
-            dispositivo_encontrado = (dispositivo_io *) list_find(lista_dispositivos_io, es_igual_a);
+            dispositivo_encontrado = (dispositivo_io *) list_find(lista_dispositivos_io, es_igual_a_dispositivo);
             return dispositivo_encontrado;
     }
 
     dispositivo_io *dispositivo_pedido;
-    dispositivo_pedido = encontrar_dispositivo((char*)nombre_io);
+    dispositivo_pedido = encontrar_dispositivo(nombre_dispositivo);
 
 
     if(dispositivo_pedido->en_uso == 1){
@@ -597,15 +596,19 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     }
 
     sem_wait(&dispositivo_sem[dispositivo_pedido->id]);
-    
+
     dispositivo_pedido->en_uso = true;
     sleep((dispositivo_pedido->duracion)/1000);
     log_info(logger, "el carpincho %d termino de usar el dispositivo IO",carpincho->id);
-    
+
     sem_post(&dispositivo_sem[dispositivo_pedido->id]);
-    block_a_ready(carpincho);
-    
-    
+        
+    if(carpincho->estado == BLOCKED){
+        block_a_ready(carpincho);
+    }
+    else{
+        suspended_blocked_a_suspended_ready(carpincho);
+    }
 
 
 
@@ -1046,8 +1049,6 @@ void block_a_ready(data_carpincho *carpincho_a_ready){
 
 void suspended_blocked_a_suspended_ready(data_carpincho *carpincho){
 
-
-
     bool esIgualACarpincho (void* carpincho_lista){
        return ((data_carpincho *) carpincho_lista)->id == carpincho->id;
     }   
@@ -1277,7 +1278,6 @@ void ejecuta(void *id_cpu){
         
         sem_wait(&liberar_CPU[*id]); // espera a que algun carpincho indique que quiere liberar el cpu
         queue_push(CPU_libres, id);
-        log_info(logger,"La función Ejecuta ya liberó el CPU");
         
         pthread_mutex_lock(&mutex_para_CPU); 
 
@@ -1295,7 +1295,6 @@ void ejecuta(void *id_cpu){
 
 void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
     
-    log_info(logger, "Kernel, mensaje recibido");
     data_carpincho* estructura_interna;
     int id_carpincho;
     int size_memoria;
@@ -1328,7 +1327,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_SEM_POST: 
-                log_info(logger, "se pidió un MATE SEM POST");
+                //log_info(logger, "se pidió un MATE SEM POST");
                 estructura_interna = deserializar(payload);
                 mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
