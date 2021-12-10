@@ -380,7 +380,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
         int dir_fisica = (act_frame * tamanioDePagina) + resto;
         int page_len = act_page * tamanioDePagina;
 
-        int size_all_heap = (((dirAllocActual + HEAP_METADATA_SIZE)/ tamanioDePagina) + 1);
+        int size_all_heap = (((dirAllocActual + HEAP_METADATA_SIZE - 1)/ tamanioDePagina) + 1);
         if(act_page != size_all_heap){
             div_heap = 1;
             int first_alloc_act_page = (act_frame * tamanioDePagina);
@@ -478,6 +478,15 @@ void* memread(uint32_t pid, int dir_logica, int size){
     }
 
     log_info(logger, "Lectura realizada con exito");
+
+    // int algoint;
+    // char* algo = string_new();
+    // memcpy(&algoint, read, size);
+    // memcpy(algo, read, size);
+
+    // log_info(logger, "ALGO INT: %d", algoint);
+    // log_info(logger, "ALGO: %s", algo);
+    
     return read;
 } 
 
@@ -1993,7 +2002,7 @@ TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
 
 void replace_entrada(TLB* new_instance){
     if (string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_REEMPLAZO_TLB"), "FIFO")){    
-        log_info(logger, "Reemplazo por FIFO");
+        log_info(logger, "TLB: Reemplazo por FIFO");
         TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_fifo_tlb);
         log_info(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
         log_info(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
@@ -2005,10 +2014,10 @@ void replace_entrada(TLB* new_instance){
         tlb_to_replace->lru = new_instance->lru;
 
     } else {
-        log_info(logger, "Reemplazo por LRU");
+        log_info(logger, "TLB: Reemplazo por LRU");
         TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_lru_tlb);
-        log_info(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
-        log_info(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
+        log_info(logger, "TLB: Entrada Reemplazada: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
+        log_info(logger, "TLB: Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
 
         tlb_to_replace->pid = new_instance->pid;
         tlb_to_replace->pagina = new_instance->pagina;
