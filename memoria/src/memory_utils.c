@@ -125,6 +125,7 @@ int memalloc(int processId, int espacioAReservar){
 
             mandarPaginaAgonza(processId ,paginaFInalEncontrada->frame, paginaFInalEncontrada->pagina)        ;
 
+            free(nuevoHeap);
             return (tempLastHeap );
         } else {
             
@@ -193,6 +194,8 @@ int memalloc(int processId, int espacioAReservar){
             free(espacioAuxiliar);
         }
         temp->lastHeap = tempLastHeap + espacioAReservar;
+
+        free(nuevoHeap);
         return (tempLastHeap);    
     }else
     {
@@ -428,9 +431,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
             if(heap->isfree == FREE){
                 log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
                 return err_msg;
-            }
-            
-            free(heap);
+            }  
         }
 
         int offset_without_alloc = dirAllocActual + HEAP_METADATA_SIZE;
@@ -486,7 +487,8 @@ void* memread(uint32_t pid, int dir_logica, int size){
 
     // log_info(logger, "ALGO INT: %d", algoint);
     // log_info(logger, "ALGO: %s", algo);
-    
+    free(heap);
+    free(err_msg);
     return read;
 } 
 
@@ -875,6 +877,7 @@ int allFramesUsedForAsignacionFijaPara(int processID){
         }
 
     }
+    list_iterator_destroy(iterator);
 
     if(contador >= cantidadDePaginasPorProceso){
         return 1;
@@ -1341,6 +1344,7 @@ void inicializarUnProceso(int idDelProceso){
         }  
     }
     log_info(logger, "Proceso %d inicializado con Exito", idDelProceso);
+    free(nuevoHeap);
 }
 
 int delete_process(int pid){
