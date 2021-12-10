@@ -385,7 +385,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
             div_heap = 1;
             int first_alloc_act_page = (act_frame * tamanioDePagina);
 
-            void* page_aux = malloc(tamanioDePagina*2);
+            void* page_aux = malloc(tamanioDePagina * 2);
             pthread_mutex_lock(&memory_mutex);
             memcpy(page_aux, memoria + first_alloc_act_page, tamanioDePagina);
             
@@ -405,6 +405,18 @@ void* memread(uint32_t pid, int dir_logica, int size){
             offset += sizeof(uint32_t);
 
             memcpy(&heap->isfree, page_aux + offset, sizeof(uint8_t));
+            if(heap->isfree != BUSY && heap->isfree != FREE){
+                log_error(logger, "La direccion logica recibida es incorrecta");
+                return err_msg;
+            }
+            if(heap->isfree == FREE){
+                log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
+                return err_msg;
+            }
+
+            dirAllocActual = alloc_on_frame;
+            //dir_fisica = first_alloc_next_page + resto; 
+            // TODO: Creo que el n-1 no tiene un heap contenido entre dos paginas y el n-2 si. FIjarse si estamos guardando mal la info
             
             free(page_aux);
         } else {
@@ -417,6 +429,8 @@ void* memread(uint32_t pid, int dir_logica, int size){
                 log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
                 return err_msg;
             }
+            
+            free(heap);
         }
 
         int offset_without_alloc = dirAllocActual + HEAP_METADATA_SIZE;
