@@ -106,7 +106,6 @@ pthread_mutex_t sem_CPU_libres;
 pthread_mutex_t mutex_para_CPU;
 pthread_mutex_t sem_cola_io;
 pthread_mutex_t sem_io_uso;
-pthread_mutex_t sem_cola_pidiendo_io;
 
 
 // log
@@ -195,5 +194,4 @@ void liberar_carpincho(void *carpincho);
 
 void port_fixer();
 
-void exec_a_block_io();
 void asignar_dispotivo_io(data_carpincho* carpincho, dispositivo_io* dispositivo_pedido);

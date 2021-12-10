@@ -65,6 +65,9 @@ int mate_init(mate_instance *lib_ref, char *config) {
     // post pruebas => ver si trae problemas tener un solo log
     logger = log_create("./matelib.log", "[Mate-Lib]", true, LOG_LEVEL_INFO); // creo el log para ir guardando todo
     datos_configuracion = config_create(config);
+
+    log_info(logger, "se pidió un MATE INIT");
+    
     if (datos_configuracion == NULL){
         log_error(logger, "Error en el Archivo de Configuración recibido. PATH: %s", config);
         return -1;
@@ -107,7 +110,7 @@ int mate_init(mate_instance *lib_ref, char *config) {
 
 int mate_close(mate_instance *lib_ref)
 {
-
+    log_info(logger, "se pidió un MATE CLOSE");
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     //free(lib_ref->group_info);
     log_info(logger, "Pidiendo al BACKEND que Elimine al Carpincho %d", estructura_interna->id);
@@ -118,6 +121,7 @@ int mate_close(mate_instance *lib_ref)
 
 int mate_sem_init(mate_instance *lib_ref, mate_sem_name sem, unsigned int value) 
 {
+    log_info(logger, "se pidió un MATE SEM INIT");
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     log_info(logger, "El Carpincho con id %d pidió inicializar al Semaforo %s con valor %d", estructura_interna->id, sem, value);    
     string_append(&estructura_interna->semaforo, (char*) sem);
@@ -137,18 +141,21 @@ int modificar_semaforo(int id_funcion, mate_sem_name sem, mate_instance* lib_ref
 }
 
 int mate_sem_wait(mate_instance *lib_ref, mate_sem_name sem) {   
+    log_info(logger, "se pidió un MATE SEM WAIT");
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     log_info(logger, "El Carpincho %d pidió hacer WAIT", estructura_interna->id);         
     return modificar_semaforo(MATE_SEM_WAIT, sem, lib_ref);
 }
 
 int mate_sem_post(mate_instance *lib_ref, mate_sem_name sem) {
+    log_info(logger, "se pidió un MATE SEM POST");
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     log_info(logger, "El Carpincho %d pidió hacer POST", estructura_interna->id);         
     return modificar_semaforo(MATE_SEM_POST, sem, lib_ref);
 }
 
 int mate_sem_destroy(mate_instance *lib_ref, mate_sem_name sem) {
+    log_info(logger, "se pidió un MATE SEM DESTROY");
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     log_info(logger, "El carpincho %d pidió hacer DESTROY", estructura_interna->id);         
     return modificar_semaforo(MATE_SEM_DESTROY, sem, lib_ref);
@@ -158,10 +165,10 @@ int mate_sem_destroy(mate_instance *lib_ref, mate_sem_name sem) {
 
 int mate_call_io(mate_instance *lib_ref, mate_io_resource io, void *msg)
 {
+    log_info(logger, "se pidió un MATE CALL IO");
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     free(estructura_interna->dispositivo_io);
     estructura_interna->dispositivo_io = string_from_format("%s", (char*) io);
-    log_info(logger, "el carpincho %d ya usó el dispositivo_io", estructura_interna->id);
     return conexion_con_backend(MATE_CALL_IO, estructura_interna);    
 }
 
@@ -169,6 +176,7 @@ int mate_call_io(mate_instance *lib_ref, mate_io_resource io, void *msg)
 // hacer => agregar para que devuelva los erroes que meti en las shared
 mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 {
+    log_info(logger, "se pidió un MATE MEMALLOC");
     int socket_backend;
     socket_backend = _connect(config_get_string_value(datos_configuracion, "IP_BACKEND"), config_get_string_value(datos_configuracion, "PUERTO_BACKEND"), logger);
     mate_pointer conexion_con_backend;
@@ -206,6 +214,7 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
 
 int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
 {
+    log_info(logger, "se pidió un MATE MEMFREE");
      int socket_backend;
     socket_backend = _connect(config_get_string_value(datos_configuracion, "IP_BACKEND"), config_get_string_value(datos_configuracion, "PUERTO_BACKEND"), logger);
     int conexion_con_backend;
@@ -247,6 +256,8 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
 
 int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int size)
 {
+
+    log_info(logger, "se pidió un MATE MEMREAD");
 
     int socket_backend;
     socket_backend = _connect(config_get_string_value(datos_configuracion, "IP_BACKEND"), config_get_string_value(datos_configuracion, "PUERTO_BACKEND"), logger);
@@ -293,6 +304,7 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
 
 int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int size)
 {
+    log_info(logger, "se pidió un MATE MEMWRITE");
     int socket_backend;
     socket_backend = _connect(config_get_string_value(datos_configuracion, "IP_BACKEND"), config_get_string_value(datos_configuracion, "PUERTO_BACKEND"), logger);
     int conexion_con_backend;
