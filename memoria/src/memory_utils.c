@@ -610,6 +610,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             nuevaPagina->bitModificado = 0;
             nuevaPagina->bitPresencia = 1;
             nuevaPagina->bitUso=1;
+            log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
             pthread_mutex_lock(&lru_mutex);
             lRUACTUAL++;
             nuevaPagina->lRU = lRUACTUAL;
@@ -649,7 +650,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                     nuevaPagina->bitUso=1;
                     nuevaPagina->bitModificado=1;
                     nuevaPagina->bitPresencia=1;
-
+                    log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
                     list_iterator_destroy(iterator);
 
                     list_add(temp->paginas, nuevaPagina);
@@ -904,6 +905,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         if(tempPagina->bitPresencia==0){
             utilizarAlgritmoDeAsignacion(processId);
             tempPagina->frame = getNewEmptyFrame(processId);
+            log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",tempPagina->frame,tempPagina->pagina,processId);
             int pay_len = 2*sizeof(int);
             void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina); 
             log_info(logger, "Pidiendo La Pagina %d del Proceso %d a Swamp", mayorNroDePagina, processId);      
@@ -1497,36 +1499,37 @@ void utilizarAlgritmoDeAsignacion(int processID){
 
 void seleccionLRU(int processID){
 
-    uint32_t LRUmenor=9999; //recordar que lo que se busca es el LRU menor
+    uint32_t LRUmenor=99999; //recordar que lo que se busca es el LRU menor
     uint32_t frameVictima=0;
     uint32_t numeroDePagVictima;
+    int processVictima;
 
     if (tipoDeAsignacionDinamica)
     {
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
-        TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
         
         while (list_iterator_has_next(iterator)) {
-        
+            TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+
+
             t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
         
-            Pagina *paginatemp = list_iterator_next(iterator2);
 
             while (list_iterator_has_next(iterator2))
             {
+                Pagina *paginatemp = list_iterator_next(iterator2);
                 /* code */
                 if(paginatemp->lRU < LRUmenor && paginatemp->bitPresencia==1){
                     LRUmenor= paginatemp->lRU;
                     frameVictima = paginatemp->frame;
                     numeroDePagVictima = paginatemp->pagina;
+                    processVictima = temp->id;
                 }
 
-                paginatemp = list_iterator_next(iterator2);
             }
         
             list_iterator_destroy(iterator2);
-            temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
         }
         
         list_iterator_destroy(iterator);
@@ -1537,18 +1540,18 @@ void seleccionLRU(int processID){
 
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
         
-        Pagina *paginatemp = list_iterator_next(iterator2);
 
         while (list_iterator_has_next(iterator2))
         {
+            Pagina *paginatemp = list_iterator_next(iterator2);
         
             if(paginatemp->lRU < LRUmenor && paginatemp->bitPresencia==1){
                 LRUmenor= paginatemp->lRU;
                 frameVictima = paginatemp->frame;
                 numeroDePagVictima = paginatemp->pagina;
+                processVictima = processID;
             }
 
-            paginatemp = list_iterator_next(iterator2);
         }
         
         list_iterator_destroy(iterator2);
@@ -1575,6 +1578,7 @@ void seleccionLRU(int processID){
     free(payload);
     free(paginaAEnviar);
 
+    log_info(logger,"El Algoritmo LRU ha seleccionado el frame: %d, nro de pag:%d y pid:%d",frameVictima,numeroDePagVictima,processVictima);
     liberarFrame(frameVictima);
 }
 
@@ -1618,6 +1622,7 @@ void seleccionClockMejorado(int idProcess){
                 free(resp);
                 free(payload);
                 free(paginaAEnviar);
+                log_info(logger,"El Algoritmo Clock ha seleccionado el frame: %d, nro de pag:%d y pid:%d",paginaEncontrada->frame,paginaEncontrada->pagina,pid);
                 liberarFrame(paginaEncontrada->frame);
             }
 
@@ -1647,6 +1652,7 @@ void seleccionClockMejorado(int idProcess){
                 free(resp);
                 free(payload);
                 free(paginaAEnviar);
+                log_info(logger,"El Algoritmo Clock ha seleccionado el frame: %d, nro de pag:%d y pid:%d",paginaEncontrada->frame,paginaEncontrada->pagina,pid);
                 liberarFrame(paginaEncontrada->frame);
             }
             }
@@ -1685,7 +1691,7 @@ void seleccionClockMejorado(int idProcess){
                 free(resp);
                 free(payload);
                 free(paginaAEnviar);
-
+                log_info(logger,"El Algoritmo Clock ha seleccionado el frame: %d, nro de pag:%d y pid:%d",paginaEncontrada->frame,paginaEncontrada->pagina,pid);
                 liberarFrame(paginaEncontrada->frame);
             }else{
                 paginaEncontrada->bitUso =0;
@@ -1717,7 +1723,7 @@ void seleccionClockMejorado(int idProcess){
                         free(resp);
                         free(payload);
                         free(paginaAEnviar);
-
+                        log_info(logger,"El Algoritmo Clock ha seleccionado el frame: %d, nro de pag:%d y pid:%d",paginaEncontrada->frame,paginaEncontrada->pagina,pid);
                         liberarFrame(paginaEncontrada->frame);
                     }else{
                         paginaEncontrada->bitUso =0;
