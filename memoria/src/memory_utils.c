@@ -1381,6 +1381,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
             int finDelAlloc = 0;
             
             paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
+            int paginaFinDeHeap = ((dirAllocActual + HEAP_METADATA_SIZE-1) / tamanioDePagina) + 1 ;
 
             int paginaInicioEspacio = ((dirAllocActual + HEAP_METADATA_SIZE) / tamanioDePagina) + 1 ;
 
@@ -1388,9 +1389,27 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
 
             int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
 
-            int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
- 
-            memcpy(&finDelAlloc, memoria + offset, sizeof(uint32_t));
+            if(paginaActual == paginaFinDeHeap){
+                int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
+    
+                memcpy(&finDelAlloc, memoria + offset, sizeof(uint32_t));
+            }else{
+                void *espacioAux = malloc(2*tamanioDePagina);
+
+                int offset= (frameBuscado*tamanioDePagina);
+                int frameFin= getFrameDeUn(idProcess,  paginaFinDeHeap);
+
+                memcpy(espacioAux, memoria + offset, tamanioDePagina);
+                
+                offset = (frameFin*tamanioDePagina);
+
+                memcpy(espacioAux + tamanioDePagina, memoria + offset, tamanioDePagina);
+
+                memcpy(&finDelAlloc, espacioAux + posicionNextAllocDentroDelFrame, sizeof(uint32_t));
+
+                free(espacioAux);
+            }
+            
 
             finDelAlloc = finDelAlloc - 1 ;
 
