@@ -65,6 +65,8 @@ void inicializar_colas(){
     CPU_libres = queue_create();
     pthread_mutex_init(&sem_CPU_libres, NULL);
 
+    lista_posibles = list_create();
+    lista_conectados = list_create();
 
     pthread_mutex_init(&mutex_para_CPU, NULL);
     pthread_mutex_init(&sem_io_uso, NULL);
@@ -312,7 +314,8 @@ void mate_close(int id_carpincho, int fd){
         close(socket_memoria);
 
         pthread_mutex_lock(&sem_cola_blocked);
-        list_remove_and_destroy_by_condition(blocked, es_el_carpincho, free); //martin => esta bien asi?
+        list_remove_by_condition(blocked, es_el_carpincho);       
+       // list_remove_and_destroy_by_condition(blocked, es_el_carpincho, liberar_carpincho);
         pthread_mutex_unlock(&sem_cola_blocked);
 
         sem_post(&sem_grado_multiprogramacion_libre);
@@ -340,7 +343,8 @@ void mate_close(int id_carpincho, int fd){
         close(socket_memoria);
         
         pthread_mutex_lock(&sem_cola_suspended_blocked);
-        list_remove_and_destroy_by_condition(suspended_blocked, es_el_carpincho, liberar_carpincho); 
+        list_remove_by_condition(blocked, es_el_carpincho);        
+        //list_remove_and_destroy_by_condition(suspended_blocked, es_el_carpincho, liberar_carpincho); 
         pthread_mutex_unlock(&sem_cola_suspended_blocked);
 
         payload = _serialize(sizeof(int), "%d", CERRADO_POR_DEADLOCK);
@@ -358,7 +362,9 @@ void liberar_carpincho(void *carpincho){
     data_carpincho * aux = (data_carpincho *) carpincho;
     if(aux != NULL){
         list_destroy(aux->semaforos_retenidos);
-        free(aux->semaforo);
+        if(aux->semaforo != NULL){
+            free(aux->semaforo);
+        }
         free(aux->nombre_semaforo_por_el_que_se_bloqueo);
         free(aux->dispositivo_io);
         free(aux);
@@ -423,13 +429,13 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         carpincho = encontrar_estructura_segun_id(id_carpincho);
         carpincho->fd = fd;
 
-        if(semaforo_wait->valor < 1){
+        if(semaforo_wait->valor < 0){
             log_info(logger, "Carpincho %d hizo un WAIT de un semaforo menor a 1, se bloquea", id_carpincho);
             free(carpincho->nombre_semaforo_por_el_que_se_bloqueo);
             carpincho->nombre_semaforo_por_el_que_se_bloqueo = string_from_format("%s", nombre_semaforo);
             exec_a_block(id_carpincho); 
             queue_push(semaforo_wait->en_espera, carpincho);
-            printf("Ya deje en espera al carpincho %d", id_carpincho);
+            printf("Ya deje en espera al carpincho %d porque pidió el semaforo %s que estaba siendo usado", id_carpincho, (char *)nombre_semaforo);
         }
         else
         {
@@ -466,25 +472,26 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
     if(list_any_satisfy(semaforos_carpinchos, esIgualA)){  
 
         semaforo *semaforo_post;
-        semaforo_post = list_find(semaforos_carpinchos, (void *) esIgualA);
+        semaforo_post = list_find(semaforos_carpinchos, esIgualA);
         valor_previo_semaforo = semaforo_post->valor;
         semaforo_post->valor ++; 
 
         payload = _serialize(sizeof(int), "%d", 0);
         
         if(!queue_is_empty(semaforo_post->en_espera)){
+            log_info(logger,"hay carpinchos esperando el semaforo %s", (char *)nombre_semaforo);
             data_carpincho *carpincho_a_desbloquear;
             carpincho_a_desbloquear = (data_carpincho *) queue_peek(semaforo_post->en_espera);
             queue_pop(semaforo_post->en_espera);
             carpincho_a_desbloquear->nombre_semaforo_por_el_que_se_bloqueo = NULL;
             data_carpincho *carpincho_que_hizo_post = encontrar_estructura_segun_id(id_carpincho);
-            if(list_any_satisfy(carpincho_que_hizo_post->semaforos_retenidos,(void *)esIgualA)){
-                   list_remove_by_condition(carpincho_que_hizo_post->semaforos_retenidos,(void *)esIgualA);
+
+            if(list_any_satisfy(carpincho_que_hizo_post->semaforos_retenidos,esIgualA)){
+                   list_remove_by_condition(carpincho_que_hizo_post->semaforos_retenidos,esIgualA);
             }
             // post pruebas => ver caso en que mas de carpincho este siendo bloqueado por el que hace un post
 
             if(carpincho_a_desbloquear->estado == BLOCKED){ 
-                carpincho_a_desbloquear->estado = READY;
                 block_a_ready(carpincho_a_desbloquear);
             }
             else{
@@ -985,7 +992,9 @@ void exec_a_exit(int id_carpincho, int fd){
     int cpu_carpincho_eliminado;
     cpu_carpincho_eliminado = carpincho_que_termino->CPU_en_uso;
     pthread_mutex_lock(&sem_cola_exec); 
-    list_remove_and_destroy_by_condition(exec, es_el_mismo, liberar_carpincho); 
+    list_remove_by_condition(exec, es_el_mismo);
+    
+    //list_remove_and_destroy_by_condition(exec, es_el_mismo, liberar_carpincho); 
 	pthread_mutex_unlock(&sem_cola_exec);
 
     sem_post(&(liberar_CPU[cpu_carpincho_eliminado])); 
@@ -1316,7 +1325,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 mate_sem_wait(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
             case MATE_SEM_POST: 
-                //log_info(logger, "se pidió un MATE SEM POST");
+                log_info(logger, "se pidió un MATE SEM POST");
                 estructura_interna = deserializar(payload);
                 mate_sem_post(estructura_interna->id, estructura_interna->semaforo, fd);            
             break;
@@ -1329,8 +1338,6 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 //log_info(logger, "se pidió un MATE CALL IO");
                 estructura_interna = deserializar(payload);
                 mate_call_io(estructura_interna->id, estructura_interna->dispositivo_io, fd);  
-
-
             break;       
             case MATE_MEMALLOC: 
                 // id_carpincho
@@ -1397,9 +1404,6 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
 ////////////////////////////// DEADLOCK ////////////////////////////////
 
 void agregando_a_lista_posible_deadlock(){
-
-    lista_posibles = list_create();
-    lista_conectados = list_create();
             
     for(int i= 0; i< list_size(lista_carpinchos); i++){ 
         data_carpincho *carpincho = list_get(lista_carpinchos,i);
@@ -1422,7 +1426,10 @@ void detectar_deadlock(){
     data_carpincho *c2;
     while(1){
         sem_wait(&hay_bloqueados_para_deadlock); 
+        log_info(logger,"estoy antes del sleep, dentro de detectar deadlock");
         sleep(tiempo_deadlock/1000);
+        log_info(logger,"estoy despues del sleep, dentro de detectar deadlock");
+
 
         agregando_a_lista_posible_deadlock();
 
