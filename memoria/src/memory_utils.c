@@ -385,7 +385,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
             div_heap = 1;
             int first_alloc_act_page = (act_frame * tamanioDePagina);
 
-            void* page_aux = malloc(tamanioDePagina*2);
+            void* page_aux = malloc(tamanioDePagina * 2);
             pthread_mutex_lock(&memory_mutex);
             memcpy(page_aux, memoria + first_alloc_act_page, tamanioDePagina);
             
@@ -405,6 +405,18 @@ void* memread(uint32_t pid, int dir_logica, int size){
             offset += sizeof(uint32_t);
 
             memcpy(&heap->isfree, page_aux + offset, sizeof(uint8_t));
+            if(heap->isfree != BUSY && heap->isfree != FREE){
+                log_error(logger, "La direccion logica recibida es incorrecta");
+                return err_msg;
+            }
+            if(heap->isfree == FREE){
+                log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
+                return err_msg;
+            }
+
+            dirAllocActual = alloc_on_frame;
+            //dir_fisica = first_alloc_next_page + resto; 
+            // TODO: Creo que el n-1 no tiene un heap contenido entre dos paginas y el n-2 si. FIjarse si estamos guardando mal la info
             
             free(page_aux);
         } else {
@@ -417,6 +429,8 @@ void* memread(uint32_t pid, int dir_logica, int size){
                 log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
                 return err_msg;
             }
+            
+            free(heap);
         }
 
         int offset_without_alloc = dirAllocActual + HEAP_METADATA_SIZE;
@@ -610,7 +624,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             nuevaPagina->bitModificado = 0;
             nuevaPagina->bitPresencia = 1;
             nuevaPagina->bitUso=1;
-            log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
+            log_info(logger,"se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
             pthread_mutex_lock(&lru_mutex);
             lRUACTUAL++;
             nuevaPagina->lRU = lRUACTUAL;
@@ -905,6 +919,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         if(tempPagina->bitPresencia==0){
             utilizarAlgritmoDeAsignacion(processId);
             tempPagina->frame = getNewEmptyFrame(processId);
+            tempPagina->bitModificado=0;
             log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",tempPagina->frame,tempPagina->pagina,processId);
             int pay_len = 2*sizeof(int);
             void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina); 
@@ -1590,9 +1605,9 @@ void seleccionClockMejorado(int idProcess){
 
     int frameFinal = tamanioDeMemoria/tamanioDePagina;
 
-    punteroFrameClock++;
+    //punteroFrameClock++;
 
-    while(frameNoEncontrado && frameInicial!=punteroFrameClock){
+    do{
 
         if(punteroFrameClock>= frameFinal){
             punteroFrameClock =0;
@@ -1659,7 +1674,7 @@ void seleccionClockMejorado(int idProcess){
             
             punteroFrameClock++;
         }
-    }
+    }while(frameNoEncontrado && frameInicial!=punteroFrameClock);
 
     while(frameNoEncontrado ){
 
