@@ -38,6 +38,7 @@ typedef struct dispositivo_io
     int duracion;
     bool en_uso;
     t_queue *en_espera; 
+    int id;
 } dispositivo_io;
 
 typedef struct tiempo
@@ -63,8 +64,6 @@ typedef struct data_carpincho // la data que le importa tener al backend, hacer 
     char *semaforo; // guarda el char porque es lo que nos manda el carpincho
     int valor_semaforo; // guarda int porque es lo que nos guarda el carpincho
     char *dispositivo_io; 
-
-
     char *nombre_semaforo_por_el_que_se_bloqueo; //nombre del semaforo por el que se bloqueo --> sacarlo cuando se desbloquee
     t_list *semaforos_retenidos; //nombre de los semaforos a los que paso su wait --> lista de semaforos
     // si le hace el post sacarlo
@@ -133,9 +132,10 @@ sem_t sem_procesamiento_lleno;
 sem_t sem_hay_bloqueados;
 sem_t hay_bloqueados_para_deadlock;
 sem_t hay_carpinchos_pidiendo_io;
-    sem_t liberar_CPU[1000];
-    sem_t CPU_libre[1000];
-    sem_t usar_CPU[1000];
+sem_t liberar_CPU[1000];
+sem_t CPU_libre[1000];
+sem_t usar_CPU[1000];
+sem_t dispositivo_sem[10];
 
     pthread_t hilo_CPU[1000]; // gonza -> nos va a pasar algo parecido que con los semaforos
 
@@ -195,3 +195,4 @@ void liberar_carpincho(void *carpincho);
 void port_fixer();
 
 void asignar_dispotivo_io(data_carpincho* carpincho, dispositivo_io* dispositivo_pedido);
+

@@ -125,6 +125,7 @@ int memalloc(int processId, int espacioAReservar){
 
             mandarPaginaAgonza(processId ,paginaFInalEncontrada->frame, paginaFInalEncontrada->pagina)        ;
 
+            free(nuevoHeap);
             return (tempLastHeap );
         } else {
             
@@ -193,6 +194,8 @@ int memalloc(int processId, int espacioAReservar){
             free(espacioAuxiliar);
         }
         temp->lastHeap = tempLastHeap + espacioAReservar;
+
+        free(nuevoHeap);
         return (tempLastHeap);    
     }else
     {
@@ -380,12 +383,12 @@ void* memread(uint32_t pid, int dir_logica, int size){
         int dir_fisica = (act_frame * tamanioDePagina) + resto;
         int page_len = act_page * tamanioDePagina;
 
-        int size_all_heap = (((dirAllocActual + HEAP_METADATA_SIZE)/ tamanioDePagina) + 1);
+        int size_all_heap = (((dirAllocActual + HEAP_METADATA_SIZE - 1)/ tamanioDePagina) + 1);
         if(act_page != size_all_heap){
             div_heap = 1;
             int first_alloc_act_page = (act_frame * tamanioDePagina);
 
-            void* page_aux = malloc(tamanioDePagina*2);
+            void* page_aux = malloc(tamanioDePagina * 2);
             pthread_mutex_lock(&memory_mutex);
             memcpy(page_aux, memoria + first_alloc_act_page, tamanioDePagina);
             
@@ -405,6 +408,18 @@ void* memread(uint32_t pid, int dir_logica, int size){
             offset += sizeof(uint32_t);
 
             memcpy(&heap->isfree, page_aux + offset, sizeof(uint8_t));
+            if(heap->isfree != BUSY && heap->isfree != FREE){
+                log_error(logger, "La direccion logica recibida es incorrecta");
+                return err_msg;
+            }
+            if(heap->isfree == FREE){
+                log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
+                return err_msg;
+            }
+
+            dirAllocActual = alloc_on_frame;
+            //dir_fisica = first_alloc_next_page + resto; 
+            // TODO: Creo que el n-1 no tiene un heap contenido entre dos paginas y el n-2 si. FIjarse si estamos guardando mal la info
             
             free(page_aux);
         } else {
@@ -416,7 +431,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
             if(heap->isfree == FREE){
                 log_error(logger, "La direccion logica apunta a un espacio de memoria vacío");
                 return err_msg;
-            }
+            }  
         }
 
         int offset_without_alloc = dirAllocActual + HEAP_METADATA_SIZE;
@@ -464,6 +479,16 @@ void* memread(uint32_t pid, int dir_logica, int size){
     }
 
     log_info(logger, "Lectura realizada con exito");
+
+    // int algoint;
+    // char* algo = string_new();
+    // memcpy(&algoint, read, size);
+    // memcpy(algo, read, size);
+
+    // log_info(logger, "ALGO INT: %d", algoint);
+    // log_info(logger, "ALGO: %s", algo);
+    free(heap);
+    free(err_msg);
     return read;
 } 
 
@@ -610,7 +635,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             nuevaPagina->bitModificado = 0;
             nuevaPagina->bitPresencia = 1;
             nuevaPagina->bitUso=1;
-            log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
+            log_info(logger,"se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
             pthread_mutex_lock(&lru_mutex);
             lRUACTUAL++;
             nuevaPagina->lRU = lRUACTUAL;
@@ -852,6 +877,7 @@ int allFramesUsedForAsignacionFijaPara(int processID){
         }
 
     }
+    list_iterator_destroy(iterator);
 
     if(contador >= cantidadDePaginasPorProceso){
         return 1;
@@ -905,6 +931,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         if(tempPagina->bitPresencia==0){
             utilizarAlgritmoDeAsignacion(processId);
             tempPagina->frame = getNewEmptyFrame(processId);
+            tempPagina->bitModificado=0;
             log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",tempPagina->frame,tempPagina->pagina,processId);
             int pay_len = 2*sizeof(int);
             void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina); 
@@ -1317,6 +1344,7 @@ void inicializarUnProceso(int idDelProceso){
         }  
     }
     log_info(logger, "Proceso %d inicializado con Exito", idDelProceso);
+    free(nuevoHeap);
 }
 
 int delete_process(int pid){
@@ -1350,133 +1378,60 @@ void remove_paginas(void* elem){
 
 int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir, int tamanio){
     log_info(logger,"arranco un memwrite----------------------------");
-    int paginaActual=1;
 
     TablaDePaginasxProceso *tablaDelProceso = get_pages_by(idProcess);
 
     int dirAllocFinal = tablaDelProceso->lastHeap;
-    int dirAllocActual=0;
+    direccionLogicaBuscada+= HEAP_METADATA_SIZE;
 
     pthread_mutex_lock(&memory_mutex);
-    while((dirAllocActual <= direccionLogicaBuscada) && dirAllocFinal>direccionLogicaBuscada){
-        log_info(logger,"EN memwrite---------dirAllocActual:%d",dirAllocActual);
-        log_info(logger,"EN memwrite---------dirAllocFinal:%d",dirAllocFinal);
-        if (dirAllocActual == direccionLogicaBuscada)
+        if (direccionLogicaBuscada < dirAllocFinal)
         {
-            int finDelAlloc = 0;
-            
-            paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
+           int paginaInicioEscritura = (direccionLogicaBuscada/tamanioDePagina)+1;
 
-            int paginaInicioEspacio = ((dirAllocActual + HEAP_METADATA_SIZE) / tamanioDePagina) + 1 ;
+           int paginaFinEscritura = ((direccionLogicaBuscada+tamanio)/tamanioDePagina)+1;
 
-            int frameBuscado = getFrameDeUn(idProcess, paginaActual);
-
-            int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
-
-            int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
- 
-            memcpy(&finDelAlloc, memoria + offset, sizeof(uint32_t));
-
-            finDelAlloc = finDelAlloc - 1 ;
-
-            int offsetInicioAlloc = (frameBuscado*tamanioDePagina) + (dirAllocActual) - ((paginaActual-1) * tamanioDePagina) + HEAP_METADATA_SIZE;
-            
-            int paginaFinDelAlloc = ((finDelAlloc-1)/tamanioDePagina)+1;
-
-            if (paginaFinDelAlloc == paginaActual)
-            {
-                memcpy(memoria + offsetInicioAlloc, loQueQuierasEscribir, tamanio);
-                mandarPaginaAgonza(idProcess ,frameBuscado, paginaActual);
-                setPaginaAsModificado(idProcess, paginaActual);
-            }
-            else
-            {
-                int nroPagAux = paginaActual;
-                
-                void* espacioAuxiliar = malloc(tamanioDePagina*((paginaFinDelAlloc - paginaActual) + 1));
-                
-                int unOffset =0;
-                
-                while(nroPagAux<=paginaFinDelAlloc){
-                    frameBuscado = getFrameDeUn(idProcess, nroPagAux);
+           void* espacioAuxiliar = malloc(tamanioDePagina * (paginaFinEscritura-paginaInicioEscritura+1) );
+           
+           int nroPagAux = paginaInicioEscritura;
+           int unOffset =0;
+           while (nroPagAux <= paginaFinEscritura)
+           {
+              int frameBuscado = getFrameDeUn(idProcess, nroPagAux);
                        
-                    memcpy(espacioAuxiliar + unOffset,memoria + (frameBuscado*tamanioDePagina) ,tamanioDePagina);
-                    
-                    unOffset +=tamanioDePagina;
+              memcpy(espacioAuxiliar + unOffset,memoria + (frameBuscado*tamanioDePagina) ,tamanioDePagina);
+              
+              nroPagAux++;
 
-                    nroPagAux++;    
-                }
+              unOffset +=tamanioDePagina ;
+           }
+           
+           int offsetAux = direccionLogicaBuscada - ((paginaInicioEscritura-1)*tamanioDePagina);
+           
+           memcpy(espacioAuxiliar + offsetAux,loQueQuierasEscribir ,tamanio);
 
-                offsetInicioAlloc = (dirAllocActual) - ((paginaActual-1) * tamanioDePagina) + HEAP_METADATA_SIZE;
-
-                memcpy(espacioAuxiliar + offsetInicioAlloc, loQueQuierasEscribir , tamanio);
-
-                nroPagAux = paginaActual;
-                
-                unOffset =0;
-                
-                while(nroPagAux<=paginaFinDelAlloc){
-                    frameBuscado = getFrameDeUn(idProcess, nroPagAux);
-                       
-                    memcpy(memoria + (frameBuscado*tamanioDePagina) ,espacioAuxiliar + unOffset ,tamanioDePagina);
-                    mandarPaginaAgonza(idProcess ,frameBuscado, nroPagAux);
-
-                    if( nroPagAux >= paginaInicioEspacio ){ 
-                        setPaginaAsModificado(idProcess,nroPagAux); 
-                    }
-                    
-                    unOffset +=tamanioDePagina;
-
-                    nroPagAux++;    
-                }
-            }
             
+            nroPagAux = paginaInicioEscritura;
+            unOffset =0;
+            while (nroPagAux <= paginaFinEscritura)
+           {
+              int frameBuscado = getFrameDeUn(idProcess, nroPagAux);
+                       
+              memcpy(memoria + (frameBuscado*tamanioDePagina),espacioAuxiliar + unOffset ,tamanioDePagina);
+              mandarPaginaAgonza(idProcess ,frameBuscado, nroPagAux);
+              
+              nroPagAux++;
+
+              unOffset +=tamanioDePagina ;
+           }
+
+           free(espacioAuxiliar);
+           
             pthread_mutex_unlock(&memory_mutex);
             return 1;
         }
-        else
-        {
-            paginaActual = (dirAllocActual/ tamanioDePagina) + 1 ;
-            
-            int frameBuscado = getFrameDeUn(idProcess, paginaActual);
 
-            if(paginaActual == (((dirAllocActual + HEAP_METADATA_SIZE)/ tamanioDePagina) + 1)){
-                int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
-
-                int offset= (frameBuscado*tamanioDePagina) + posicionNextAllocDentroDelFrame;
-
-                //offsetNextAllocAnterior = offset;
-
-                memcpy(&dirAllocActual, memoria + offset, sizeof(uint32_t));
-
-                int variablePrueba = 0;
-
-                memcpy(&variablePrueba, memoria + offset - sizeof(uint32_t), sizeof(uint32_t));
-
-                log_info(logger,"EN memwrite---------dirAllocActual en el if:%d",dirAllocActual);
-                log_info(logger,"EN memwrite---------variablePrueba en el if:%d",variablePrueba);
-
-            }else{
-                void* paginasAuxiliares = malloc(tamanioDePagina*2);
-
-                memcpy(paginasAuxiliares, memoria + frameBuscado*tamanioDePagina, tamanioDePagina);
-
-                frameBuscado = getFrameDeUn(idProcess, paginaActual + 1);
-
-                memcpy(paginasAuxiliares + tamanioDePagina, memoria + frameBuscado*tamanioDePagina, tamanioDePagina);
-
-                int posicionNextAllocDentroDelFrame = (dirAllocActual + sizeof(uint32_t)) - ((paginaActual-1) * tamanioDePagina);
-
-                memcpy(&dirAllocActual, paginasAuxiliares + posicionNextAllocDentroDelFrame, sizeof(uint32_t));
-
-                log_info(logger,"EN memwrite---------dirAllocActual en el else:%d",dirAllocActual);
-
-                free(paginasAuxiliares);
-            }
-
-        }
-
-    }
+    
     pthread_mutex_unlock(&memory_mutex);
     log_info(logger,"No se ha podido realizar la escritura");
     return MATE_WRITE_FAULT;
@@ -1590,9 +1545,9 @@ void seleccionClockMejorado(int idProcess){
 
     int frameFinal = tamanioDeMemoria/tamanioDePagina;
 
-    punteroFrameClock++;
-
-    while(frameNoEncontrado && frameInicial!=punteroFrameClock){
+    //punteroFrameClock++;
+    log_warning(logger,"el valor del puntero de clock al entrar es de %d",punteroFrameClock);
+    do{
 
         if(punteroFrameClock>= frameFinal){
             punteroFrameClock =0;
@@ -1659,7 +1614,7 @@ void seleccionClockMejorado(int idProcess){
             
             punteroFrameClock++;
         }
-    }
+    }while(frameNoEncontrado && frameInicial!=punteroFrameClock);
 
     while(frameNoEncontrado ){
 
@@ -1959,7 +1914,7 @@ TLB* new_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame){
 
 void replace_entrada(TLB* new_instance){
     if (string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_REEMPLAZO_TLB"), "FIFO")){    
-        log_info(logger, "Reemplazo por FIFO");
+        log_info(logger, "TLB: Reemplazo por FIFO");
         TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_fifo_tlb);
         log_info(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
         log_info(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
@@ -1971,10 +1926,10 @@ void replace_entrada(TLB* new_instance){
         tlb_to_replace->lru = new_instance->lru;
 
     } else {
-        log_info(logger, "Reemplazo por LRU");
+        log_info(logger, "TLB: Reemplazo por LRU");
         TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_lru_tlb);
-        log_info(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
-        log_info(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
+        log_info(logger, "TLB: Entrada Reemplazada: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
+        log_info(logger, "TLB: Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
 
         tlb_to_replace->pid = new_instance->pid;
         tlb_to_replace->pagina = new_instance->pagina;

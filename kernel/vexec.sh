@@ -18,5 +18,5 @@ fi
 FILE=kernel.out
 make $FILE
 if test -f "./$FILE"; then
-    valgrind --tool=memcheck --leak-check=yes --show-possibly-lost=no --show-reachable=no --num-callers=20 ./$FILE
+    valgrind --tool=memcheck --leak-check=yes --show-possibly-lost=no --show-reachable=no --num-callers=20 --log-file="valgtind.log" ./$FILE
 fi
