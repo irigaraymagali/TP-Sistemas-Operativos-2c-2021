@@ -91,6 +91,7 @@ void inicializar_semaforos(){
     sem_init(&sem_procesamiento_lleno,1,0);
     sem_init(&sem_hay_bloqueados,1,0);
     sem_init(&hay_bloqueados_para_deadlock,1,0);
+
 }
 
 
@@ -346,6 +347,8 @@ void mate_close(int id_carpincho, int fd){
         list_remove_by_condition(blocked, es_el_carpincho);        
         //list_remove_and_destroy_by_condition(suspended_blocked, es_el_carpincho, liberar_carpincho); 
         pthread_mutex_unlock(&sem_cola_suspended_blocked);
+
+        sem_post(&sem_grado_multiprogramacion_libre);
 
         payload = _serialize(sizeof(int), "%d", CERRADO_POR_DEADLOCK);
 
@@ -999,6 +1002,7 @@ void exec_a_exit(int id_carpincho, int fd){
 
     sem_post(&(liberar_CPU[cpu_carpincho_eliminado])); 
     sem_post(&sem_grado_multiprogramacion_libre);
+
     int valor;
     sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor);
     log_info(logger,"el grado de multiprocesamiento libre es: %d", valor);
@@ -1033,7 +1037,6 @@ void block_a_ready(data_carpincho *carpincho_a_ready){
 
     pthread_mutex_unlock(&sem_cola_blocked);
     pthread_mutex_unlock(&sem_cola_ready);    
-
 
     carpincho_a_ready->estado = READY;
     sem_post(&cola_ready_con_elementos);
@@ -1429,7 +1432,6 @@ void detectar_deadlock(){
         log_info(logger,"estoy antes del sleep, dentro de detectar deadlock");
         sleep(tiempo_deadlock/1000);
         log_info(logger,"estoy despues del sleep, dentro de detectar deadlock");
-
 
         agregando_a_lista_posible_deadlock();
 
