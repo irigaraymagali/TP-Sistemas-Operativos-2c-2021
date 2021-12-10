@@ -38,6 +38,7 @@ typedef struct dispositivo_io
     int duracion;
     bool en_uso;
     t_queue *en_espera; 
+    int id;
 } dispositivo_io;
 
 typedef struct tiempo
@@ -133,9 +134,10 @@ sem_t sem_procesamiento_lleno;
 sem_t sem_hay_bloqueados;
 sem_t hay_bloqueados_para_deadlock;
 sem_t hay_carpinchos_pidiendo_io;
-    sem_t liberar_CPU[1000];
-    sem_t CPU_libre[1000];
-    sem_t usar_CPU[1000];
+sem_t liberar_CPU[1000];
+sem_t CPU_libre[1000];
+sem_t usar_CPU[1000];
+sem_t dispositivo_sem[10];
 
     pthread_t hilo_CPU[1000]; // gonza -> nos va a pasar algo parecido que con los semaforos
 

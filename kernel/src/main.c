@@ -546,6 +546,7 @@ bool es_igual_dispositivo(mate_io_resource nombre_dispositivo, void *dispositivo
 } 
 
 void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
+
     char *nombre_dispositivo = (char *) nombre_io;
 
     log_info(logger, "El carpincho %d hizo MATE CALL IO", id_carpincho);
@@ -571,17 +572,34 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
             return dispositivo_encontrado;
     }
 
-
     dispositivo_io *dispositivo_pedido;
     dispositivo_pedido = encontrar_dispositivo((char*)nombre_io);
-    
-   // log_info(logger, "Llego hasta acá y en_uso es %d", dispositivo_pedido->en_uso );     
-    bool estado_dispositivo;
-    //pthread_mutex_lock(&sem_io_uso);
-    estado_dispositivo = dispositivo_pedido->en_uso;
-    //pthread_mutex_unlock(&sem_io_uso);
 
-    if(estado_dispositivo){
+
+    if(dispositivo_pedido->en_uso == 1){
+        log_info(logger, "El dispositivo IO que pidio el carpincho %d esta en uso, lo mete en la cola para esperar", carpincho->id);     
+        pthread_mutex_lock(&sem_cola_io);
+        queue_push(dispositivo_pedido->en_espera, (void *)carpincho);  
+        pthread_mutex_unlock(&sem_cola_io);
+    }
+    else{
+
+    }
+
+    sem_wait(&dispositivo_sem[dispositivo_pedido->id]);
+    
+    dispositivo_pedido->en_uso = true;
+    sleep((dispositivo_pedido->duracion)/1000);
+    log_info(logger, "el carpincho %d termino de usar el dispositivo IO",carpincho->id);
+    
+    sem_post(&dispositivo_sem[dispositivo_pedido->id]);
+    block_a_ready(carpincho);
+    
+    
+
+
+
+   /* if(dispositivo_pedido->en_uso == 1){
         log_info(logger, "El dispositivo IO que pidio el carpincho %d esta en uso, lo mete en la cola para esperar", carpincho->id);     
         pthread_mutex_lock(&sem_cola_io);
         queue_push(dispositivo_pedido->en_espera, (void *)carpincho);  
@@ -589,7 +607,7 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     }
     else{
         asignar_dispotivo_io(carpincho, dispositivo_pedido);
-    }
+    }*/
 
 }
 
@@ -639,8 +657,11 @@ void crear_estructura_dispositivo(){
             dispositivo->duracion = atoi(duraciones_io[i]);
             dispositivo->en_uso = false;
             dispositivo->en_espera = queue_create(); 
+            dispositivo->id=i;
 
             list_add(lista_dispositivos_io, dispositivo);
+
+            sem_init(&(dispositivo_sem[i]), 0, 1);    
         }
 }
 
