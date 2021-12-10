@@ -610,7 +610,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             nuevaPagina->bitModificado = 0;
             nuevaPagina->bitPresencia = 1;
             nuevaPagina->bitUso=1;
-            log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
+            log_info(logger,"se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
             pthread_mutex_lock(&lru_mutex);
             lRUACTUAL++;
             nuevaPagina->lRU = lRUACTUAL;
@@ -905,6 +905,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         if(tempPagina->bitPresencia==0){
             utilizarAlgritmoDeAsignacion(processId);
             tempPagina->frame = getNewEmptyFrame(processId);
+            tempPagina->bitModificado=0;
             log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",tempPagina->frame,tempPagina->pagina,processId);
             int pay_len = 2*sizeof(int);
             void* payload = _serialize(pay_len, "%d%d", processId, mayorNroDePagina); 
@@ -1590,9 +1591,9 @@ void seleccionClockMejorado(int idProcess){
 
     int frameFinal = tamanioDeMemoria/tamanioDePagina;
 
-    punteroFrameClock++;
+    //punteroFrameClock++;
 
-    while(frameNoEncontrado && frameInicial!=punteroFrameClock){
+    do{
 
         if(punteroFrameClock>= frameFinal){
             punteroFrameClock =0;
@@ -1659,7 +1660,7 @@ void seleccionClockMejorado(int idProcess){
             
             punteroFrameClock++;
         }
-    }
+    }while(frameNoEncontrado && frameInicial!=punteroFrameClock);
 
     while(frameNoEncontrado ){
 
