@@ -1040,17 +1040,17 @@ void suspender(){
 
         sem_wait(&sem_procesamiento_lleno);
 
-        log_info(logger, "CHEQUANDO CONDICIONES PARA SUSPENDER");
+        log_info(logger, "CHEQUEANDO CONDICIONES PARA SUSPENDER");
 
         data_carpincho *carpincho_a_suspender; 
 
         int valor2;
         int valor1;
 
-        sem_getvalue(&sem_hay_bloqueados, &valor1);
-        log_info(logger,"Chequeando: hay bloqueados = %d", valor1+1); //+1 porque le hizo un wait recien
-        sem_getvalue(&hay_estructura_creada, &valor2);
-        log_info(logger,"Chequeando: hay estructura = %d", valor2);
+      //  sem_getvalue(&sem_hay_bloqueados, &valor1);
+       // log_info(logger,"Chequeando: hay bloqueados = %d", valor1+1); //+1 porque le hizo un wait recien
+      //  sem_getvalue(&hay_estructura_creada, &valor2);
+      //  log_info(logger,"Chequeando: hay estructura = %d", valor2);
 
         int long_blocked;
         int long_entrantes;
@@ -1108,8 +1108,11 @@ void suspender(){
             sem_post(&sem_grado_multiprocesamiento_libre);
             sem_post(&sem_grado_multiprogramacion_libre); 
             free(payload); 
+        } 
+        else{
+          log_info(logger, "NO se dieron las condiciones para suspender");  
         }
-        log_info(logger, "No se dieron las condiciones para susupender");
+        
     }
      
 }
