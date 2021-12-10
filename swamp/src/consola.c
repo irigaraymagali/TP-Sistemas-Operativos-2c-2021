@@ -86,7 +86,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             log_info(log_file, "Memoria solicita guardar la pagina %d del proceso %d en swap.", pagina, proceso);
 
             int resultado = guardar_pagina(proceso, pagina, contenido);
-            void* resultado_a_enviar = _serialize(swap_page_size, "%d", resultado);
+            void* resultado_a_enviar = _serialize(sizeof(int), "%d", resultado);
             if(resultado) {
                 sleep(retardo_swamp);
             }
@@ -136,7 +136,7 @@ void consola(t_mensaje* recibido, int socket_conexion) {
             }
 
             else { // No entra nunca
-                void* codigo_error = _serialize(swap_page_size, "%d", 0);
+                void* codigo_error = _serialize(sizeof(int), "%d", 0);
                 if (_send_message(socket_conexion, "SWP", MEMORY_RECV_SWAP_SEND, codigo_error, sizeof(int), log_file)) { // Estoy mandando n bytes(n = tamaño pagina + 2) ya que obtener_pagina devuelve la pagina con el '\0' al final y en el send reservo otro byte mas para el mismo caracter. Anoto esto por las dudas de que se lea/escriba basura en un futuro.
                     log_info(log_file, "Pagina %d del proceso %d enviada correctamente.", pagina, proceso);
                 }
