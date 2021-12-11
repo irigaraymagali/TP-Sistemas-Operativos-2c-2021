@@ -124,8 +124,8 @@ int mate_sem_init(mate_instance *lib_ref, mate_sem_name sem, unsigned int value)
     log_info(logger, "se pidió un MATE SEM INIT");
     mate_inner_structure* estructura_interna = convertir_a_estructura_interna(lib_ref);
     log_info(logger, "El Carpincho con id %d pidió inicializar al Semaforo %s con valor %d", estructura_interna->id, sem, value);    
+    free(estructura_interna->semaforo);
     string_append(&estructura_interna->semaforo, (char*) sem);
-    // free(estructura_interna->semaforo);
     // estructura_interna->semaforo = string_from_format("%s", sem);
     estructura_interna->valor_semaforo = value; 
     return conexion_con_backend(MATE_SEM_INIT, estructura_interna);    
