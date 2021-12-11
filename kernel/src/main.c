@@ -8,7 +8,7 @@ int main(int argc, char ** argv){
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
     semaforos_carpinchos = list_create(); // crear lista para ir guardando los semaforos
-    hilos_CPU = list_create(); // crear lista para ir guardando los hilos cpus
+   // hilos_CPU = list_create(); // crear lista para ir guardando los hilos cpus
     lista_dispositivos_io = list_create(); // crear lista para ir guardando los dispositivios io
 
     logger = log_create("./cfg/kernel.log", "[Kernel]", true, LOG_LEVEL_INFO);
@@ -28,8 +28,8 @@ int main(int argc, char ** argv){
     pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
     pthread_t planficador_mediano_plazo;
     pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); 
-    //pthread_t deteccion_deadlock;
-    //pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
+    pthread_t deteccion_deadlock;
+    pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
     
     _start_server(puerto_escucha, handler, logger);
    
@@ -37,19 +37,6 @@ int main(int argc, char ** argv){
     pthread_join ( planficador_corto_plazo , NULL ) ;
     pthread_join ( planficador_mediano_plazo , NULL ) ;
     //pthread_join ( deteccion_deadlock , NULL ) ;    
-
-
-    int cant_carpinchos = list_size(lista_carpinchos);
-    log_info(logger, "estoy antes del if para liberar");
-    if(cant_carpinchos == 0){
-    log_info(logger, "Liberando");
-    free_memory();
-    pthread_cancel(planficador_largo_plazo);
-    pthread_cancel(planficador_corto_plazo);
-    pthread_cancel(planficador_mediano_plazo);   
-
-    return EXIT_SUCCESS;     
-    }
 
 }
 
@@ -133,33 +120,31 @@ void crear_hilos_CPU(){
 
 
 void free_memory(){
-    
+   /* 
     void remove_semaforos_carpinchos(void* elem){
         semaforo *semaforo_borrar = (semaforo *) elem;
         queue_destroy_and_destroy_elements(semaforo_borrar->en_espera, free);
     }
-    
+    */
     config_destroy(config);     
     log_destroy(logger);
 
-	list_destroy_and_destroy_elements(lista_carpinchos, free); 
-    list_destroy_and_destroy_elements(hilos_CPU, free);
-    list_destroy_and_destroy_elements(semaforos_carpinchos, remove_semaforos_carpinchos);
-    list_destroy_and_destroy_elements(semaforos_carpinchos, free);
-    list_destroy_and_destroy_elements(ready, free);
-    list_destroy_and_destroy_elements(exec, free);
-    list_destroy_and_destroy_elements(exit_list, free);
-    list_destroy_and_destroy_elements(blocked, free);
-    list_destroy_and_destroy_elements(suspended_blocked, free);
-    list_destroy_and_destroy_elements(lista_dispositivos_io, free);
-    list_destroy_and_destroy_elements(lista_posibles, free);
-    list_destroy_and_destroy_elements(lista_conectados, free);
-    list_destroy_and_destroy_elements(ciclo_deadlock, free);
+	list_destroy_and_destroy_elements(lista_carpinchos, liberar_carpincho); 
+  //  list_destroy_and_destroy_elements(semaforos_carpinchos, remove_semaforos_carpinchos);
+    list_destroy_and_destroy_elements(semaforos_carpinchos, liberar_semaforo);
+    list_destroy(ready);
+    list_destroy(exec);
+    list_destroy(blocked);
+    list_destroy(suspended_blocked);
+    list_destroy_and_destroy_elements(lista_dispositivos_io,liberar_dispositivo);
+    list_destroy(lista_posibles);
+    list_destroy(lista_conectados);
+    list_destroy(ciclo_deadlock);
 
-    queue_destroy_and_destroy_elements(new, free);
-    queue_destroy_and_destroy_elements(suspended_ready, free);
-    queue_destroy_and_destroy_elements(carpinchos_pidiendo_io, free);
-    queue_destroy_and_destroy_elements(CPU_libres, free);
+    queue_destroy(new);
+    queue_destroy(suspended_ready);
+    //queue_destroy(carpinchos_pidiendo_io);
+    queue_destroy(CPU_libres);
 
     sem_destroy(&sem_grado_multiprogramacion_libre);  
 	sem_destroy(&sem_grado_multiprocesamiento_libre); 
@@ -228,6 +213,8 @@ data_carpincho* deserializar(void* buffer){
     memcpy(&sem_len, buffer + offset, sizeof(int));
     offset += sizeof(int);
 
+    free(estructura_interna->semaforo);
+    estructura_interna->semaforo = malloc(sem_len);
     memcpy(estructura_interna->semaforo, buffer + offset, sem_len);
     offset += sem_len;
     estructura_interna->semaforo[sem_len] = '\0';
@@ -238,6 +225,8 @@ data_carpincho* deserializar(void* buffer){
     memcpy(&io_len, buffer + offset, sizeof(int));
     offset += sizeof(int);
 
+    free(estructura_interna->dispositivo_io);
+    estructura_interna->dispositivo_io = malloc(io_len);
     memcpy(estructura_interna->dispositivo_io, buffer + offset, io_len);
     estructura_interna->dispositivo_io[io_len] = '\0';
 
@@ -308,7 +297,7 @@ void mate_init(int fd){
     }
     else{
         log_info(logger, "El módulo memoria no pudo crear la estructura");
-        list_destroy(carpincho->semaforos_retenidos);
+        //list_destroy(carpincho->semaforos_retenidos);
         free(carpincho);
     }
     id_carpincho += 2; 
@@ -349,7 +338,7 @@ void mate_close(int id_carpincho, int fd){
 
         pthread_mutex_lock(&sem_cola_blocked);
         list_remove_by_condition(blocked, es_el_carpincho);       
-       // list_remove_and_destroy_by_condition(blocked, es_el_carpincho, liberar_carpincho);
+        list_remove_and_destroy_by_condition(blocked, es_el_carpincho, liberar_carpincho);
         pthread_mutex_unlock(&sem_cola_blocked);
 
         sem_post(&sem_grado_multiprogramacion_libre);
@@ -378,7 +367,7 @@ void mate_close(int id_carpincho, int fd){
         
         pthread_mutex_lock(&sem_cola_suspended_blocked);
         list_remove_by_condition(blocked, es_el_carpincho);        
-        //list_remove_and_destroy_by_condition(suspended_blocked, es_el_carpincho, liberar_carpincho); 
+        list_remove_and_destroy_by_condition(suspended_blocked, es_el_carpincho, liberar_carpincho); 
         pthread_mutex_unlock(&sem_cola_suspended_blocked);
 
         sem_post(&sem_grado_multiprogramacion_libre);
@@ -397,7 +386,9 @@ void liberar_carpincho(void *carpincho){
     
     data_carpincho * aux = (data_carpincho *) carpincho;
     if(aux != NULL){
-        list_destroy(aux->semaforos_retenidos);
+        
+        list_destroy(aux->semaforos_retenidos); 
+    
         if(aux->semaforo != NULL){
             free(aux->semaforo);
         }
@@ -407,6 +398,26 @@ void liberar_carpincho(void *carpincho){
     }
 }
 
+void liberar_dispositivo(void *dispositivo){
+    
+    dispositivo_io * aux = (dispositivo_io *) dispositivo;
+    if(aux != NULL){
+        free(aux->nombre);
+        queue_destroy(aux->en_espera);
+        free(aux);
+    }
+}
+
+void liberar_semaforo(void *semaforo_a_borrar){
+   
+    semaforo* otro;
+    otro = (semaforo *) semaforo_a_borrar;
+    if(otro != NULL){
+        free(otro->nombre);
+        queue_destroy(otro->en_espera);
+        free(otro);
+    }
+}
 
 //////////////// FUNCIONES SEMAFOROS ///////////////////
 
@@ -446,8 +457,6 @@ void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo,
         log_info(logger, "Se inicializó el semáforo %s", nombre_semaforo);   
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger);     
         free(payload);    
-
-        //free(semaforo_nuevo);
     }
 }
 
@@ -711,11 +720,19 @@ void crear_estructura_dispositivo(){
 
             sem_init(&(dispositivo_sem[i]), 0, 1);    
 
-            //free(dispositivo);
         }
 
-    free(duraciones_io);
-    free(dispositivos_io);
+   for (int i = 0; dispositivos_io[i] != NULL; i++)
+            {
+                free(dispositivos_io[i]);
+            }
+            free(dispositivos_io);
+
+     for (int i = 0; duraciones_io[i] != NULL; i++)
+            {
+                free(duraciones_io[i]);
+            }
+            free(duraciones_io);
 }
 
 int contar_elementos(char** elementos) {
@@ -824,6 +841,13 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
         free(respuesta_memoria_serializada);
     }
     free(payload);
+    free_t_mensaje(buffer);
+}
+
+void free_t_mensaje(t_mensaje* mensaje) {
+    free(mensaje->identifier);
+    free(mensaje->payload);
+    free(mensaje);
 }
 
 void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, int fd){
@@ -919,11 +943,12 @@ void entrantes_a_ready(){
 void ready_a_exec(){  
 
     int valor;
-    void *payload;
+    
 
     data_carpincho *carpincho_a_mover;
 
     while(1){ 
+        void *payload;
 
         sem_wait(&cola_ready_con_elementos);   
 
@@ -971,8 +996,10 @@ void ready_a_exec(){
             sem_post(&sem_procesamiento_lleno);
         }
         log_info(logger,"ya terminó de pasar el carpincho a exec y avisar a la lib");
+
+        free(payload);
     }
-    free(payload);
+    
 }
 
 void exec_a_block(int id_carpincho){
@@ -1040,7 +1067,7 @@ void exec_a_exit(int id_carpincho, int fd){
     pthread_mutex_lock(&sem_cola_exec); 
     list_remove_by_condition(exec, es_el_mismo);
     
-    //list_remove_and_destroy_by_condition(exec, es_el_mismo, liberar_carpincho); 
+    list_remove_and_destroy_by_condition(exec, es_el_mismo, liberar_carpincho); 
 	pthread_mutex_unlock(&sem_cola_exec);
 
     sem_post(&(liberar_CPU[cpu_carpincho_eliminado])); 
@@ -1054,10 +1081,12 @@ void exec_a_exit(int id_carpincho, int fd){
     log_info(logger, "El carpincho %d paso a EXIT", id_carpincho_eliminado);
     log_info(logger, "Se liberó el CPU %d, se le va a responder al %d", cpu_carpincho_eliminado, fd );
 
-    payload = _serialize(sizeof(int), "%d", 0);
-    _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
+    void* payload2 = _serialize(sizeof(int), "%d", 0);
+    _send_message(fd, ID_KERNEL, 2, payload, sizeof(int), logger);
     
     free(payload);
+     free(payload2);
+    free_t_mensaje(buffer);
 }
 
 bool sonElMismoC(data_carpincho *carpincho_lista, data_carpincho * carpincho_a_ready){
@@ -1282,7 +1311,12 @@ int calcular_milisegundos(){
     tiempo_calculado.milisegundos = atoi(tiempo_formateado[2]);
 
     free(tiempo_sacado);
-    free(tiempo_formateado);
+
+    for (int i = 0; tiempo_formateado[i] != NULL; i++)
+            {
+                free(tiempo_formateado[i]);
+            }
+            free(tiempo_formateado);
 
     return tiempo_calculado.minutos * 60000 + tiempo_calculado.segundos * 60 + tiempo_calculado.milisegundos;
 }
@@ -1438,7 +1472,7 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 memcpy(origin_memwrite, payload + offset, ptr_len);
 
                 mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);    
-                //free(origin_memwrite); 
+                free(origin_memwrite); 
             break;  
             default:
                 log_error(logger, "comando incorrecto");

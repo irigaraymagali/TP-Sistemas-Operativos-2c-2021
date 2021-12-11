@@ -75,11 +75,10 @@ typedef struct data_carpincho // la data que le importa tener al backend, hacer 
 t_queue* new;
 t_list* ready;
 t_list*  exec;
-t_list*  exit_list;
 t_list* blocked;
 t_list* suspended_blocked;
 t_queue* suspended_ready;
-t_queue* carpinchos_pidiendo_io;
+//t_queue* carpinchos_pidiendo_io;
 
 t_queue* CPU_libres;
     
@@ -196,3 +195,6 @@ void port_fixer();
 
 void asignar_dispotivo_io(data_carpincho* carpincho, dispositivo_io* dispositivo_pedido);
 
+void free_t_mensaje(t_mensaje* mensaje);
+void liberar_semaforo(void *semaforo_a_borrar);
+void liberar_dispositivo(void *dispositivo);
