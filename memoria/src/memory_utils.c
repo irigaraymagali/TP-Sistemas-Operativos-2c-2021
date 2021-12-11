@@ -196,6 +196,7 @@ int memalloc(int processId, int espacioAReservar){
         temp->lastHeap = tempLastHeap + espacioAReservar;
 
         free(nuevoHeap);
+        memoryDump();
         return (tempLastHeap);    
     }else
     {
@@ -920,6 +921,12 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
         if(tempPagina->bitPresencia == 1){
             log_info(logger, "Hubo un TLB HIT: Devuelvo el Frame %d con exito", tlb->frame);
+            tempPagina->bitUso =1;
+            pthread_mutex_lock(&lru_mutex);
+            lRUACTUAL++;
+            tempPagina->lRU = lRUACTUAL;
+            pthread_mutex_unlock(&lru_mutex);
+
             return tlb->frame;
         }
     } else {
@@ -1794,7 +1801,23 @@ void liberarFrame(uint32_t nroDeFrame){
         
     list_iterator_destroy(iterator);
 }
+void memoryDump(){
+    int frameFinal = tamanioDeMemoria / tamanioDePagina;
+    int frameInicial =0 ;
 
+    while (frameFinal > frameInicial)
+    {
+        Pagina *unaPagina =getMarcoDe(frameInicial);
+
+        int pid = getProcessIdby(frameInicial);
+        
+        log_info(logger,"el memory dump dio id:%d frame:%d Pag:%d",pid,unaPagina->frame,unaPagina->pagina);
+        
+        frameInicial++;
+    }
+    
+
+}
 void mandarPaginaAgonza(int processID ,uint32_t frameDeMemoria, uint32_t nroDePagina){
     int pay_len = 3*sizeof(int)+tamanioDePagina;
     void* paginaAEnviar = malloc(tamanioDePagina);
