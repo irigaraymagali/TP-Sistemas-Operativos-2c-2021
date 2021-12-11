@@ -217,6 +217,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             log_info(logger, "Comenzando comando MATE_MEMWRITE");
             to_write = deserialize_mem_write(&pid, &dir_logica, &size, payload);
             iresp = memwrite(pid, dir_logica, to_write, size);
+            free(to_write);
             break;
         case MATE_CLOSE:
             log_info(logger, "Comenzando comando MATE_CLOSE");
