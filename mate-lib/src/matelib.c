@@ -196,12 +196,12 @@ mate_pointer mate_memalloc(mate_instance *lib_ref, int size)
     else{
         int pointer;
         t_mensaje* buffer;
-        log_info(logger, "Pidiendo a BACKEND el MEMALLOC pedida por el Carpincho %d", estructura_interna->id);
+        log_info(logger, "Pidiendo el MEMALLOC de size %d solicitado por el carpincho %d", size, estructura_interna->id);
         buffer = _receive_message(socket_backend, logger);
         close(socket_backend);
 
         memcpy(&pointer, buffer->payload, sizeof(int));
-        log_info(logger, "El resultado del MEMALLOC pedida por el Carpincho %d fue %d", estructura_interna->id, pointer );        
+        log_info(logger, "El resultado del MEMALLOC pedido por el carpincho %d fue %d", estructura_interna->id, pointer);        
         free(buffer->identifier);
         free(buffer->payload);
         free(buffer);
