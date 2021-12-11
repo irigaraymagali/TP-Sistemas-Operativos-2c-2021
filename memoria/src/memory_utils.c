@@ -1452,16 +1452,17 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
 }
 
 void utilizarAlgritmoDeAsignacion(int processID){
-    pthread_mutex_lock(&list_pages_mutex);
     if (string_equals_ignore_case(config_get_string_value(config,"ALGORITMO_REEMPLAZO_MMU"), "LRU"))
     {
        seleccionLRU(processID);
     }
     else
     {
-       seleccionClockMejorado(processID);
+        pthread_mutex_lock(&list_pages_mutex);
+        seleccionClockMejorado(processID);
+        pthread_mutex_unlock(&list_pages_mutex);
+
     }
-    pthread_mutex_unlock(&list_pages_mutex);
 }
 
 void seleccionLRU(int processID){
@@ -1472,6 +1473,7 @@ void seleccionLRU(int processID){
 
     if (tipoDeAsignacionDinamica)
     {
+        pthread_mutex_lock(&list_pages_mutex);
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
         while (list_iterator_has_next(iterator)) {
             TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
@@ -1491,11 +1493,12 @@ void seleccionLRU(int processID){
             list_iterator_destroy(iterator2);
         }
         list_iterator_destroy(iterator);
+        pthread_mutex_unlock(&list_pages_mutex);
     }
     else
     {
         TablaDePaginasxProceso* temp = get_pages_by(processID);
-
+        pthread_mutex_lock(&list_pages_mutex);
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
         
 
@@ -1513,6 +1516,8 @@ void seleccionLRU(int processID){
         }
         
         list_iterator_destroy(iterator2);
+        pthread_mutex_unlock(&list_pages_mutex);
+
     }
 
     //falta una parte que le mande el mendaje a gonza
