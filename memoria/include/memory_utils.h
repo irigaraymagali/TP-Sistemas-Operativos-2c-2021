@@ -155,6 +155,8 @@ int cantidadDeFramesEnMemoriaPor(int processID);
 
 int suspend_process(int pid);
 
+void memoryDump();
+
 void* get_minimum_fifo_tlb(void* actual, void* next);
 
 void delete_entrada_tlb(uint32_t pid, uint32_t page, uint32_t frame);
