@@ -773,7 +773,7 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
         _send_message(socket_memoria, ID_KERNEL, MATE_MEMREAD,payload,sizeof(int) * 3,logger);   
         buffer = _receive_message(socket_memoria, logger);
         log_info(logger,"mandando a matelib la respuesta del memread :)");
-        _send_message(fd, ID_KERNEL, 1, buffer->payload, sizeof(int), logger);
+        _send_message(fd, ID_KERNEL, 1, buffer->payload, size, logger);
         close(socket_memoria);
     }
     else{
