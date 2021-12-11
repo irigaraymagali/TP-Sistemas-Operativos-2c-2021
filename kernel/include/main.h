@@ -188,8 +188,8 @@ void asignar_hilo_CPU(data_carpincho *carpincho);
 void ejecuta(void *id_cpu);
 
 void detectar_deadlock();
-bool formar_ciclo();
-void solucionar_deadlock();
+int formar_ciclo();
+void solucionar_deadlock(t_list* ciclo_deadlock);
 void liberar_carpincho(void *carpincho);
 
 void port_fixer();
