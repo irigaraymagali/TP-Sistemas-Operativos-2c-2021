@@ -370,7 +370,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
     }
     
     int dirAllocFinal = pages->lastHeap;
-    if (size >= dirAllocFinal){
+    if (dir_logica >= dirAllocFinal){
         log_error(logger, "La Longitud de lectura recibida es invalida.");
         return err_msg;
     }
@@ -479,7 +479,6 @@ void* memread(uint32_t pid, int dir_logica, int size){
     }
 
     log_info(logger, "Lectura realizada con exito");
-
     // int algoint;
     // char* algo = string_new();
     // memcpy(&algoint, read, size);
