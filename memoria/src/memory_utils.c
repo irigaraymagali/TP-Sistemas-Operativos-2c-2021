@@ -180,10 +180,10 @@ int memalloc(int processId, int espacioAReservar){
                 int framenecesitado = getFrameDeUn(processId, nroPagAux);
                 
                 memcpy(memoria + (framenecesitado*tamanioDePagina), espacioAuxiliar + offsetEspacioAux, tamanioDePagina);
-                mandarPaginaAgonza(processId ,framenecesitado, nroPagAux);
                 
                 if((nroPagAux-1)*tamanioDePagina < inicioDelEspacio || finDelEspacio < (nroPagAux*tamanioDePagina)-1 ){
                     setPaginaAsModificado(processId,nroPagAux);
+                    mandarPaginaAgonza(processId ,framenecesitado, nroPagAux);
                 }
                 //log_info(logger,"EN memwrite---------dirAllocActual:%d",);
                 
@@ -1425,6 +1425,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
                        
               memcpy(memoria + (frameBuscado*tamanioDePagina),espacioAuxiliar + unOffset ,tamanioDePagina);
               mandarPaginaAgonza(idProcess ,frameBuscado, nroPagAux);
+              setPaginaAsModificado(idProcess,nroPagAux);
               
               nroPagAux++;
 
@@ -1553,7 +1554,7 @@ void seleccionClockMejorado(int idProcess){
 
     //punteroFrameClock++;
     log_warning(logger,"el valor del puntero de clock al entrar es de %d",punteroFrameClock);
-    do{
+    LOOP:do{
 
         if(punteroFrameClock>= frameFinal){
             punteroFrameClock =0;
@@ -1622,7 +1623,8 @@ void seleccionClockMejorado(int idProcess){
         }
     }while(frameNoEncontrado && frameInicial!=punteroFrameClock);
 
-    while(frameNoEncontrado ){
+    if(frameNoEncontrado)
+    {do{
 
         if(punteroFrameClock>= frameFinal){
             punteroFrameClock =0;
@@ -1693,8 +1695,11 @@ void seleccionClockMejorado(int idProcess){
 
                 punteroFrameClock++;
             }
+        }while(frameNoEncontrado && frameInicial!=punteroFrameClock);
         }
-
+    if(frameInicial==punteroFrameClock){
+        goto LOOP;
+    }
 }
 
 Pagina *getMarcoDe(uint32_t nroDeFrame){
@@ -1779,7 +1784,7 @@ void liberarFrame(uint32_t nroDeFrame){
             if(paginatemp->frame == nroDeFrame){
                 paginatemp->frame = (tamanioDeMemoria/tamanioDePagina)+1;
                 paginatemp->bitPresencia = 0;
-
+                paginatemp->bitModificado=0;
                 /* if(!tipoDeAsignacionDinamica){
                 Pagina* paginaSiguienteALaUltima = malloc(sizeof(Pagina));
                 
