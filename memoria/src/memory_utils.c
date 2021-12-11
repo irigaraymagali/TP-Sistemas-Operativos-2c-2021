@@ -32,8 +32,8 @@ void initPaginacion(){
 
     /* TLB */
     max_entradas_tlb = config_get_int_value(config, "CANTIDAD_ENTRADAS_TLB");
-    retardo_hit_tlb = config_get_int_value(config, "RETARDO_ACIERTO_TLB");
-    retardo_miss_tlb = config_get_int_value(config, "RETARDO_FALLO_TLB");
+    retardo_hit_tlb = config_get_int_value(config, "RETARDO_ACIERTO_TLB") / 1000;
+    retardo_miss_tlb = config_get_int_value(config, "RETARDO_FALLO_TLB") / 1000;
     max_tlb_hit = 0;
     max_tlb_miss = 0;
     tlb_list = list_create();
