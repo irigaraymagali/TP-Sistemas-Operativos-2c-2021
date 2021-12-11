@@ -1938,8 +1938,8 @@ void replace_entrada(TLB* new_instance){
     if (string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_REEMPLAZO_TLB"), "FIFO")){    
         log_info(logger, "TLB: Reemplazo por FIFO");
         TLB* tlb_to_replace = list_get_minimum(tlb_list, get_minimum_fifo_tlb);
-        log_info(logger, "Proceso Reemplazado: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
-        log_info(logger, "Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
+        log_info(logger, "TLB: Entrada Reemplazada: Proceso %d, Pagina %d, Marco %d", tlb_to_replace->pid, tlb_to_replace->pagina, tlb_to_replace->frame);
+        log_info(logger, "TLB: Nueva Entrada: Proceso %d, Pagina %d, Marco %d", new_instance->pid, new_instance->pagina, new_instance->frame);
 
         tlb_to_replace->pid = new_instance->pid;
         tlb_to_replace->pagina = new_instance->pagina;
