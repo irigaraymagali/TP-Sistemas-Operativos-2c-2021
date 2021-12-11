@@ -28,17 +28,32 @@ int main(int argc, char ** argv){
     pthread_create(&planficador_corto_plazo, NULL, (void*) ready_a_exec, NULL);
     pthread_t planficador_mediano_plazo;
     pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); 
-    pthread_t deteccion_deadlock;
-    pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
+    //pthread_t deteccion_deadlock;
+    //pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
     
     _start_server(puerto_escucha, handler, logger);
-
+   
     pthread_join ( planficador_largo_plazo , NULL ) ;
     pthread_join ( planficador_corto_plazo , NULL ) ;
     pthread_join ( planficador_mediano_plazo , NULL ) ;
-    pthread_join ( deteccion_deadlock , NULL ) ;    
+    //pthread_join ( deteccion_deadlock , NULL ) ;    
+
+
+    int cant_carpinchos = list_size(lista_carpinchos);
+    log_info(logger, "estoy antes del if para liberar");
+    if(cant_carpinchos == 0){
+    log_info(logger, "Liberando");
+    free_memory();
+    pthread_cancel(planficador_largo_plazo);
+    pthread_cancel(planficador_corto_plazo);
+    pthread_cancel(planficador_mediano_plazo);   
+
+    return EXIT_SUCCESS;     
+    }
 
 }
+
+
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
 
@@ -112,13 +127,13 @@ void crear_hilos_CPU(){
         
         queue_push(CPU_libres, id_CPU);
 
-        // hay que ver como se hace el free de todos los id_CPU que se crean aca y se ponen en la queue
+        //free(id_CPU); --> hacerlo de todos los id_CPU que se crean aca y se ponen en la queue
 	}
 }
 
 
 void free_memory(){
-    /*
+    
     void remove_semaforos_carpinchos(void* elem){
         semaforo *semaforo_borrar = (semaforo *) elem;
         queue_destroy_and_destroy_elements(semaforo_borrar->en_espera, free);
@@ -128,15 +143,26 @@ void free_memory(){
     log_destroy(logger);
 
 	list_destroy_and_destroy_elements(lista_carpinchos, free); 
-
     list_destroy_and_destroy_elements(hilos_CPU, free);
-
     list_destroy_and_destroy_elements(semaforos_carpinchos, remove_semaforos_carpinchos);
     list_destroy_and_destroy_elements(semaforos_carpinchos, free);
+    list_destroy_and_destroy_elements(ready, free);
+    list_destroy_and_destroy_elements(exec, free);
+    list_destroy_and_destroy_elements(exit_list, free);
+    list_destroy_and_destroy_elements(blocked, free);
+    list_destroy_and_destroy_elements(suspended_blocked, free);
+    list_destroy_and_destroy_elements(lista_dispositivos_io, free);
+    list_destroy_and_destroy_elements(lista_posibles, free);
+    list_destroy_and_destroy_elements(lista_conectados, free);
+    list_destroy_and_destroy_elements(ciclo_deadlock, free);
+
+    queue_destroy_and_destroy_elements(new, free);
+    queue_destroy_and_destroy_elements(suspended_ready, free);
+    queue_destroy_and_destroy_elements(carpinchos_pidiendo_io, free);
+    queue_destroy_and_destroy_elements(CPU_libres, free);
 
     sem_destroy(&sem_grado_multiprogramacion_libre);  
 	sem_destroy(&sem_grado_multiprocesamiento_libre); 
-
     sem_destroy(&hay_estructura_creada);
     sem_destroy(&cola_ready_con_elementos);
     sem_destroy(&cola_exec_con_elementos);
@@ -144,6 +170,13 @@ void free_memory(){
     sem_destroy(&hay_bloqueados_para_deadlock);
     sem_destroy(&cola_suspended_blocked_con_elementos);
     sem_destroy(&cola_suspended_ready_con_elementos); 
+    sem_destroy(&sem_programacion_lleno); 
+    sem_destroy(& sem_procesamiento_lleno); 
+    sem_destroy(&sem_hay_bloqueados); 
+    sem_destroy(&hay_bloqueados_para_deadlock); 
+    sem_destroy(&hay_carpinchos_pidiendo_io); 
+
+    //falta: liberar_CPU[1000]; CPU_libre[1000]; usar_CPU[1000]; dispositivo_sem[10];
 
     pthread_mutex_destroy(&sem_cola_new);
     pthread_mutex_destroy(&sem_cola_ready);
@@ -152,12 +185,13 @@ void free_memory(){
     pthread_mutex_destroy(&sem_cola_suspended_blocked);
     pthread_mutex_destroy(&sem_cola_suspended_ready);
     pthread_mutex_destroy(&mutex_para_CPU);
+    pthread_mutex_destroy(&sem_cola_exit);
+    pthread_mutex_destroy(&sem_cola_io);
+    pthread_mutex_destroy(&sem_io_uso);
 
     // hacer => free a todo
     // martin => liberar memoria en todos lados
-
-    exit(EXIT_SUCCESS);
-    */ //ver despues para liberar memoria
+     //ver despues para liberar memoria
 
     exit(EXIT_SUCCESS);
 }
@@ -279,7 +313,6 @@ void mate_init(int fd){
     }
     id_carpincho += 2; 
     free(payload);
-
 }
 
 void mate_close(int id_carpincho, int fd){
@@ -413,6 +446,8 @@ void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo,
         log_info(logger, "Se inicializó el semáforo %s", nombre_semaforo);   
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger);     
         free(payload);    
+
+        //free(semaforo_nuevo);
     }
 }
 
@@ -665,7 +700,7 @@ void crear_estructura_dispositivo(){
     for(int i= 0; i < contar_elementos(dispositivos_io); i++){
 
             dispositivo_io *dispositivo;
-            dispositivo = (dispositivo_io *)malloc(sizeof(dispositivo_io)); 
+            dispositivo = (dispositivo_io *)malloc(sizeof(dispositivo_io));
             dispositivo->nombre = string_from_format("%s",dispositivos_io[i]);
             dispositivo->duracion = atoi(duraciones_io[i]);
             dispositivo->en_uso = false;
@@ -675,7 +710,12 @@ void crear_estructura_dispositivo(){
             list_add(lista_dispositivos_io, dispositivo);
 
             sem_init(&(dispositivo_sem[i]), 0, 1);    
+
+            //free(dispositivo);
         }
+
+    free(duraciones_io);
+    free(dispositivos_io);
 }
 
 int contar_elementos(char** elementos) {
@@ -1078,11 +1118,11 @@ void suspender(){
 
         data_carpincho *carpincho_a_suspender; 
 
-        int valor2;
-        int valor1;
+        //int valor2;
+        //int valor1;
 
       //  sem_getvalue(&sem_hay_bloqueados, &valor1);
-       // log_info(logger,"Chequeando: hay bloqueados = %d", valor1+1); //+1 porque le hizo un wait recien
+      //  log_info(logger,"Chequeando: hay bloqueados = %d", valor1+1); //+1 porque le hizo un wait recien
       //  sem_getvalue(&hay_estructura_creada, &valor2);
       //  log_info(logger,"Chequeando: hay estructura = %d", valor2);
 
@@ -1241,6 +1281,9 @@ int calcular_milisegundos(){
     tiempo_calculado.segundos = atoi(tiempo_formateado[1]);
     tiempo_calculado.milisegundos = atoi(tiempo_formateado[2]);
 
+    free(tiempo_sacado);
+    free(tiempo_formateado);
+
     return tiempo_calculado.minutos * 60000 + tiempo_calculado.segundos * 60 + tiempo_calculado.milisegundos;
 }
 
@@ -1394,7 +1437,8 @@ void handler( int fd, char* id, int opcode, void* payload, t_log* logger){
                 // origin_memwrite
                 memcpy(origin_memwrite, payload + offset, ptr_len);
 
-                mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);     
+                mate_memwrite(id_carpincho, origin_memwrite, dest_memwrite, size_memoria, fd);    
+                //free(origin_memwrite); 
             break;  
             default:
                 log_error(logger, "comando incorrecto");
