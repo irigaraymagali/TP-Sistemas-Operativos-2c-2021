@@ -493,6 +493,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
 } 
 
 TablaDePaginasxProceso* get_pages_by(int processID){
+    log_info(logger, "Buscando la tabla de paginas del Proceso %d", processID);
     pthread_mutex_lock(&list_pages_mutex);
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
@@ -792,7 +793,6 @@ int estaOcupadoUn(int emptyFrame, int idProcess){
             t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
             while(list_iterator_has_next(iterator2)){
                 Pagina *tempPagina = (Pagina*) list_iterator_next(iterator2);
-    
                 if(tempPagina->frame == emptyFrame ){
                     if(tipoDeAsignacionDinamica){
                     list_iterator_destroy(iterator);
@@ -834,7 +834,6 @@ int getframeNoAsignadoEnMemoria(){
 }
 
 int frameAsignado(int unFrame){
-    pthread_mutex_lock(&list_pages_mutex);
     if(todasLasTablasDePaginas != NULL){
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
         while (list_iterator_has_next(iterator)) {
@@ -856,8 +855,6 @@ int frameAsignado(int unFrame){
         }
     list_iterator_destroy(iterator);
     }
-
-    pthread_mutex_unlock(&list_pages_mutex);
     return 0;
 }
 
@@ -917,6 +914,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         tlb = fetch_entrada_tlb(processId, mayorNroDePagina);
     }
     if (tlb != NULL){
+        pthread_mutex_lock(&list_pages_mutex);
         tempPagina = (Pagina *) list_get(temp->paginas, tlb->pagina - 1);
         if(tempPagina->bitPresencia == 1){
             log_info(logger, "Hubo un TLB HIT: Devuelvo el Frame %d con exito", tlb->frame);
@@ -925,6 +923,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
             lRUACTUAL++;
             tempPagina->lRU = lRUACTUAL;
             pthread_mutex_unlock(&lru_mutex);
+            pthread_mutex_unlock(&list_pages_mutex);
 
             return tlb->frame;
         }
@@ -1181,8 +1180,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 }
 
 void deletePagina(int idProcess,int paginaActual){
-
-    TablaDePaginasxProceso* tablaDePags =get_pages_by(idProcess);
+    TablaDePaginasxProceso* tablaDePags = get_pages_by(idProcess);
     Pagina *tempPagina;
     TLB* tlb = NULL;
     if (max_entradas_tlb > 0){
@@ -1190,26 +1188,30 @@ void deletePagina(int idProcess,int paginaActual){
     }
     
     if (tlb != NULL){
+        int deleted_page = tlb->pagina;
+        pthread_mutex_lock(&list_pages_mutex);
+        Pagina* page = list_get(tablaDePags->paginas, tlb->pagina - 1);
+        delete_entrada_tlb(idProcess, paginaActual, page->frame);
         list_remove(tablaDePags->paginas, tlb->pagina - 1);
-        log_info(logger, "Deleteo la pag %d con Exito", tlb->pagina);
+        pthread_mutex_unlock(&list_pages_mutex);
+        log_info(logger, "Deleteo la pag %d con Exito", deleted_page);
         return;
     } else {
-    
-    pthread_mutex_lock(&list_pages_mutex);
-    t_list_iterator* iterator = list_iterator_create(tablaDePags->paginas);
-    
-    tempPagina = list_iterator_next(iterator);
+        pthread_mutex_lock(&list_pages_mutex);
+        t_list_iterator* iterator = list_iterator_create(tablaDePags->paginas);
+        
+        tempPagina = list_iterator_next(iterator);
 
-    while (tempPagina->pagina != paginaActual)
-    {
-       tempPagina = list_iterator_next(iterator);
-    }
-    
-    list_iterator_remove(iterator);
-    pthread_mutex_unlock(&list_pages_mutex);
-    log_info(logger, "Deleteo la pag %d con Exito", tempPagina->pagina);
-
-    list_iterator_destroy(iterator);
+        while (tempPagina->pagina != paginaActual)
+        {
+        tempPagina = list_iterator_next(iterator);
+        }
+        
+        delete_entrada_tlb(idProcess, paginaActual, tempPagina->frame);
+        list_iterator_remove(iterator);
+        pthread_mutex_unlock(&list_pages_mutex);
+        log_info(logger, "Deleteo la pag %d con Exito", tempPagina->pagina);
+        list_iterator_destroy(iterator);
     }
 }
 
@@ -1265,7 +1267,6 @@ void inicializarUnProceso(int idDelProceso){
     nuevaTablaDePaginas->paginas = list_create();
     pthread_mutex_lock(&list_pages_mutex);
     list_add(todasLasTablasDePaginas, nuevaTablaDePaginas);
-    pthread_mutex_unlock(&list_pages_mutex);
     
     if(tipoDeAsignacionDinamica){
         int nuevoFrame = getframeNoAsignadoEnMemoria();
@@ -1292,13 +1293,11 @@ void inicializarUnProceso(int idDelProceso){
         nuevaPagina->bitUso=1;
 
         list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
-
     }else{
         int paginasCargadas = 0;
 
         while (paginasCargadas != cantidadDePaginasPorProceso)
         {
-  
             if (paginasCargadas == 0)
             {
                 int nuevoFrame =getframeNoAsignadoEnMemoria();
@@ -1325,10 +1324,8 @@ void inicializarUnProceso(int idDelProceso){
                 nuevaPagina->bitPresencia =1;
                 nuevaPagina->bitModificado = 0;
 
-                
                 list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
-            }else
-            {
+            } else {
                 int nuevoFrame = getframeNoAsignadoEnMemoria();
                 //int offset = nuevoFrame * tamanioDePagina;
 
@@ -1343,7 +1340,6 @@ void inicializarUnProceso(int idDelProceso){
                 nuevaPagina->bitPresencia = 1;
                 nuevaPagina->bitModificado = 0;
 
-                
                 list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
             }
             paginasCargadas++;
@@ -1351,9 +1347,18 @@ void inicializarUnProceso(int idDelProceso){
     }
     log_info(logger, "Proceso %d inicializado con Exito", idDelProceso);
     free(nuevoHeap);
+    pthread_mutex_unlock(&list_pages_mutex);
 }
 
 int delete_process(int pid){
+    bool exist_table(void* elem){
+        if (elem == NULL){
+            return false;
+        }
+        TablaDePaginasxProceso* table = (TablaDePaginasxProceso*) elem;
+        return table->id == pid;
+    }
+
     log_info(logger, "Buscando la tabla de paginas del Proceso %d", pid);
     TablaDePaginasxProceso* table = get_pages_by(pid);
     if (table->id != pid) {
@@ -1365,9 +1370,11 @@ int delete_process(int pid){
     send_message_swamp(FINISH_PROCESS, payload, sizeof(int));
    
     free(payload);
+    pthread_mutex_lock(&list_pages_mutex);
+    log_info(logger, "Eliminando la tabla de paginas correspondiente al Proceso %d", pid);
     remove_paginas(table);
-    free(table);
-
+    list_remove_by_condition(todasLasTablasDePaginas, exist_table);
+    pthread_mutex_unlock(&list_pages_mutex);
     return 1;
 }
 
@@ -1445,22 +1452,19 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
 }
 
 void utilizarAlgritmoDeAsignacion(int processID){
-
+    pthread_mutex_lock(&list_pages_mutex);
     if (string_equals_ignore_case(config_get_string_value(config,"ALGORITMO_REEMPLAZO_MMU"), "LRU"))
     {
-       seleccionLRU( processID);
+       seleccionLRU(processID);
     }
     else
     {
        seleccionClockMejorado(processID);
     }
-    
-
-
+    pthread_mutex_unlock(&list_pages_mutex);
 }
 
 void seleccionLRU(int processID){
-
     uint32_t LRUmenor=99999; //recordar que lo que se busca es el LRU menor
     uint32_t frameVictima=0;
     uint32_t numeroDePagVictima;
@@ -1469,14 +1473,9 @@ void seleccionLRU(int processID){
     if (tipoDeAsignacionDinamica)
     {
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
-    
-        
         while (list_iterator_has_next(iterator)) {
             TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
-
-
             t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
-        
 
             while (list_iterator_has_next(iterator2))
             {
@@ -1488,12 +1487,9 @@ void seleccionLRU(int processID){
                     numeroDePagVictima = paginatemp->pagina;
                     processVictima = temp->id;
                 }
-
             }
-        
             list_iterator_destroy(iterator2);
         }
-        
         list_iterator_destroy(iterator);
     }
     else
@@ -1811,8 +1807,10 @@ void memoryDump(){
 
     while (frameFinal > frameInicial)
     {
+        pthread_mutex_lock(&list_pages_mutex);
         Pagina *unaPagina =getMarcoDe(frameInicial);
-
+        pthread_mutex_unlock(&list_pages_mutex);
+        
         int pid = getProcessIdby(frameInicial);
         
         log_info(logger,"el memory dump dio id:%d frame:%d Pag:%d",pid,unaPagina->frame,unaPagina->pagina);
