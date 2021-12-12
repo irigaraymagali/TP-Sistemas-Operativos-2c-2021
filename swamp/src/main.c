@@ -19,6 +19,77 @@ int main(int argc, char ** argv) {
     inicializar_directorios();
     inicializar_swap_files();
 
+    tipo_asignacion = 1;
+
+    // Escribir en archivos de swap
+    void* a = malloc(swap_page_size);
+    memset(a, 'a', swap_page_size);
+    void* b = malloc(swap_page_size);
+    memset(b, 'b', swap_page_size);
+    void* c = malloc(swap_page_size);
+    memset(c, 'c', swap_page_size);
+    void* x = malloc(20000);
+    memset(x, 'x', 20000);
+    guardar_pagina(0, 0, a);
+    guardar_pagina(1, 0, a);
+    guardar_pagina(2, 0, x);
+    guardar_pagina(0, 1, b);
+    guardar_pagina(1, 1, b);
+    guardar_pagina(1, 2, c);
+    guardar_pagina(0, 2, c);
+    
+    // Leer desde los archivos de swap
+    // Abro los archivos
+    char* respuesta_corta = malloc(swap_page_size);
+    char* respuesta_larga = malloc(20000);
+    int swap_file_1_fd = open("/home/utnso/tp-2021-2c-3era-es-la-vencida/swamp/swapdir/swap1.bin", O_RDWR, (mode_t)0777);
+    int swap_file_2_fd = open("/home/utnso/tp-2021-2c-3era-es-la-vencida/swamp/swapdir/swap2.bin", O_RDWR, (mode_t)0777);
+    int swap_file_3_fd = open("/home/utnso/tp-2021-2c-3era-es-la-vencida/swamp/swapdir/swap3.bin", O_RDWR, (mode_t)0777);
+    void* swap_file_1_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_1_fd, 0);
+    void* swap_file_2_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_2_fd, 0);
+    void* swap_file_3_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_3_fd, 0);
+    
+    // Leer contenido de swap1.bin
+    log_warning(log_file, "Contenido de la pagina 0 del proceso 0:");
+    memcpy(respuesta_corta, swap_file_1_map, swap_page_size);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 1 del proceso 0:");
+    memcpy(respuesta_corta, swap_file_1_map + swap_page_size, swap_page_size);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 2 del proceso 0:");
+    memcpy(respuesta_corta, swap_file_1_map + swap_page_size * 2, swap_page_size);
+    log_info(log_file, "%s", respuesta_corta);
+
+    // Leer contenido de swap2.bin
+    log_warning(log_file, "Contenido de la pagina 0 del proceso 1:");
+    memcpy(respuesta_corta, swap_file_2_map, swap_page_size);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 1 del proceso 1:");
+    memcpy(respuesta_corta, swap_file_2_map + swap_page_size, swap_page_size);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 2 del proceso 1:");
+    memcpy(respuesta_corta, swap_file_2_map + swap_page_size * 2, swap_page_size);
+    log_info(log_file, "%s", respuesta_corta);
+
+    // Leer contenido de swap3.bin
+    log_warning(log_file, "Contenido de la pagina 0 del proceso 2:");
+    memcpy(respuesta_larga, swap_file_3_map, 20000);
+    log_info(log_file, "%s", respuesta_larga);
+    
+    // Cierro estructuras
+    close(swap_file_1_fd);
+    close(swap_file_2_fd);
+    close(swap_file_3_fd);
+    munmap(swap_file_1_map, swap_file_size);
+    munmap(swap_file_2_map, swap_file_size);
+    munmap(swap_file_3_map, swap_file_size);
+    free(respuesta_corta);
+    free(respuesta_larga);
+    free(a);
+    free(b);
+    free(c);
+    free(x);
+
     // consola("TIPO_ASIGNACION ASIGNACION_FIJA", 0);
     // consola("GUARDAR_PAGINA 1 1 1111111111111111111111111111111111111111111111111111111111111111", 0);
     // consola("GUARDAR_PAGINA 1 2 2222222222222222222222222222222222222222222222222222222222222222", 0);
