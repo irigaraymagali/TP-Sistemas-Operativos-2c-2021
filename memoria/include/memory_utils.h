@@ -14,7 +14,7 @@
 #include "serialization.h"
 #include "shared_utils.h"
 
-#define CONFIG_PATH "./cfg/memoria.conf"
+#define CONFIG_PATH "./cfg/default.conf"
 
 #define FREE 1
 #define BUSY 0

@@ -2,7 +2,8 @@
     "files.associations": {
         "list.h": "c",
         "type_traits": "c",
-        "semaphore.h": "c"
+        "semaphore.h": "c",
+        "cstdlib": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }
