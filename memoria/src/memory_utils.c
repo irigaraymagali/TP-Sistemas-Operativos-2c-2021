@@ -113,7 +113,7 @@ int memalloc(int processId, int espacioAReservar){
 
             memcpy(memoria + offset, &nuevoHeap->nextAlloc, sizeof(uint32_t));
             offset = offset + sizeof(uint32_t);
-            pthread_mutex_unlock(&memory_mutex);
+            
             pthread_mutex_lock(&lru_mutex);
             lRUACTUAL++;
             paginaFInalEncontrada->lRU = lRUACTUAL;
@@ -125,6 +125,7 @@ int memalloc(int processId, int espacioAReservar){
 
             mandarPaginaAgonza(processId ,paginaFInalEncontrada->frame, paginaFInalEncontrada->pagina)        ;
 
+            pthread_mutex_unlock(&memory_mutex);
             free(nuevoHeap);
             return (tempLastHeap );
         } else {
@@ -190,13 +191,14 @@ int memalloc(int processId, int espacioAReservar){
                 nroPagAux++;
                 offsetEspacioAux+=tamanioDePagina;
             }
+            memoryDump();
             pthread_mutex_unlock(&memory_mutex);
             free(espacioAuxiliar);
         }
         temp->lastHeap = tempLastHeap + espacioAReservar;
 
         free(nuevoHeap);
-        memoryDump();
+        
         return (tempLastHeap);    
     }else
     {
@@ -1402,7 +1404,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
         {
            int paginaInicioEscritura = (direccionLogicaBuscada/tamanioDePagina)+1;
 
-           int paginaFinEscritura = ((direccionLogicaBuscada+tamanio)/tamanioDePagina)+1;
+           int paginaFinEscritura = ((direccionLogicaBuscada+tamanio-1)/tamanioDePagina)+1;
 
            void* espacioAuxiliar = malloc(tamanioDePagina * (paginaFinEscritura-paginaInicioEscritura+1) );
            
@@ -1433,6 +1435,8 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
               memcpy(memoria + (frameBuscado*tamanioDePagina),espacioAuxiliar + unOffset ,tamanioDePagina);
               mandarPaginaAgonza(idProcess ,frameBuscado, nroPagAux);
               setPaginaAsModificado(idProcess,nroPagAux);
+              log_info(logger,"Escribo en la pag %d del proceso %d",nroPagAux, idProcess);
+
               
               nroPagAux++;
 
