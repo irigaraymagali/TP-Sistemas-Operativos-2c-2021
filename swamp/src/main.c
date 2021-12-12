@@ -28,16 +28,29 @@ int main(int argc, char ** argv) {
     memset(b, 'b', swap_page_size);
     void* c = malloc(swap_page_size);
     memset(c, 'c', swap_page_size);
-    void* x = malloc(20000);
-    memset(x, 'x', 20000);
-    guardar_pagina(0, 0, a);
-    guardar_pagina(1, 0, a);
-    guardar_pagina(2, 0, x);
-    guardar_pagina(0, 1, b);
-    guardar_pagina(1, 1, b);
-    guardar_pagina(1, 2, c);
-    guardar_pagina(0, 2, c);
+    void* x = malloc(swap_page_size);
+    memset(x, 'x', swap_page_size);
+    void* y = malloc(swap_page_size);
+    memset(y, 'y', swap_page_size);
+    void* z = malloc(swap_page_size);
+    memset(z, 'z', swap_page_size);
     
+    guardar_pagina(0, 0, a);
+    guardar_pagina(0, 1, b);
+    guardar_pagina(0, 2, c);
+    guardar_pagina(0, 3, x);
+    guardar_pagina(0, 4, a);
+    guardar_pagina(0, 5, b);
+    guardar_pagina(0, 6, c);
+    guardar_pagina(0, 7, x);
+    guardar_pagina(0, 8, a);
+    guardar_pagina(0, 9, b);
+
+    // guardar_pagina(1, 0, a);
+    // guardar_pagina(1, 1, b);
+    // guardar_pagina(1, 2, c);
+    // guardar_pagina(2, 0, x);
+
     // Leer desde los archivos de swap
     // Abro los archivos
     char* respuesta_corta = malloc(swap_page_size);
@@ -51,30 +64,62 @@ int main(int argc, char ** argv) {
     
     // Leer contenido de swap1.bin
     log_warning(log_file, "Contenido de la pagina 0 del proceso 0:");
-    memcpy(respuesta_corta, swap_file_1_map, swap_page_size);
+    respuesta_corta = obtener_pagina(0, 0);
     log_info(log_file, "%s", respuesta_corta);
     log_warning(log_file, "Contenido de la pagina 1 del proceso 0:");
-    memcpy(respuesta_corta, swap_file_1_map + swap_page_size, swap_page_size);
+    respuesta_corta = obtener_pagina(0, 1);
     log_info(log_file, "%s", respuesta_corta);
     log_warning(log_file, "Contenido de la pagina 2 del proceso 0:");
-    memcpy(respuesta_corta, swap_file_1_map + swap_page_size * 2, swap_page_size);
+    respuesta_corta = obtener_pagina(0, 2);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 3 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 3);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 4 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 4);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 5 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 5);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 6 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 6);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 7 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 7);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 8 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 8);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 9 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 9);
     log_info(log_file, "%s", respuesta_corta);
 
-    // Leer contenido de swap2.bin
-    log_warning(log_file, "Contenido de la pagina 0 del proceso 1:");
-    memcpy(respuesta_corta, swap_file_2_map, swap_page_size);
+    guardar_pagina(0, 0, y);
+    guardar_pagina(0, 1, z);
+
+    log_error(log_file, "Contenido de la pagina 0 del proceso 0 (deberia ser y):");
+    respuesta_corta = obtener_pagina(0, 0);
     log_info(log_file, "%s", respuesta_corta);
-    log_warning(log_file, "Contenido de la pagina 1 del proceso 1:");
-    memcpy(respuesta_corta, swap_file_2_map + swap_page_size, swap_page_size);
-    log_info(log_file, "%s", respuesta_corta);
-    log_warning(log_file, "Contenido de la pagina 2 del proceso 1:");
-    memcpy(respuesta_corta, swap_file_2_map + swap_page_size * 2, swap_page_size);
+    log_error(log_file, "Contenido de la pagina 1 del proceso 0 (deberia ser z):");
+    respuesta_corta = obtener_pagina(0, 1);
     log_info(log_file, "%s", respuesta_corta);
 
-    // Leer contenido de swap3.bin
-    log_warning(log_file, "Contenido de la pagina 0 del proceso 2:");
-    memcpy(respuesta_larga, swap_file_3_map, 20000);
-    log_info(log_file, "%s", respuesta_larga);
+
+    // // Leer contenido de swap2.bin
+    // log_warning(log_file, "Contenido de la pagina 0 del proceso 1:");
+    // memcpy(respuesta_corta, swap_file_2_map, swap_page_size);
+    // log_info(log_file, "%s", respuesta_corta);
+    // log_warning(log_file, "Contenido de la pagina 1 del proceso 1:");
+    // memcpy(respuesta_corta, swap_file_2_map + swap_page_size, swap_page_size);
+    // log_info(log_file, "%s", respuesta_corta);
+    // log_warning(log_file, "Contenido de la pagina 2 del proceso 1:");
+    // memcpy(respuesta_corta, swap_file_2_map + swap_page_size * 2, swap_page_size);
+    // log_info(log_file, "%s", respuesta_corta);
+
+    // // Leer contenido de swap3.bin
+    // log_warning(log_file, "Contenido de la pagina 0 del proceso 2:");
+    // memcpy(respuesta_larga, swap_file_3_map, 20000);
+    // log_info(log_file, "%s", respuesta_larga);
     
     // Cierro estructuras
     close(swap_file_1_fd);
@@ -89,6 +134,8 @@ int main(int argc, char ** argv) {
     free(b);
     free(c);
     free(x);
+    free(y);
+    free(z);
 
     // consola("TIPO_ASIGNACION ASIGNACION_FIJA", 0);
     // consola("GUARDAR_PAGINA 1 1 1111111111111111111111111111111111111111111111111111111111111111", 0);
