@@ -272,7 +272,7 @@ void editarAlgoEnMemoria(int processId,int inicio, int tamanio, void* loQuieroMe
     else
     {
         int nropagaux = pagiInicio;
-        int tamanioPagInicial=tamanioDePagina-(inicio-((pagiFin-1)*tamanioDePagina));
+        int tamanioPagInicial=tamanioDePagina-(inicio-((pagiInicio-1)*tamanioDePagina));
         int tamanioPagFinal=(inicio + tamanio) - ((pagiFin-1)*tamanioDePagina);
         int offset=0;
 
@@ -285,23 +285,70 @@ void editarAlgoEnMemoria(int processId,int inicio, int tamanio, void* loQuieroMe
                 setPaginaAsModificado(processId,pagiInicio);
                 mandarPaginaAgonza(processId ,frameBuscado, pagiInicio);
                 offset+=tamanioPagInicial;
+            }else{
+
+                if(nropagaux == pagiFin){
+                    frameBuscado = getFrameDeUn(processId,pagiFin);
+                    memcpy(memoria + (frameBuscado*tamanioDePagina),loQuieroMeter+offset,tamanioPagFinal);
+                    setPaginaAsModificado(processId,pagiFin);
+                    mandarPaginaAgonza(processId ,frameBuscado, pagiFin);
+                }else
+                {
+                    frameBuscado = getFrameDeUn(processId,nropagaux);
+                    memcpy(memoria + (frameBuscado*tamanioDePagina),loQuieroMeter+offset,tamanioDePagina);
+                    setPaginaAsModificado(processId,nropagaux);
+                    mandarPaginaAgonza(processId ,frameBuscado, nropagaux);
+                    offset+=tamanioDePagina;
+                }
             }
 
-            if(nropagaux == pagiFin){
-                frameBuscado = getFrameDeUn(processId,pagiFin);
-                memcpy(memoria + (frameBuscado*tamanioDePagina),loQuieroMeter+offset,tamanioPagFinal);
-                setPaginaAsModificado(processId,pagiFin);
-                mandarPaginaAgonza(processId ,frameBuscado, pagiFin);
-            }else
-            {
-                frameBuscado = getFrameDeUn(processId,nropagaux);
-                memcpy(memoria + (frameBuscado*tamanioDePagina),loQuieroMeter+offset,tamanioDePagina);
-                setPaginaAsModificado(processId,nropagaux);
-                mandarPaginaAgonza(processId ,frameBuscado, nropagaux);
-                offset+=tamanioDePagina;
-            }
+            nropagaux++;
+        }
+        
+
+    }
+}
+
+
+void copiarAlgoDeMemoria(int processId,int inicio, int tamanio, void* loQuieroMeter){
+
+    int pagiInicio = (inicio/tamanioDePagina)+1;
+    int pagiFin =   ((inicio + tamanio - 1)/tamanioDePagina)+1;
+    int frameBuscado;
+    int posinicio= inicio - ((pagiInicio-1)*tamanioDePagina);
+
+    if (pagiInicio == pagiFin)
+    {
+        frameBuscado = getFrameDeUn(processId,pagiInicio);
+        memcpy(loQuieroMeter,memoria + (frameBuscado*tamanioDePagina)+posinicio,tamanio);
+    }
+    else
+    {
+        int nropagaux = pagiInicio;
+        int tamanioPagInicial=tamanioDePagina-(inicio-((pagiInicio-1)*tamanioDePagina));
+        int tamanioPagFinal=(inicio + tamanio) - ((pagiFin-1)*tamanioDePagina);
+        int offset=0;
+
+        while (nropagaux <=pagiFin)
+        {
             
+            if(nropagaux == pagiInicio){
+                frameBuscado = getFrameDeUn(processId,pagiInicio);
+                memcpy(loQuieroMeter,memoria + (frameBuscado*tamanioDePagina)+posinicio,tamanioPagInicial);
+                offset+=tamanioPagInicial;
+            }else{
 
+                if(nropagaux == pagiFin){
+                    frameBuscado = getFrameDeUn(processId,pagiFin);
+                    memcpy(loQuieroMeter+offset,memoria + (frameBuscado*tamanioDePagina),tamanioPagFinal);
+                }else
+                {
+                    frameBuscado = getFrameDeUn(processId,nropagaux);
+                    memcpy(loQuieroMeter+offset,memoria + (frameBuscado*tamanioDePagina),tamanioDePagina);
+                    offset+=tamanioDePagina;
+                }
+            
+            }
             nropagaux++;
         }
         
