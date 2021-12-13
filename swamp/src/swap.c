@@ -142,10 +142,6 @@ int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
             //     list_add(swap_file_asignado->tabla_paginas, (void*) nuevo);
             // }
 
-            //////////////////////////////////////////////////////////////////////////////////////////////////////
-            ////////////////////////////// RECONTRA BETA VERSION HAY QUE PROBARLO ///////////////////////////////
-            ////////////////////////////////////////////////////////////////////////////////////////////////////
-
             if (list_size(swap_file_asignado->tabla_paginas) - 1 > frame_asignado) { // Si el frame que se le asigno habia sido utilizado anteriormente por un proceso que fue finalizado.
                 // Cambio el numero del proceso eliminado (9999) por el del nuevo proceso en la tabla de paginas.
                 list_replace_and_destroy_element(swap_file_asignado->tabla_paginas, frame_asignado, (void*) nuevo, fila_tabla_paginas_destroy);
@@ -172,10 +168,6 @@ int guardar_pagina_asignacion_fija(int proceso, int pagina, void* contenido) {
                     list_add(swap_file_asignado->tabla_paginas, (void*) nuevo);
                 }
             }
-
-            //////////////////////////////////////////////////////////////////////////////////////////////////////
-            ////////////////////////////// RECONTRA BETA VERSION HAY QUE PROBARLO ///////////////////////////////
-            ////////////////////////////////////////////////////////////////////////////////////////////////////
             free(string_proceso);
             return 1;
         }
@@ -274,10 +266,6 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
             int frame_asignado = get_first_free_frame_number(nuevo, swap_file_map);
             // list_add(swap_file_asignado->tabla_paginas, (void*) nuevo);
 
-            //////////////////////////////////////////////////////////////////////////////////////////////////////
-            ////////////////////////////// RECONTRA BETA VERSION HAY QUE PROBARLO ///////////////////////////////
-            ////////////////////////////////////////////////////////////////////////////////////////////////////
-
             if (tabla_paginas_size(swap_file_asignado->tabla_paginas) - 1 > frame_asignado) { // Si el frame que se le asigno habia sido utilizado anteriormente por un proceso que fue finalizado.
                 // Cambio el numero del proceso eliminado (9999) por el del nuevo proceso en la tabla de paginas.
                 list_replace_and_destroy_element(swap_file_asignado->tabla_paginas, frame_asignado, (void*) nuevo, fila_tabla_paginas_destroy);
@@ -286,11 +274,7 @@ int guardar_pagina_asignacion_dinamica(int proceso, int pagina, void* contenido)
             else { // Si el frame asignado no habia sido utilizado anteriormente por ningun otro proceso.
                 list_add(swap_file_asignado->tabla_paginas, (void*) nuevo);
             }
-
-            //////////////////////////////////////////////////////////////////////////////////////////////////////
-            ////////////////////////////// RECONTRA BETA VERSION HAY QUE PROBARLO ///////////////////////////////
-            ////////////////////////////////////////////////////////////////////////////////////////////////////
-
+            
             // Guardo la pagina recibida en el archivo de swap
             memcpy(swap_file_map + swap_page_size * frame_asignado, contenido, swap_page_size);
             munmap(swap_file_map, swap_file_size);
