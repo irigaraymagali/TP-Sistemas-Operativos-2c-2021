@@ -15,14 +15,14 @@ int main(int argc, char ** argv) {
         config_path = CONFIG_PATH;
     }
 
+    log_file = log_create(LOG_PATH, "[Swamp ᶘ◕ᴥ◕ᶅ]", 1, LOG_LEVEL_INFO);
     config_file = config_create(config_path);
     if (config_file == NULL){
-        log_error(logger, "Error Al intentar abrir el archivo de Config: Revisar PATH %s", config_path);
-        log_destroy(logger);
+        log_error(log_file, "Error Al intentar abrir el archivo de Config: Revisar PATH %s", config_path);
+        log_destroy(log_file);
         return EXIT_FAILURE;
     }
     // port_fixer();
-    log_file = log_create(LOG_PATH, "[Swamp ᶘ◕ᴥ◕ᶅ]", 1, LOG_LEVEL_INFO);
     swap_file_size = config_get_int_value(config_file, "TAMANIO_SWAMP");
     swap_page_size = config_get_int_value(config_file, "TAMANIO_PAGINA");
     marcos_por_carpincho = config_get_int_value(config_file, "MARCOS_POR_CARPINCHO");

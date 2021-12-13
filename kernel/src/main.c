@@ -9,6 +9,7 @@ int main(int argc, char ** argv){
         config_path = CONFIG_PATH;
     }
 
+    logger = log_create("./cfg/kernel.log", "[Kernel]", true, LOG_LEVEL_INFO);
     config = config_create(config_path);
     if (config == NULL){
         log_error(logger, "Error Al intentar abrir el archivo de Config: Revisar PATH %s", config_path);
@@ -24,7 +25,6 @@ int main(int argc, char ** argv){
    // hilos_CPU = list_create(); // crear lista para ir guardando los hilos cpus
     lista_dispositivos_io = list_create(); // crear lista para ir guardando los dispositivios io
 
-    logger = log_create("./cfg/kernel.log", "[Kernel]", true, LOG_LEVEL_INFO);
 	char *puerto_escucha = config_get_string_value(config, "PUERTO_ESCUCHA");        
 
     crear_estructura_dispositivo();
