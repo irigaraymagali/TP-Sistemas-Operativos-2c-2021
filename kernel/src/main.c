@@ -256,7 +256,7 @@ void mate_init(int fd){
 
     pthread_mutex_lock(&id_carpincho_mutex);
     carpincho->id = id_carpincho;
-    id_carpincho += 2; //Agrego el +2 acá porque por race condition a memoria le llega el mismo ID. Por eso agrego el mutex 
+    id_carpincho ++;  
     pthread_mutex_unlock(&id_carpincho_mutex);
 
     carpincho->rafaga_anterior = 0;
@@ -313,7 +313,7 @@ void mate_init(int fd){
         //_send_message(fd, ID_KERNEL, MATE_INIT, payload, sizeof(int), logger);
     }
     else{
-        log_error(logger, "CARPINCHO %d - Memoria no pudo crear la estructura", id_carpincho);
+        log_error(logger, "CARPINCHO %d - Memoria no pudo crear la estructura", carpincho->id);
         //list_destroy(carpincho->semaforos_retenidos);
         free(carpincho);
     }
@@ -892,11 +892,11 @@ void entrantes_a_ready(){
 
    data_carpincho *carpincho_a_mover;
    int valor; 
-
-    while(1){
-        int gradoMultiprogramacion;
+    int gradoMultiprogramacion;
         sem_getvalue(&sem_grado_multiprogramacion_libre, &gradoMultiprogramacion);
         log_info(logger,"GRADO MULTIPROGRAMACIÓN LIBRE: %d", gradoMultiprogramacion);
+
+    while(1){
         
         sem_wait(&sem_grado_multiprogramacion_libre); 
         sem_wait(&hay_estructura_creada);
@@ -936,8 +936,9 @@ void entrantes_a_ready(){
         if(valor == 0){ 
             sem_post(&sem_programacion_lleno);
         }
-        sem_getvalue(&sem_grado_multiprogramacion_libre, &gradoMultiprogramacion);
-        log_info(logger,"GRADO MULTIPROGRAMACIÓN LIBRE: %d", gradoMultiprogramacion);
+        int gradoMultiprogramacion2;        
+        sem_getvalue(&sem_grado_multiprogramacion_libre, &gradoMultiprogramacion2);
+        log_info(logger,"GRADO MULTIPROGRAMACIÓN LIBRE: %d", gradoMultiprogramacion2);
     }
 }
 
