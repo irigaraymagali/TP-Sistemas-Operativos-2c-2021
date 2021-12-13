@@ -4,9 +4,20 @@ int main(int argc, char ** argv){
         return run_tests();
     }
 
-    logger = log_create(LOG_PATH, PROGRAM, true, LOG_LEVEL_INFO);
-    config = config_create(CONFIG_PATH);
+    char* config_file;
+    if (argc > 1 && !string_is_empty(argv[1])){
+        config_file = argv[1];
+    } else {
+        config_file = CONFIG_PATH;
+    }
 
+    logger = log_create(LOG_PATH, PROGRAM, true, LOG_LEVEL_INFO);
+    config = config_create(config_file);
+    if (config == NULL){
+        log_error(logger, "Error Al intentar abrir el archivo de Config: Revisar PATH %s", config_file);
+        log_destroy(logger);
+        return EXIT_FAILURE;
+    }
     // port_fixer();
 
     pthread_mutex_init(&pid_global_mutex, NULL);

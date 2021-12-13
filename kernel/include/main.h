@@ -23,6 +23,7 @@
 #include <commons/string.h>
 #include <assert.h>
 
+#define CONFIG_PATH "./cfg/kernel.conf"
 #endif
 
 typedef struct semaforo
@@ -116,6 +117,7 @@ t_list* ptr_duraciones_io;
 
 // id carpincho
 int id_carpincho;
+pthread_mutex_t id_carpincho_mutex;
 
 // Semáforos
 sem_t sem_grado_multiprogramacion_libre;

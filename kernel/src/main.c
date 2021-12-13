@@ -2,16 +2,29 @@
 
 int main(int argc, char ** argv){
 
-    config = config_create("./cfg/kernel.conf");
+    char* config_path;
+    if (argc > 1 && !string_is_empty(argv[1])){
+        config_path = argv[1];
+    } else {
+        config_path = CONFIG_PATH;
+    }
+
+    logger = log_create("./cfg/kernel.log", "[Kernel]", true, LOG_LEVEL_INFO);
+    config = config_create(config_path);
+    if (config == NULL){
+        log_error(logger, "Error Al intentar abrir el archivo de Config: Revisar PATH %s", config_path);
+        log_destroy(logger);
+        return EXIT_FAILURE;
+    }
 
     id_carpincho = 1; 
+    pthread_mutex_init(&id_carpincho_mutex, NULL);
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
     semaforos_carpinchos = list_create(); // crear lista para ir guardando los semaforos
    // hilos_CPU = list_create(); // crear lista para ir guardando los hilos cpus
     lista_dispositivos_io = list_create(); // crear lista para ir guardando los dispositivios io
 
-    logger = log_create("./cfg/kernel.log", "[Kernel]", true, LOG_LEVEL_INFO);
 	char *puerto_escucha = config_get_string_value(config, "PUERTO_ESCUCHA");        
 
     crear_estructura_dispositivo();
@@ -174,6 +187,7 @@ void free_memory(){
     pthread_mutex_destroy(&sem_cola_exit);
     pthread_mutex_destroy(&sem_cola_io);
     pthread_mutex_destroy(&sem_io_uso);
+    pthread_mutex_destroy(&id_carpincho_mutex);
 
     // hacer => free a todo
     // martin => liberar memoria en todos lados
@@ -242,7 +256,11 @@ void mate_init(int fd){
     data_carpincho *carpincho;
     carpincho = malloc(sizeof(data_carpincho));
 
+    pthread_mutex_lock(&id_carpincho_mutex);
     carpincho->id = id_carpincho;
+    id_carpincho += 2; //Agrego el +2 acá porque por race condition a memoria le llega el mismo ID. Por eso agrego el mutex 
+    pthread_mutex_unlock(&id_carpincho_mutex);
+
     carpincho->rafaga_anterior = 0;
     carpincho->estimacion_anterior = 0;
     carpincho->estimacion_siguiente = config_get_int_value(config, "ESTIMACION_INICIAL");
@@ -301,7 +319,6 @@ void mate_init(int fd){
         //list_destroy(carpincho->semaforos_retenidos);
         free(carpincho);
     }
-    id_carpincho += 2; 
     free(payload);
 }
 

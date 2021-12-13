@@ -6,11 +6,23 @@ int main(int argc, char ** argv) {
         return run_tests();
     }
 
-    signal(SIGINT, cerrar_swamp);
 
-    config_file = config_create(CONFIG_PATH);
-    // port_fixer();
+    signal(SIGINT, cerrar_swamp);
+    char* config_path;
+    if (argc > 1 && !string_is_empty(argv[1])){
+        config_path = argv[1];
+    } else {
+        config_path = CONFIG_PATH;
+    }
+
     log_file = log_create(LOG_PATH, "[Swamp ᶘ◕ᴥ◕ᶅ]", 1, LOG_LEVEL_INFO);
+    config_file = config_create(config_path);
+    if (config_file == NULL){
+        log_error(log_file, "Error Al intentar abrir el archivo de Config: Revisar PATH %s", config_path);
+        log_destroy(log_file);
+        return EXIT_FAILURE;
+    }
+    // port_fixer();
     swap_file_size = config_get_int_value(config_file, "TAMANIO_SWAMP");
     swap_page_size = config_get_int_value(config_file, "TAMANIO_PAGINA");
     marcos_por_carpincho = config_get_int_value(config_file, "MARCOS_POR_CARPINCHO");
@@ -18,7 +30,125 @@ int main(int argc, char ** argv) {
 
     inicializar_directorios();
     inicializar_swap_files();
+/*
+    tipo_asignacion = 1;
 
+    // Escribir en archivos de swap
+    void* a = malloc(swap_page_size);
+    memset(a, 'a', swap_page_size);
+    void* b = malloc(swap_page_size);
+    memset(b, 'b', swap_page_size);
+    void* c = malloc(swap_page_size);
+    memset(c, 'c', swap_page_size);
+    void* x = malloc(swap_page_size);
+    memset(x, 'x', swap_page_size);
+    void* y = malloc(swap_page_size);
+    memset(y, 'y', swap_page_size);
+    void* z = malloc(swap_page_size);
+    memset(z, 'z', swap_page_size);
+    
+    guardar_pagina(0, 0, a);
+    guardar_pagina(0, 1, b);
+    guardar_pagina(0, 2, c);
+    guardar_pagina(0, 3, x);
+    guardar_pagina(0, 4, a);
+    guardar_pagina(0, 5, b);
+    guardar_pagina(0, 6, c);
+    guardar_pagina(0, 7, x);
+    guardar_pagina(0, 8, a);
+    guardar_pagina(0, 9, b);
+
+    // guardar_pagina(1, 0, a);
+    // guardar_pagina(1, 1, b);
+    // guardar_pagina(1, 2, c);
+    // guardar_pagina(2, 0, x);
+
+    // Leer desde los archivos de swap
+    // Abro los archivos
+    char* respuesta_corta = malloc(swap_page_size);
+    char* respuesta_larga = malloc(20000);
+    int swap_file_1_fd = open("/home/utnso/tp-2021-2c-3era-es-la-vencida/swamp/swapdir/swap1.bin", O_RDWR, (mode_t)0777);
+    int swap_file_2_fd = open("/home/utnso/tp-2021-2c-3era-es-la-vencida/swamp/swapdir/swap2.bin", O_RDWR, (mode_t)0777);
+    int swap_file_3_fd = open("/home/utnso/tp-2021-2c-3era-es-la-vencida/swamp/swapdir/swap3.bin", O_RDWR, (mode_t)0777);
+    void* swap_file_1_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_1_fd, 0);
+    void* swap_file_2_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_2_fd, 0);
+    void* swap_file_3_map = mmap(NULL, swap_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, swap_file_3_fd, 0);
+    
+    // Leer contenido de swap1.bin
+    log_warning(log_file, "Contenido de la pagina 0 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 0);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 1 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 1);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 2 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 2);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 3 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 3);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 4 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 4);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 5 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 5);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 6 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 6);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 7 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 7);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 8 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 8);
+    log_info(log_file, "%s", respuesta_corta);
+    log_warning(log_file, "Contenido de la pagina 9 del proceso 0:");
+    respuesta_corta = obtener_pagina(0, 9);
+    log_info(log_file, "%s", respuesta_corta);
+
+    guardar_pagina(0, 0, y);
+    guardar_pagina(0, 1, z);
+
+    log_error(log_file, "Contenido de la pagina 0 del proceso 0 (deberia ser y):");
+    respuesta_corta = obtener_pagina(0, 0);
+    log_info(log_file, "%s", respuesta_corta);
+    log_error(log_file, "Contenido de la pagina 1 del proceso 0 (deberia ser z):");
+    respuesta_corta = obtener_pagina(0, 1);
+    log_info(log_file, "%s", respuesta_corta);
+
+
+    // // Leer contenido de swap2.bin
+    // log_warning(log_file, "Contenido de la pagina 0 del proceso 1:");
+    // memcpy(respuesta_corta, swap_file_2_map, swap_page_size);
+    // log_info(log_file, "%s", respuesta_corta);
+    // log_warning(log_file, "Contenido de la pagina 1 del proceso 1:");
+    // memcpy(respuesta_corta, swap_file_2_map + swap_page_size, swap_page_size);
+    // log_info(log_file, "%s", respuesta_corta);
+    // log_warning(log_file, "Contenido de la pagina 2 del proceso 1:");
+    // memcpy(respuesta_corta, swap_file_2_map + swap_page_size * 2, swap_page_size);
+    // log_info(log_file, "%s", respuesta_corta);
+
+    // // Leer contenido de swap3.bin
+    // log_warning(log_file, "Contenido de la pagina 0 del proceso 2:");
+    // memcpy(respuesta_larga, swap_file_3_map, 20000);
+    // log_info(log_file, "%s", respuesta_larga);
+    
+    // Cierro estructuras
+    close(swap_file_1_fd);
+    close(swap_file_2_fd);
+    close(swap_file_3_fd);
+    munmap(swap_file_1_map, swap_file_size);
+    munmap(swap_file_2_map, swap_file_size);
+    munmap(swap_file_3_map, swap_file_size);
+    free(respuesta_corta);
+    free(respuesta_larga);
+    free(a);
+    free(b);
+    free(c);
+    free(x);
+    free(y);
+    free(z);
+*/
     // consola("TIPO_ASIGNACION ASIGNACION_FIJA", 0);
     // consola("GUARDAR_PAGINA 1 1 1111111111111111111111111111111111111111111111111111111111111111", 0);
     // consola("GUARDAR_PAGINA 1 2 2222222222222222222222222222222222222222222222222222222222222222", 0);
