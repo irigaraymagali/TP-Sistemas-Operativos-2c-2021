@@ -23,6 +23,7 @@
 #include <commons/string.h>
 #include <assert.h>
 
+#define CONFIG_PATH "./cfg/kernel.conf"
 #endif
 
 typedef struct semaforo

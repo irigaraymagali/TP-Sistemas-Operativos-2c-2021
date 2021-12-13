@@ -2,7 +2,19 @@
 
 int main(int argc, char ** argv){
 
-    config = config_create("./cfg/kernel.conf");
+    char* config_path;
+    if (argc > 1 && !string_is_empty(argv[1])){
+        config_path = argv[1];
+    } else {
+        config_path = CONFIG_PATH;
+    }
+
+    config = config_create(config_path);
+    if (config == NULL){
+        log_error(logger, "Error Al intentar abrir el archivo de Config: Revisar PATH %s", config_path);
+        log_destroy(logger);
+        return EXIT_FAILURE;
+    }
 
     id_carpincho = 1; 
 
