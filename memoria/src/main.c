@@ -268,7 +268,7 @@ int deserialize_init_process(char* id, void* payload){
     if (string_equals_ignore_case(id, ID_MATE_LIB)){
         pthread_mutex_lock(&pid_global_mutex);
         pid = pid_global;
-        pid_global += 2;
+        pid_global += 1;
         pthread_mutex_unlock(&pid_global_mutex);
     } else {
         memcpy(&pid, payload, sizeof(int));
