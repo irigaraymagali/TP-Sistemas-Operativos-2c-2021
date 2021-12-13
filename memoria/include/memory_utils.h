@@ -156,6 +156,7 @@ int cantidadDeFramesEnMemoriaPor(int processID);
 int suspend_process(int pid);
 
 void memoryDump();
+void editarAlgoEnMemoria(int processId,int inicio, int tamanio, void* loQuieroMeter);
 
 void* get_minimum_fifo_tlb(void* actual, void* next);
 
