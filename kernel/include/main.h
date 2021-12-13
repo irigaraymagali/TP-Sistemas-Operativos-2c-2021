@@ -189,14 +189,12 @@ void asignar_hilo_CPU(data_carpincho *carpincho);
 void ejecuta(void *id_cpu);
 
 void detectar_deadlock();
-int formar_ciclo();
 void solucionar_deadlock(t_list* ciclo_deadlock);
 void liberar_carpincho(void *carpincho);
 
 void port_fixer();
 
-void asignar_dispotivo_io(data_carpincho* carpincho, dispositivo_io* dispositivo_pedido);
+//void asignar_dispotivo_io(data_carpincho* carpincho, dispositivo_io* dispositivo_pedido);
 
-void free_t_mensaje(t_mensaje* mensaje);
 void liberar_semaforo(void *semaforo_a_borrar);
 void liberar_dispositivo(void *dispositivo);
