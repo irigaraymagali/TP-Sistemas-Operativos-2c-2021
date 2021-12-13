@@ -1349,48 +1349,7 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
     pthread_mutex_lock(&memory_mutex);
         if (direccionLogicaBuscada < dirAllocFinal)
         {
-           int paginaInicioEscritura = (direccionLogicaBuscada/tamanioDePagina)+1;
-
-           int paginaFinEscritura = ((direccionLogicaBuscada+tamanio-1)/tamanioDePagina)+1;
-
-           void* espacioAuxiliar = malloc(tamanioDePagina * (paginaFinEscritura-paginaInicioEscritura+1) );
-           
-           int nroPagAux = paginaInicioEscritura;
-           int unOffset =0;
-           while (nroPagAux <= paginaFinEscritura)
-           {
-              int frameBuscado = getFrameDeUn(idProcess, nroPagAux);
-                       
-              memcpy(espacioAuxiliar + unOffset,memoria + (frameBuscado*tamanioDePagina) ,tamanioDePagina);
-              
-              nroPagAux++;
-
-              unOffset +=tamanioDePagina ;
-           }
-           
-           int offsetAux = direccionLogicaBuscada - ((paginaInicioEscritura-1)*tamanioDePagina);
-           
-           memcpy(espacioAuxiliar + offsetAux,loQueQuierasEscribir ,tamanio);
-
-            
-            nroPagAux = paginaInicioEscritura;
-            unOffset =0;
-            while (nroPagAux <= paginaFinEscritura)
-           {
-              int frameBuscado = getFrameDeUn(idProcess, nroPagAux);
-                       
-              memcpy(memoria + (frameBuscado*tamanioDePagina),espacioAuxiliar + unOffset ,tamanioDePagina);
-              mandarPaginaAgonza(idProcess ,frameBuscado, nroPagAux);
-              setPaginaAsModificado(idProcess,nroPagAux);
-              log_info(logger,"Escribo en la pag %d del proceso %d",nroPagAux, idProcess);
-
-              
-              nroPagAux++;
-
-              unOffset +=tamanioDePagina ;
-           }
-
-           free(espacioAuxiliar);
+           editarAlgoEnMemoria(idProcess,direccionLogicaBuscada,tamanio,loQueQuierasEscribir);
            
             pthread_mutex_unlock(&memory_mutex);
             return 1;
