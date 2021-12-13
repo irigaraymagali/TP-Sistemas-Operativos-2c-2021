@@ -17,6 +17,7 @@ int main(int argc, char ** argv){
     }
 
     id_carpincho = 1; 
+    pthread_mutex_init(&id_carpincho_mutex, NULL);
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
     semaforos_carpinchos = list_create(); // crear lista para ir guardando los semaforos
@@ -186,6 +187,7 @@ void free_memory(){
     pthread_mutex_destroy(&sem_cola_exit);
     pthread_mutex_destroy(&sem_cola_io);
     pthread_mutex_destroy(&sem_io_uso);
+    pthread_mutex_destroy(&id_carpincho_mutex);
 
     // hacer => free a todo
     // martin => liberar memoria en todos lados
@@ -254,7 +256,11 @@ void mate_init(int fd){
     data_carpincho *carpincho;
     carpincho = malloc(sizeof(data_carpincho));
 
+    pthread_mutex_lock(&id_carpincho_mutex);
     carpincho->id = id_carpincho;
+    id_carpincho += 2; //Agrego el +2 acá porque por race condition a memoria le llega el mismo ID. Por eso agrego el mutex 
+    pthread_mutex_unlock(&id_carpincho_mutex);
+
     carpincho->rafaga_anterior = 0;
     carpincho->estimacion_anterior = 0;
     carpincho->estimacion_siguiente = config_get_int_value(config, "ESTIMACION_INICIAL");
@@ -313,7 +319,6 @@ void mate_init(int fd){
         //list_destroy(carpincho->semaforos_retenidos);
         free(carpincho);
     }
-    id_carpincho += 2; 
     free(payload);
 }
 
