@@ -30,7 +30,7 @@ int main(int argc, char ** argv) {
 
     inicializar_directorios();
     inicializar_swap_files();
-
+/*
     tipo_asignacion = 1;
 
     // Escribir en archivos de swap
@@ -148,7 +148,7 @@ int main(int argc, char ** argv) {
     free(x);
     free(y);
     free(z);
-
+*/
     // consola("TIPO_ASIGNACION ASIGNACION_FIJA", 0);
     // consola("GUARDAR_PAGINA 1 1 1111111111111111111111111111111111111111111111111111111111111111", 0);
     // consola("GUARDAR_PAGINA 1 2 2222222222222222222222222222222222222222222222222222222222222222", 0);
