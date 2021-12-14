@@ -28,6 +28,7 @@
 
 typedef struct semaforo
 {
+    int id; //ver en deadlock
     char* nombre;
     int valor;
     t_queue *en_espera; 
@@ -65,12 +66,19 @@ typedef struct data_carpincho // la data que le importa tener al backend, hacer 
     char *semaforo; // guarda el char porque es lo que nos manda el carpincho
     int valor_semaforo; // guarda int porque es lo que nos guarda el carpincho
     char *dispositivo_io; 
+
+    //para deadlock:
     char *nombre_semaforo_por_el_que_se_bloqueo; //nombre del semaforo por el que se bloqueo --> sacarlo cuando se desbloquee
+    int sem_por_el_que_se_bloqueo; //id del semaforo por el que se bloqueo --> sacarlo cuando se desbloquee
     t_list *semaforos_retenidos; //nombre de los semaforos a los que paso su wait --> lista de semaforos
-    // si le hace el post sacarlo
+    int sem_retenido; //id del sem que tiene retenido
+    // falta --> si le hace el post sacarlo
     int tiene_su_espera; //id del carpincho que tiene retenido al semaforo que el esta esperando
 
 } data_carpincho;
+
+
+int id_el_primero_a_cheuquear = 9999;
 
 // Estados
 t_queue* new;
@@ -192,9 +200,33 @@ void detectar_deadlock();
 void solucionar_deadlock(t_list* ciclo_deadlock);
 void liberar_carpincho(void *carpincho);
 
+int formando_ciclo();
+bool tienen_lo_necesario(data_carpincho* primero,data_carpincho* segundo);
+void buscar_quien_tiene_su_espera(data_carpincho* carpi_que_espera);
+
 void port_fixer();
 
 //void asignar_dispotivo_io(data_carpincho* carpincho, dispositivo_io* dispositivo_pedido);
 
 void liberar_semaforo(void *semaforo_a_borrar);
 void liberar_dispositivo(void *dispositivo);
+
+
+
+/* 
+//alternativa:
+void finalizarProcesoPorDeadlock(data_carpincho* procesoASacarPorDeadlock);
+void rellenarVectorDisponibles(t_list* semaforos_carpinchos, int vector[]);
+int procesoReteniendoYEsperando(data_carpincho* proceso);
+int procesoReteniendo(data_carpincho* proceso);
+void bloquearTodosLosSemaforos();
+void desbloquearTodosLosSemaforos();
+int indiceDondeProcesoEstaEnLaLista(int id, t_list* lista);
+void ejecutarAlgoritmoDeadlock();
+bool procesoDeMayorPID(data_carpincho* p1, data_carpincho* p2);
+bool procesoEnDeadlock(data_carpincho* proceso, data_carpincho* proceso_apuntado, t_list* procesosPasados);
+int cantidadDeVecesQueProcesoRetieneASemaforo(data_carpincho* procesoActual, semaforo* semaforoBuscado);
+int cantidadDeVecesQueProcesoPideASemaforo(data_carpincho* procesoActual, semaforo* semaforoBuscado);
+t_list* procesosQueEstanReteniendoYEsperando();
+
+*/
