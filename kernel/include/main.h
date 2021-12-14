@@ -116,7 +116,7 @@ t_list* ptr_dispositivos_io;
 t_list* ptr_duraciones_io;
 
 // id carpincho
-int id_carpincho;
+int id_carpincho_global;
 pthread_mutex_t id_carpincho_mutex;
 
 // Semáforos

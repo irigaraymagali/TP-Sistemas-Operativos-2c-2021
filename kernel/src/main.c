@@ -17,7 +17,7 @@ int main(int argc, char ** argv){
         return EXIT_FAILURE;
     }
 
-    id_carpincho = 1; 
+    id_carpincho_global = 1; 
     pthread_mutex_init(&id_carpincho_mutex, NULL);
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
@@ -255,8 +255,8 @@ void mate_init(int fd){
     carpincho = malloc(sizeof(data_carpincho));
 
     pthread_mutex_lock(&id_carpincho_mutex);
-    carpincho->id = id_carpincho;
-    id_carpincho ++;  
+    carpincho->id = id_carpincho_global;
+    id_carpincho_global ++;  
     pthread_mutex_unlock(&id_carpincho_mutex);
 
     carpincho->rafaga_anterior = 0;
@@ -306,7 +306,7 @@ void mate_init(int fd){
     }
 
     if(respuesta_memoria >= 0){
-        log_info(logger, "CARPINCHO %d - ha sido creado correctamente en memoria", id_carpincho);
+        log_info(logger, "CARPINCHO %d - ha sido creado correctamente en memoria", carpincho->id);
         list_add(lista_carpinchos, (void *) carpincho);
         queue_push(new, (void *)carpincho);
         sem_post(&hay_estructura_creada);
@@ -832,20 +832,30 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
     socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
 
     if(socket_memoria >= 0){
+        int respuesta_memoria;
         _send_message(socket_memoria, ID_KERNEL, MATE_MEMREAD,payload,sizeof(int) * 3,logger);   
         buffer = _receive_message(socket_memoria, logger);
         log_info(logger, "CARPINCHO %d - el MEMREAD fue realizado correctamente", id_carpincho);
-        _send_message(fd, ID_KERNEL, 1, buffer->payload, size, logger);
+        memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+        if(respuesta_memoria == -6){
+            _send_message(fd, ID_KERNEL, MATE_MEMREAD, buffer->payload, sizeof(int), logger); 
+        }else
+        {
+            _send_message(fd, ID_KERNEL, MATE_MEMREAD, buffer->payload, sizeof(int), logger);
+        }
+        
+        
         close(socket_memoria);
         free(buffer->identifier);
         free(buffer->payload);
         free(buffer);
+
     }
     else{
         log_error(logger, "No se ha podido conectar con el módulo memoria");
         int respuesta_memoria = -6;
         void* respuesta_memoria_serializada = _serialize(sizeof(int), "%d", respuesta_memoria);
-        _send_message(fd, ID_KERNEL, 1, respuesta_memoria_serializada, sizeof(int), logger); 
+        _send_message(fd, ID_KERNEL, MATE_MEMREAD, respuesta_memoria_serializada, sizeof(int), logger); 
         free(respuesta_memoria_serializada);
     }
     free(payload);
@@ -863,14 +873,22 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
 
     int respuesta_memoria;
     
+    
     if(socket_memoria >= 0){
         _send_message(socket_memoria, ID_KERNEL, MATE_MEMWRITE, payload, sizeof(int) * 3 + size, logger); 
 
         t_mensaje *buffer;
         buffer = _receive_message(socket_memoria, logger);
-        //NUEVO
-        log_info(logger, "CARPINCHO %d - el MEMREAD fue realizado correctamente", id_carpincho);
-        _send_message(fd, ID_KERNEL, 1, buffer->payload, size, logger);
+        memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+
+        log_info(logger, "CARPINCHO %d - el MEMWRITE fue realizado correctamente", id_carpincho);
+        if(respuesta_memoria == -6){
+            _send_message(fd, ID_KERNEL, MATE_MEMWRITE, buffer->payload, sizeof(int), logger); 
+        }else
+        {
+            _send_message(fd, ID_KERNEL, MATE_MEMWRITE, buffer->payload, sizeof(int), logger);
+        }
+        
 
         close(socket_memoria);
         free(buffer->identifier);
