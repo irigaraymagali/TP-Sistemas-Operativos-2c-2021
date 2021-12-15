@@ -14,6 +14,7 @@ void initPaginacion(){
     pthread_mutex_init(&memory_mutex, NULL);
     pthread_mutex_init(&m_list_mutex, NULL);
     pthread_mutex_init(&mutex_anashe, NULL);
+    pthread_mutex_init(&iteration_mutex, NULL);
     
 
     tamanioDePagina = config_get_int_value(config, "TAMANIO_PAGINA");
@@ -53,7 +54,9 @@ void initPaginacion(){
 
 int memalloc(int processId, int espacioAReservar){
     log_info(logger,"arranco un memalloc----------------------------");
+    pthread_mutex_lock(&iteration_mutex);
     int entra = entraEnElEspacioLibre(espacioAReservar, processId);
+    pthread_mutex_unlock(&iteration_mutex);
     uint32_t mayorNroDePagina = 0; // 0 porque indica que no tiene asignado ninguna pagina, las pags siempre arancan en 1
     int tempLastHeap = 0;
     int espacioFinalDisponible = 0;
