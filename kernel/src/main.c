@@ -953,7 +953,7 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
             _send_message(fd, ID_KERNEL, MATE_MEMREAD, buffer->payload, sizeof(int), logger); 
         }else
         {
-            _send_message(fd, ID_KERNEL, MATE_MEMREAD, buffer->payload, sizeof(int), logger);
+            _send_message(fd, ID_KERNEL, MATE_MEMREAD, buffer->payload, size, logger);
         }
         
         
@@ -1479,7 +1479,7 @@ void ejecuta(void *id_cpu){
         sem_wait(&liberar_CPU[*id]); // espera a que algun carpincho indique que quiere liberar el cpu
         queue_push(CPU_libres, id);
         
-        pthread_mutex_lock(&mutex_para_CPU); 
+        pthread_mutex_lock(&mutex_para_CPU); // no se su tuene que ir
 
         sem_post(&CPU_libre[*id]); 
 
@@ -1491,7 +1491,7 @@ void ejecuta(void *id_cpu){
         sem_getvalue(&sem_grado_multiprocesamiento_libre, &gradoMultiprocesamiento);
         log_info(logger,"GRADO MULTIPROCESAMIENTO LIBRE: %d", gradoMultiprocesamiento);
         
-        pthread_mutex_unlock(&mutex_para_CPU); 
+        pthread_mutex_unlock(&mutex_para_CPU); // no se su tuene que ir
     }
 }
 
