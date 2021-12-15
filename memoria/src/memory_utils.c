@@ -12,9 +12,7 @@ void initPaginacion(){
     pthread_mutex_init(&tlb_lru_mutex, NULL);
     pthread_mutex_init(&entrada_fifo_mutex, NULL);
     pthread_mutex_init(&memory_mutex, NULL);
-    pthread_mutex_init(&m_list_mutex, NULL);
-    pthread_mutex_init(&mutex_anashe, NULL);
-    
+    pthread_mutex_init(&m_list_mutex, NULL);    
 
     tamanioDePagina = config_get_int_value(config, "TAMANIO_PAGINA");
 
