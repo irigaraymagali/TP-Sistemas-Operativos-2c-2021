@@ -418,7 +418,9 @@ void* memread(uint32_t pid, int dir_logica, int size){
 
     int dir_content = dir_logica + HEAP_METADATA_SIZE;
     log_info(logger, "Realizando Lectura en Memoria...");
+    pthread_mutex_lock(&memory_mutex);
     read_from_memory(pid, dir_content, size, read);
+    pthread_mutex_unlock(&memory_mutex);
     log_info(logger, "Lectura realizada con exito");
     // int algoint;
     // char* algo = string_new();
@@ -433,7 +435,6 @@ void* memread(uint32_t pid, int dir_logica, int size){
 }
 
 TablaDePaginasxProceso* get_pages_by(int processID){
-    //log_info(logger, "Buscando la tabla de paginas del Proceso %d", processID);
     pthread_mutex_lock(&list_pages_mutex);
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
@@ -892,6 +893,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
             memcpy(memoria + (tempPagina->frame*tamanioDePagina), swamp_mem, tamanioDePagina);
             free(payload);
             free(response);
+            free(swamp_mem);
             tempPagina->bitPresencia=1;
             //pedirselo a gonza
         }
