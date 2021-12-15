@@ -1709,7 +1709,14 @@ void liberarFrame(uint32_t nroDeFrame){
         list_iterator_destroy(iterator2);
         
     }
-        
+    //if(!tipoDeAsignacionDinamica){
+    for(int j=0; j<tamanioDePagina;j++){
+        char valor = '\0';
+        memcpy(memoria + (nroDeFrame*tamanioDePagina) + j, &valor, 1);
+    }
+    //}    
+    //memset(memoria + (nroDeFrame*tamanioDePagina), '\0', tamanioDePagina);
+
     list_iterator_destroy(iterator);
 }
 void memoryDump(){
