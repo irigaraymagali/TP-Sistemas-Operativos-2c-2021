@@ -17,7 +17,7 @@ int main(int argc, char ** argv){
         return EXIT_FAILURE;
     }
 
-    id_carpincho = 1; 
+    id_carpincho_global = 1; 
     pthread_mutex_init(&id_carpincho_mutex, NULL);
 
     lista_carpinchos = list_create(); // crear lista para ir guardando los carpinchos
@@ -42,13 +42,14 @@ int main(int argc, char ** argv){
     pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); 
     pthread_t deteccion_deadlock;
     pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
+    //pthread_create(&deteccion_deadlock, NULL, (void*) ejecutarAlgoritmoDeadlock, NULL);
     
     _start_server(puerto_escucha, handler, logger);
    
     pthread_join ( planficador_largo_plazo , NULL ) ;
     pthread_join ( planficador_corto_plazo , NULL ) ;
     pthread_join ( planficador_mediano_plazo , NULL ) ;
-    //pthread_join ( deteccion_deadlock , NULL ) ;    
+    pthread_join ( deteccion_deadlock , NULL ) ;    
 
 }
 
@@ -255,8 +256,8 @@ void mate_init(int fd){
     carpincho = malloc(sizeof(data_carpincho));
 
     pthread_mutex_lock(&id_carpincho_mutex);
-    carpincho->id = id_carpincho;
-    id_carpincho ++;  
+    carpincho->id = id_carpincho_global;
+    id_carpincho_global ++;  
     pthread_mutex_unlock(&id_carpincho_mutex);
 
     carpincho->rafaga_anterior = 0;
@@ -306,7 +307,7 @@ void mate_init(int fd){
     }
 
     if(respuesta_memoria >= 0){
-        log_info(logger, "CARPINCHO %d - ha sido creado correctamente en memoria", id_carpincho);
+        log_info(logger, "CARPINCHO %d - ha sido creado correctamente en memoria", carpincho->id);
         list_add(lista_carpinchos, (void *) carpincho);
         queue_push(new, (void *)carpincho);
         sem_post(&hay_estructura_creada);
@@ -832,20 +833,30 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
     socket_memoria = _connect(config_get_string_value(config, "IP_MEMORIA"), config_get_string_value(config, "PUERTO_MEMORIA"), logger);
 
     if(socket_memoria >= 0){
+        int respuesta_memoria;
         _send_message(socket_memoria, ID_KERNEL, MATE_MEMREAD,payload,sizeof(int) * 3,logger);   
         buffer = _receive_message(socket_memoria, logger);
         log_info(logger, "CARPINCHO %d - el MEMREAD fue realizado correctamente", id_carpincho);
-        _send_message(fd, ID_KERNEL, 1, buffer->payload, size, logger);
+        memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+        if(respuesta_memoria == -6){
+            _send_message(fd, ID_KERNEL, MATE_MEMREAD, buffer->payload, sizeof(int), logger); 
+        }else
+        {
+            _send_message(fd, ID_KERNEL, MATE_MEMREAD, buffer->payload, sizeof(int), logger);
+        }
+        
+        
         close(socket_memoria);
         free(buffer->identifier);
         free(buffer->payload);
         free(buffer);
+
     }
     else{
         log_error(logger, "No se ha podido conectar con el módulo memoria");
         int respuesta_memoria = -6;
         void* respuesta_memoria_serializada = _serialize(sizeof(int), "%d", respuesta_memoria);
-        _send_message(fd, ID_KERNEL, 1, respuesta_memoria_serializada, sizeof(int), logger); 
+        _send_message(fd, ID_KERNEL, MATE_MEMREAD, respuesta_memoria_serializada, sizeof(int), logger); 
         free(respuesta_memoria_serializada);
     }
     free(payload);
@@ -863,14 +874,22 @@ void mate_memwrite(int id_carpincho, void* origin, mate_pointer dest, int size, 
 
     int respuesta_memoria;
     
+    
     if(socket_memoria >= 0){
         _send_message(socket_memoria, ID_KERNEL, MATE_MEMWRITE, payload, sizeof(int) * 3 + size, logger); 
 
         t_mensaje *buffer;
         buffer = _receive_message(socket_memoria, logger);
-        //NUEVO
-        log_info(logger, "CARPINCHO %d - el MEMREAD fue realizado correctamente", id_carpincho);
-        _send_message(fd, ID_KERNEL, 1, buffer->payload, size, logger);
+        memcpy(&respuesta_memoria,  buffer->payload, sizeof(int));
+
+        log_info(logger, "CARPINCHO %d - el MEMWRITE fue realizado correctamente", id_carpincho);
+        if(respuesta_memoria == -6){
+            _send_message(fd, ID_KERNEL, MATE_MEMWRITE, buffer->payload, sizeof(int), logger); 
+        }else
+        {
+            _send_message(fd, ID_KERNEL, MATE_MEMWRITE, buffer->payload, sizeof(int), logger);
+        }
+        
 
         close(socket_memoria);
         free(buffer->identifier);
@@ -1466,10 +1485,12 @@ void agregando_a_lista_posible_deadlock(){
     for(int i= 0; i< list_size(lista_carpinchos); i++){ 
         data_carpincho *carpincho = list_get(lista_carpinchos,i);
 
-        bool cumple_estado = carpincho->estado==BLOCKED || carpincho->estado==SUSPENDED_BLOCKED; // los carpinchos pueden estar en bloq suspended tamb para ser un posible?
-        bool cumple_retencion = !list_is_empty(carpincho->semaforos_retenidos);
-        bool cumple_bloqueo = carpincho->nombre_semaforo_por_el_que_se_bloqueo !=NULL; //cuando se desbloquee cambiarlo a null
+        bool cumple_estado = carpincho->estado==BLOCKED || carpincho->estado==SUSPENDED_BLOCKED;
+        bool cumple_retencion = list_size(carpincho->semaforos_retenidos)>0;
+        bool cumple_bloqueo = carpincho->nombre_semaforo_por_el_que_se_bloqueo !=NULL; //falta --> cuando se desbloquee cambiarlo a null
+        
         if(cumple_estado && cumple_retencion && cumple_bloqueo){
+            log_info(logger, "Agrego al %d a la lista de posibles", carpincho->id);
             list_add(lista_posibles, carpincho);
         }
     }
@@ -1480,98 +1501,149 @@ void agregando_a_lista_posible_deadlock(){
 void detectar_deadlock(){
 
     int tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
-    data_carpincho *c1;
-    data_carpincho *c2;
 
-    int variable_while = 1;
-
-    while(variable_while){
+    while(1){
         
-        sleep(tiempo_deadlock/1000);
-
-        log_info(logger, "DEADLOCK - pasaron los %d milisegundos, momento de buscar sospechosos", tiempo_deadlock);
+        usleep(tiempo_deadlock*1000);
+//falta MUTEXS estados
+        log_warning(logger, "DEADLOCK - pasaron los %d milisegundos, momento de buscar sospechosos", tiempo_deadlock);
 
         agregando_a_lista_posible_deadlock();
 
-        for(int i= 0; i< list_size(lista_posibles); i++){
-            c1 = list_get(lista_posibles, i);
-            for(int k= 0; k< list_size(lista_posibles); k++){
-                
-                c2 = list_get(lista_posibles, k);
+        int cantidad_posibles = list_size(lista_posibles);
 
-                bool mismo_que_c2_espera(void* nombre_sem_retenido_c1){
-                    return strcmp(nombre_sem_retenido_c1, c2->nombre_semaforo_por_el_que_se_bloqueo) ==0;
-                }
+        if(cantidad_posibles >= 2){
 
-                if(i!=k){
-                    if(list_any_satisfy(c1->semaforos_retenidos, mismo_que_c2_espera)){
-                        c2->tiene_su_espera = c1->id;
-                        list_add(lista_conectados,c2);
-                    }
-                }       
-            }    
+            int ciclo = formando_ciclo();
+
+            if(ciclo>=2){
+                log_info(logger, "Se formo un ciclo de %d carpinchos", ciclo);
+                solucionar_deadlock(ciclo_deadlock);
+            }else{
+                log_info(logger, "No se formo un ciclo entre los posibles carpinchos");
+            }
+            
+        } else{
+            log_info(logger, "No hay deadlock, no hay suficientes carpinchos posibles");
         }
-    if(list_size(lista_conectados) > 0){
-        log_info(logger,"DEADLOCK - han sido encontrados %d carpinchos sospechosos, se evaluará si están en deadlock", list_size(lista_conectados));
-
-        int id_base = 0;
-        data_carpincho *carpincho_base;
-        int carpincho_C;
-        data_carpincho *carpincho_B;
-        data_carpincho *carpincho_A;
-
-        while( id_base != (list_size(lista_conectados)-1)){  
-
-            carpincho_C = id_base;
-
-            bool esIgualACarpincho_A(void *id){
-                return (int)id == carpincho_A->id;
-            }
-            bool esIgualACarpincho_B(void *id){
-                return (int)id == carpincho_B->id;
-            }
-            bool esIgualACarpincho_C(void *id){
-                return (int)id == carpincho_C;
-            }
-
-            for(int i = 0; i < list_size(lista_conectados); i++){
-
-                carpincho_base = list_get(lista_conectados, id_base); 
-                carpincho_A = list_get(lista_conectados, carpincho_C);  
-                carpincho_B = encontrar_estructura_segun_id(carpincho_A->tiene_su_espera); 
-
-                carpincho_C = carpincho_B->tiene_su_espera;  
-
-                if(!list_any_satisfy(lista_conectados, (void *)esIgualACarpincho_A)){
-                    list_add(ciclo_deadlock,(void *)carpincho_A);   
-                }
-                if(!list_any_satisfy(lista_conectados, (void *)esIgualACarpincho_B)){
-                    list_add(ciclo_deadlock,(void *)carpincho_B);
-                }     
-                if(!list_any_satisfy(lista_conectados, (void *)esIgualACarpincho_C)){
-                    
-                    list_add(ciclo_deadlock,(void *) encontrar_estructura_segun_id(carpincho_C));
-                }
-                            
-                if(carpincho_base->id == carpincho_C || carpincho_base->tiene_su_espera == carpincho_C){
-                    log_info(logger,"DEADLOCK - sí, estaban en deadlock los %d carpinchos, se repará", list_size(ciclo_deadlock));
-                    solucionar_deadlock(ciclo_deadlock);             
-                }
-                list_clean(ciclo_deadlock);
-            }
-
-            id_base ++;
-        }
+        
     }
 
-    list_clean(lista_posibles);
-    list_clean(lista_conectados);
+    list_clean(lista_posibles);   
 
-    }        
 }
 
 
+int formando_ciclo(){
+    //pasar por todos los de la lista de posibles hasta volver al que empezo
+
+    for(int i=0; i<list_size(lista_posibles); i++){
+        data_carpincho* carpi_1;
+        carpi_1 = list_get(lista_posibles,i);
+        buscar_quien_tiene_su_espera(carpi_1);
+    }
+
+    for(int j=0; j<list_size(lista_conectados); j++){
+//--> prevenir loop infinito
+        data_carpincho* carpi_1;
+        carpi_1 = list_get(lista_conectados,j);
+        int id_1 = carpi_1->id;
+        int id_2 = carpi_1->tiene_su_espera;
+        data_carpincho* carpi_2 = encontrar_estructura_segun_id(id_2);
+
+        if(tienen_lo_necesario(carpi_1,carpi_2)){
+            //ya hay deadlock entre 1 y 2
+            list_add(ciclo_deadlock, carpi_1);
+            list_add(ciclo_deadlock, carpi_2);
+            return 2;
+        } 
+        else{
+            int id_3 = carpi_2->tiene_su_espera;
+            data_carpincho* carpi_3 = encontrar_estructura_segun_id(id_3);
+            int id_4 = carpi_3->tiene_su_espera;
+                if(id_4 == id_1){
+                    // hay ciclo entre 1 2 3
+                    list_add(ciclo_deadlock, carpi_1);
+                    list_add(ciclo_deadlock, carpi_2);
+                    list_add(ciclo_deadlock, carpi_3);
+                    return 3;
+                } 
+                else{
+                    data_carpincho* carpi_4 = encontrar_estructura_segun_id(id_4);
+                    int id_5 = carpi_4->tiene_su_espera;
+
+                        if(id_5 == id_1){
+                            //hay ciclo entre 1 2 3 4
+                            list_add(ciclo_deadlock, carpi_1);
+                            list_add(ciclo_deadlock, carpi_2);
+                            list_add(ciclo_deadlock, carpi_3);
+                            list_add(ciclo_deadlock, carpi_4);
+                            return 4;
+                        }
+                        
+                         else{
+                            data_carpincho* carpi_5 = encontrar_estructura_segun_id(id_5);
+                            int id_6 = carpi_5->tiene_su_espera;
+                            //data_carpincho* carpi_6 = encontrar_estructura_segun_id(id_5);
+                                if(id_1 == id_6){
+                                    //hay ciclo entre 1 2 3 4 5
+                                    list_add(ciclo_deadlock, carpi_1);
+                                    list_add(ciclo_deadlock, carpi_2);
+                                    list_add(ciclo_deadlock, carpi_3);
+                                    list_add(ciclo_deadlock, carpi_4);
+                                    list_add(ciclo_deadlock, carpi_5);
+                                    return 5;
+                                }
+                                else{
+                                    return 0;
+                                }
+                        }
+                }
+        } 
+
+    }
+}
+
+
+
+bool tienen_lo_necesario(data_carpincho* primero,data_carpincho* segundo){
+
+    bool primera_condicion = primero->sem_por_el_que_se_bloqueo == segundo->sem_retenido;
+    bool segunda_condicion = segundo->sem_por_el_que_se_bloqueo == primero->sem_retenido;
+
+    if(primera_condicion && segunda_condicion){
+        return true;
+    }else{
+       return false; 
+    }
+}
+
+
+
+void buscar_quien_tiene_su_espera(data_carpincho* carpi_que_espera){
+
+    int id_sem_que_espera= carpi_que_espera->sem_por_el_que_se_bloqueo;
+    
+    for(int i=0; i<list_size(lista_posibles); i++){
+
+        data_carpincho* carpi_que_retiene;
+        carpi_que_retiene = list_get(lista_posibles,i);
+
+        if(carpi_que_retiene->id != carpi_que_espera->id){
+
+            if(carpi_que_retiene->sem_retenido == id_sem_que_espera){
+                carpi_que_espera->tiene_su_espera = carpi_que_retiene->id;
+                list_add(lista_conectados, carpi_que_retiene);
+                list_add(lista_conectados, carpi_que_espera);
+            }
+        }
+    }
+
+}
+
 void solucionar_deadlock(t_list* ciclo_deadlock){
+
+    log_warning(logger, "Procedo a SOLUCIONAR el DEADLOCK");
 
     int mayor_id_hasta_ahora = 0;
     int id_actual;
@@ -1597,3 +1669,332 @@ void solucionar_deadlock(t_list* ciclo_deadlock){
     }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////// ALTERNATIVA DEADLOCK /////////////////////////////////////////////////////
+
+
+/* 
+
+int cantidadDeVecesQueProcesoRetieneASemaforo(data_carpincho* procesoActual, semaforo* semaforoBuscado){
+    
+    int procesoRetieneSemaforo(semaforo* semaforoActual){
+        if(strcmp(semaforoActual->nombre, semaforoBuscado->nombre) == 0){
+            return 1;
+        }
+        return 0;
+    }
+    return list_count_satisfying((procesoActual->semaforos_retenidos), (void*)procesoRetieneSemaforo);
+}
+
+int cantidadDeVecesQueProcesoPideASemaforo(data_carpincho* procesoActual, semaforo* semaforoBuscado){
+    
+    int procesoRetieneSemaforo(semaforo* semaforoActual){
+        if(string_equals_ignore_case(semaforoActual->nombre, semaforoBuscado->nombre)){
+            return 1;
+        }
+        return 0;
+    }
+    return list_count_satisfying(procesoActual->semaforos_retenidos, (void*)procesoRetieneSemaforo);
+}
+
+
+bool procesoDeMayorPID(data_carpincho* p1, data_carpincho* p2){
+    return p1->id > p2->id;
+}
+
+
+bool procesoEnDeadlock(data_carpincho* proceso, data_carpincho* proceso_apuntado, t_list* procesosPasados){ //CREAR LISTA
+    
+    //esto por las dudas de que el processo original en realidad no este apuntando a nadie
+    if(proceso == NULL || proceso_apuntado == NULL){
+        return 0;
+    }else{
+        //veo si no me estoy metiendo en un bucle infinito,
+        for(int i= 0 ; i< list_size(procesosPasados); i++){
+            
+            //si el proceso_apuntado, esta en la lista de procesos que fueron pasando hasta ahora, entonces va a terminarse xq sino entraria en un bucle infinito
+            //suponete el proceso 6, 6->1->2->3->4->5->6->1->2->3. Al hacer la primer vuelta, despues cuando vuelva como el 1 estaria en la lista entra y retorna 0
+            data_carpincho* proceso = list_get(procesosPasados, i);
+            if(proceso_apuntado->id == proceso->id){
+                return 0;
+            }
+        }
+        
+        //si no sale por el return 0, se agrega el proceso apuntado a la lista
+        list_add(procesosPasados, proceso_apuntado);
+
+        if(proceso_apuntado->tiene_su_espera != 0){ 
+            //if(p1-->id == p4->tiene_su_espera(id p1)) --> return 1
+            if(proceso->id == proceso_apuntado->tiene_su_espera){
+                return 1;
+            }
+            
+        }
+        data_carpincho* carpincho_que_tiene_su_espera;
+        carpincho_que_tiene_su_espera = encontrar_estructura_segun_id(proceso_apuntado->tiene_su_espera);
+        int valorFinal= procesoEnDeadlock(proceso, carpincho_que_tiene_su_espera , procesosPasados);
+
+        return valorFinal;
+    }
+
+    
+}
+
+
+void ejecutarAlgoritmoDeadlock(){
+    while(1){
+
+        int tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
+        //usleep(tiempo_deadlock*1000);
+        log_info(logger,"SE CUMPLIO EL TIEMPO DE DEADLOCK, VOY A CHEQUEAR");
+
+       // pthread_mutex_lock(controladorSemaforos);
+      //  bloquearTodosLosSemaforos();
+        pthread_mutex_lock(&sem_cola_blocked);
+        pthread_mutex_lock(&sem_cola_suspended_blocked);
+        pthread_mutex_lock(&sem_cola_exec);
+        pthread_mutex_lock(&sem_cola_ready);
+        pthread_mutex_lock(&sem_cola_suspended_ready);
+        pthread_mutex_lock(&sem_cola_new);
+
+        t_list* procesosEnDEADLOCK = list_create();
+
+        while(1){
+            
+            t_list* procesosAanalizar = procesosQueEstanReteniendoYEsperando();
+            //si no hay o hay solo 1 carpincho => no puede haber deadlock
+            
+            if(procesosAanalizar == NULL) {
+                break;
+            }
+
+            if(list_size(procesosAanalizar) <= 1){
+                list_destroy(procesosAanalizar);
+                break;
+            }
+
+            for(int i= 0 ; i< list_size(procesosAanalizar); i ++){
+                log_info(logger,"BUSCANDO AL CARPINCHO");
+                
+               data_carpincho* procesoAnalizado = list_get(procesosAanalizar,i);
+                
+               char* semaforoApuntando =  procesoAnalizado->nombre_semaforo_por_el_que_se_bloqueo;
+
+                //buscar el proceso que tenga al semaforoApuntado entre sus semaforos retenidos
+                int proceso_apuntado(data_carpincho * carp){
+
+                    for(int j=0; j< list_size(carp->semaforos_retenidos); j++){
+
+                        semaforo* sem = list_get(carp->semaforos_retenidos, j);
+                        
+                        if(string_equals_ignore_case(sem->nombre, semaforoApuntando)){
+                            // aso de que este proceso tenga al semaforo
+                            return 1;
+                        }
+                    }
+                    return 0;
+                };
+
+                data_carpincho* carpincho = list_find(procesosAanalizar, (void*)proceso_apuntado); 
+
+                if(carpincho != NULL){
+                    procesoAnalizado->procesoApuntadoDeadlock = carpincho->id;
+                }else { //si no hay un proceso que retenga el semaforo que solicite el procesoAnalizado
+                    procesoAnalizado->procesoApuntadoDeadlock = 0;
+                }
+
+            }
+
+            //ciclo:
+            for(int k= 0 ; k< list_size(procesosAanalizar); k ++){
+                
+                t_list* listaDeProcesos = list_create();
+                data_carpincho* process = list_get(procesosAanalizar, k);
+                data_carpincho* carpi_apuntado_por_deadlock;
+                carpi_apuntado_por_deadlock = encontrar_estructura_segun_id(process->procesoApuntadoDeadlock);
+                int enDeadlock = procesoEnDeadlock(process, carpi_apuntado_por_deadlock, listaDeProcesos);
+                list_destroy(listaDeProcesos);
+
+                if(enDeadlock){
+                    log_warning(logger,"[DEADLOCK] El proceso %d esta en Dealock", process->id);
+                    list_add(procesosEnDEADLOCK, process);
+                }
+            }
+
+            if(list_size(procesosEnDEADLOCK) >= 2){
+                //ordenamos, mayor pid al comienzo
+                list_sort(procesosEnDEADLOCK,(void*) procesoDeMayorPID);
+                
+log_info(logger,"ACA ELIMINAMOS AL CARPINCHO MAYOR ID");
+
+                //sacamos al proceso de mayor id, que esta al comienzo
+                //data_carpincho* procesoASacarPorDeadlock = list_remove(procesosEnDEADLOCK, 0);
+                //log_trace(logger,"[DEADLOCK] El proceso que se sacara por el Deadlock es el :%d\n",procesoASacarPorDeadlock->id);
+               // desalojarSemaforosDeProceso(procesoASacarPorDeadlock);
+                //finalizarProcesoPorDeadlock(procesoASacarPorDeadlock);
+                
+            }else { // no hay dealock
+                log_info(logger,"[DEADLOCK] No hay deadlock porque no hay suficientes procesos para que ocurra\n");
+                list_destroy(procesosAanalizar);
+                break;
+            }
+
+            list_destroy(procesosAanalizar);
+            list_clean(procesosEnDEADLOCK);
+            
+        }
+        
+        list_destroy(procesosEnDEADLOCK);
+
+        pthread_mutex_unlock(&sem_cola_new);
+        pthread_mutex_unlock(&sem_cola_suspended_ready);
+        pthread_mutex_unlock(&sem_cola_ready);
+        pthread_mutex_unlock(&sem_cola_exec);
+        pthread_mutex_unlock(&sem_cola_suspended_blocked);
+        pthread_mutex_unlock(&sem_cola_blocked);
+        //desbloquearTodosLosSemaforos();
+        //pthread_mutex_unlock(controladorSemaforos);
+    } 
+
+    //log_destroy(logger);
+
+} 
+
+
+int indiceDondeProcesoEstaEnLaLista(int id, t_list* lista){
+   int noEsta = -1;
+   int indice = 0;
+
+
+   int esElProcesoBuscado(data_carpincho* procesoBuscado){
+       if(procesoBuscado->id == id){
+           return 1;
+       }else{
+           indice++;
+           return 0;
+       }
+   }
+
+    data_carpincho* procesoBuscado = list_find(lista, (void*)esElProcesoBuscado);
+    if(procesoBuscado != NULL){
+        return indice;
+    }else{
+        return noEsta;
+    }
+}
+
+*//* 
+void bloquearTodosLosSemaforos(){
+
+    int offset = 0;
+    int size = list_size(semaforos_carpinchos);
+
+    while(offset < size){
+        //semaforo* semaforoActual  = list_get(semaforos_carpinchos, offset);
+        //pthread_mutex_lock(semaforoActual->mutex);
+        offset++;
+    }
+}
+*//* 
+void desbloquearTodosLosSemaforos(){
+
+    int offset = 0;
+    int size = list_size(semaforos_carpinchos);
+
+    while(offset < size){
+        semaforo* semaforoActual  = list_get(semaforos_carpinchos, offset);
+        //pthread_mutex_unlock(semaforoActual->mutex);
+        offset++;
+    }
+}
+*/ /* 
+int procesoReteniendoYEsperando(data_carpincho* proceso){
+    return (!list_is_empty(proceso->semaforos_retenidos)) && proceso->nombre_semaforo_por_el_que_se_bloqueo != NULL;//(!list_is_empty(proceso->listaRecursosSolicitados));
+}
+
+int procesoReteniendo(data_carpincho* proceso){
+    return (!list_is_empty(proceso->semaforos_retenidos));
+}
+
+
+t_list* procesosQueEstanReteniendoYEsperando(){
+
+    t_list* listaFiltrada = list_create();
+    //t_list* procesosQuePuedenEstarOcupandoRecursos = list_create();
+    t_list* listaFiltradaFinal = list_create();
+
+    //siempre vamos a considerar los que estan reteniendo, xq si no esta reteniendo no es causante del deadlock
+
+    //primero filtramos los que estan bloqueados, los que tienen cosas asignadas y estan reteniendo
+    list_add_all(listaFiltrada, blocked);
+    list_add_all(listaFiltrada, suspended_blocked);
+
+
+    if(!list_is_empty(listaFiltrada)){
+        t_list* listaFiltro = list_filter(listaFiltrada, (void*)procesoReteniendoYEsperando);
+        list_add_all(listaFiltradaFinal, listaFiltro);
+        list_destroy(listaFiltro);
+    } 
+
+    if(listaFiltradaFinal != NULL) {
+        //int sizeBloqueados = list_size(listaFiltradaFinal);
+        //log_info(loggerActual,"[DEADLOCK] La cantidad de procesos agarrados para el deadlock que se encuentran bloqueados, reteniendo y esperando son: %d\n", sizeBloqueados);
+    }else{
+        //log_info(loggerActual,"[DEADLOCK] La cantidad de procesos agarrados para el deadlock es 0");        
+    }
+
+    list_destroy(listaFiltrada);
+
+    return listaFiltradaFinal;
+
+}
+
+
+
+void rellenarVectorDisponibles(t_list* semaforos_carpinchos, int vector[]){
+
+    int size = list_size(semaforos_carpinchos);
+
+    for(int i = 0; i < size; i++){
+
+        semaforo* semaforoActual = list_get(semaforos_carpinchos, i);
+
+        if(semaforoActual->valor < 0){
+            vector[i]= 0;
+        }else{
+            vector[i]= semaforoActual->valor;
+        }
+    }
+
+
+}
+
+
+void finalizarProcesoPorDeadlock(data_carpincho* procesoASacarPorDeadlock){
+    //el 1 era que se realizo el wait
+    //el 0 que no se pudo realizar xq no existia el semaforo
+    //el 2 que se pudo realizar aunque no se bloqueo
+    //vamos a enviarle un codigo 3 de respuesta a la matelib, y la matelib va a cerrar todo debido a eso
+    //t_log* logger =  log_create("cfg/ServidorActual.log","Servidor",1,LOG_LEVEL_DEBUG);
+   // finalizarEnMemoria(procesoASacarPorDeadlock, logger);
+   // log_destroy(logger);
+
+    //avisarWaitDeSemaforo(procesoASacarPorDeadlock->conexion, 3);
+    //ya anteriormente lo liberamos de todos lados
+
+    //liberamos los recursos del proceso
+    //liberarProceso(procesoASacarPorDeadlock);
+
+
+    log_info(logger, "LLEGUE A BORRAR A UNO");
+}*/
