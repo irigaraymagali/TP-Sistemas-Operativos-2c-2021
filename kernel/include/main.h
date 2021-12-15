@@ -79,6 +79,7 @@ typedef struct data_carpincho // la data que le importa tener al backend, hacer 
 
 
 int id_el_primero_a_cheuquear = 9999;
+int id_semaforos = 1;
 
 // Estados
 t_queue* new;
@@ -114,6 +115,8 @@ pthread_mutex_t mutex_para_CPU;
 pthread_mutex_t sem_cola_io;
 pthread_mutex_t sem_io_uso;
 
+pthread_mutex_t mutex_para_posibles_deadlock;
+
 
 // log
 t_log *logger;
@@ -122,6 +125,8 @@ t_config* config;
 
 t_list* ptr_dispositivos_io;
 t_list* ptr_duraciones_io;
+
+t_list* el_ciclo;
 
 // id carpincho
 int id_carpincho_global;
@@ -145,6 +150,7 @@ sem_t liberar_CPU[1000];
 sem_t CPU_libre[1000];
 sem_t usar_CPU[1000];
 sem_t dispositivo_sem[10];
+sem_t segui_chequeando_deadlock;
 
     pthread_t hilo_CPU[1000]; // gonza -> nos va a pasar algo parecido que con los semaforos
 
@@ -203,6 +209,13 @@ void liberar_carpincho(void *carpincho);
 int formando_ciclo();
 bool tienen_lo_necesario(data_carpincho* primero,data_carpincho* segundo);
 void buscar_quien_tiene_su_espera(data_carpincho* carpi_que_espera);
+void solucionatelo(t_list* el_ciclo);
+bool chequear_ciclo(data_carpincho* primer_carpi);
+bool hay_ciclo();
+void detectate_deadlock();
+
+semaforo* encontrar_estructura_semaforo(int id);
+bool validar_existencia_carpincho(int id);
 
 void port_fixer();
 
