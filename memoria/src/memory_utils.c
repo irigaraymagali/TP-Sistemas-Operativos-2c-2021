@@ -1456,9 +1456,9 @@ void utilizarAlgritmoDeAsignacion(int processID){
     }
     else
     {
-        pthread_mutex_lock(&list_pages_mutex);
+        
         seleccionClockMejorado(processID);
-        pthread_mutex_unlock(&list_pages_mutex);
+        
 
     }
 }
@@ -1568,7 +1568,9 @@ void seleccionClockMejorado(int idProcess){
         }
 
         if(!tipoDeAsignacionDinamica &&  idProcess==getProcessIdby(punteroFrameClock)){
+            pthread_mutex_lock(&list_pages_mutex);
             Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+            pthread_mutex_unlock(&list_pages_mutex);
 
             if(paginaEncontrada->bitModificado == 0 && paginaEncontrada->bitUso==0){
                 frameNoEncontrado =0;
@@ -1605,7 +1607,10 @@ void seleccionClockMejorado(int idProcess){
         }else{
             if (tipoDeAsignacionDinamica)
             {
+                pthread_mutex_lock(&list_pages_mutex);
                 Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+                pthread_mutex_unlock(&list_pages_mutex);
+
 
             if(paginaEncontrada->bitModificado == 0 && paginaEncontrada->bitUso==0){
                 frameNoEncontrado =0;
@@ -1647,7 +1652,10 @@ void seleccionClockMejorado(int idProcess){
         }
 
         if(!tipoDeAsignacionDinamica &&  idProcess==getProcessIdby(punteroFrameClock)){
+                pthread_mutex_lock(&list_pages_mutex);            
             Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+                pthread_mutex_unlock(&list_pages_mutex);
+
 
             if(paginaEncontrada->bitUso==0){
                 frameNoEncontrado =0;
@@ -1681,7 +1689,10 @@ void seleccionClockMejorado(int idProcess){
                 punteroFrameClock++;
             }else{
                 if (tipoDeAsignacionDinamica){
+                pthread_mutex_lock(&list_pages_mutex);                    
                     Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+                pthread_mutex_unlock(&list_pages_mutex);
+
 
                     if(paginaEncontrada->bitUso==0){
                         frameNoEncontrado =0;
