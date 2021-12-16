@@ -21,7 +21,7 @@ int main(int argc, char ** argv){
     // port_fixer();
 
     pthread_mutex_init(&pid_global_mutex, NULL);
-    pid_global = 0;
+    pid_global = 1;
     init_swamp_connection();
 
     initPaginacion();
@@ -33,10 +33,10 @@ int main(int argc, char ** argv){
 
     /* inicializarUnProceso(1);
     //inicializarUnProceso(2);
-
+    
     memalloc(1, 20);
     memwrite(1,0,"carpincho",10);*/
-
+    
     signal(SIGINT, print_metrics);
 
     _start_server(config_get_string_value(config, PORT_CONFIG), handler, logger);
@@ -197,15 +197,19 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
 
     switch(opcode){
         case MATE_INIT:
+            //pthread_mutex_lock(&mutex_anashe);
             log_info(logger, "Comenzando comando MATE_INIT");
             pid = deserialize_init_process(id, payload);
             inicializarUnProceso(pid);  
-            iresp = pid;    
+            iresp = pid;
+            //pthread_mutex_unlock(&mutex_anashe);
             break;
         case MATE_MEMALLOC:
+            //pthread_mutex_lock(&mutex_anashe);
             log_info(logger, "Comenzando comando MATE_MEMALLOC");
             deserialize_mem_alloc(&pid, &espacioAReservar, payload);
             iresp = memalloc(pid, espacioAReservar);
+            //pthread_mutex_unlock(&mutex_anashe);
             break;
         case MATE_MEMFREE:
             log_info(logger, "Comenzando comando MATE_MEMFREE");
@@ -213,6 +217,7 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             iresp = memfree(pid, dir_logica);
             break;
         case MATE_MEMREAD:
+            //pthread_mutex_lock(&mutex_anashe);
             log_info(logger, "Comenzando comando MATE_MEMREAD");
             deserialize_mem_read(&pid, &dir_logica, &size, payload);
             resp = memread(pid, dir_logica, size);
@@ -223,12 +228,15 @@ void handler(int fd, char* id, int opcode, void* payload, t_log* logger){
             } else {
                 size_msg = size;
             }
+            //pthread_mutex_unlock(&mutex_anashe);
             break;
         case MATE_MEMWRITE:
+            //pthread_mutex_lock(&mutex_anashe);
             log_info(logger, "Comenzando comando MATE_MEMWRITE");
             to_write = deserialize_mem_write(&pid, &dir_logica, &size, payload);
             iresp = memwrite(pid, dir_logica, to_write, size);
             free(to_write);
+            //pthread_mutex_unlock(&mutex_anashe);
             break;
         case MATE_CLOSE:
             log_info(logger, "Comenzando comando MATE_CLOSE");
