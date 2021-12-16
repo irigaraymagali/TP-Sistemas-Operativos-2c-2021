@@ -12,7 +12,15 @@ void initPaginacion(){
     pthread_mutex_init(&tlb_lru_mutex, NULL);
     pthread_mutex_init(&entrada_fifo_mutex, NULL);
     pthread_mutex_init(&memory_mutex, NULL);
-    pthread_mutex_init(&m_list_mutex, NULL);    
+    pthread_mutex_init(&m_list_mutex, NULL);
+    //pthread_mutex_init(&mutex_anashe, NULL);
+    pthread_mutex_init(&iteration_mutex, NULL);
+    pthread_mutex_init(&list_tables_mutex, NULL);
+    pthread_mutex_init(&utilizacionDePagina_mutex, NULL);
+    
+    
+    
+    //pthread_mutex_init(&m_list_mutex, NULL);    
 
     tamanioDePagina = config_get_int_value(config, "TAMANIO_PAGINA");
 
@@ -51,7 +59,9 @@ void initPaginacion(){
 
 int memalloc(int processId, int espacioAReservar){
     log_info(logger,"arranco un memalloc----------------------------");
+    pthread_mutex_lock(&iteration_mutex);
     int entra = entraEnElEspacioLibre(espacioAReservar, processId);
+    pthread_mutex_unlock(&iteration_mutex);
     uint32_t mayorNroDePagina = 0; // 0 porque indica que no tiene asignado ninguna pagina, las pags siempre arancan en 1
     int tempLastHeap = 0;
     int espacioFinalDisponible = 0;
@@ -64,11 +74,13 @@ int memalloc(int processId, int espacioAReservar){
         log_info(logger,"se debe generar un nuevo aloc");
         TablaDePaginasxProceso* temp = get_pages_by(processId);
 
-        tempLastHeap = temp->lastHeap;
+        
 
-
+        
         pthread_mutex_lock(&list_pages_mutex);
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
+
+        tempLastHeap = temp->lastHeap;
 
         while(list_iterator_has_next(iterator2)){
             Pagina* paginaTemporal = (Pagina*)  list_iterator_next(iterator2);
@@ -95,7 +107,6 @@ int memalloc(int processId, int espacioAReservar){
         espacioAReservar += HEAP_METADATA_SIZE;
 
         if(espacioFinalDisponible >= espacioAReservar){
-            pthread_mutex_lock(&memory_mutex);
 
             void* espacioAuxiliar = malloc(sizeof(uint32_t)+sizeof(uint8_t));
             void* espacioAuxiliar2 = malloc(HEAP_METADATA_SIZE);
@@ -118,19 +129,20 @@ int memalloc(int processId, int espacioAReservar){
             free(espacioAuxiliar2);
             
 
+            pthread_mutex_lock(&list_pages_mutex);
             temp->lastHeap = tempLastHeap + espacioAReservar;
+            pthread_mutex_unlock(&list_pages_mutex);
 
-
-            pthread_mutex_unlock(&memory_mutex);
             free(nuevoHeap);
             return (tempLastHeap );
         } else {
             
+           pthread_mutex_lock(&utilizacionDePagina_mutex);
            agregarXPaginasPara(processId, (espacioAReservar-espacioFinalDisponible));
+           pthread_mutex_unlock(&utilizacionDePagina_mutex);
 
             int ubicacionNuevoLastHeap = tempLastHeap + espacioAReservar;
             // Pagina *ultimaPag = getLastPageDe(processId);
-            pthread_mutex_lock(&memory_mutex);
 
             void* espacioAuxiliar = malloc(sizeof(uint32_t)+sizeof(uint8_t));
             void* espacioAuxiliar2 = malloc(HEAP_METADATA_SIZE);
@@ -150,10 +162,10 @@ int memalloc(int processId, int espacioAReservar){
             free(espacioAuxiliar);
             free(espacioAuxiliar2);
             memoryDump();
-            pthread_mutex_unlock(&memory_mutex);
         }
+        pthread_mutex_lock(&list_pages_mutex);
         temp->lastHeap = tempLastHeap + espacioAReservar;
-
+        pthread_mutex_unlock(&list_pages_mutex);
         free(nuevoHeap);
         
         return (tempLastHeap);    
@@ -167,7 +179,9 @@ int memalloc(int processId, int espacioAReservar){
         int offset = (unFrame * tamanioDePagina) +  (ubicacionLogicaDelIsfree - ((paginaDeLaUbicacionLogicaDelIsfree-1) * tamanioDePagina));
         int isfree = BUSY;
         
+        pthread_mutex_lock(&memory_mutex);
         memcpy(memoria+ offset, &isfree,sizeof(uint8_t));
+        pthread_mutex_unlock(&memory_mutex);
         setPaginaAsModificado(processId,paginaDeLaUbicacionLogicaDelIsfree);
         
         int paginaInicialHeapMeta = (entra/tamanioDePagina) +1;
@@ -179,7 +193,9 @@ int memalloc(int processId, int espacioAReservar){
         while(nroPagAux <= paginaFinalHeapMeta){
            int unFrame = getFrameDeUn(processId,nroPagAux);
 
+            pthread_mutex_lock(&memory_mutex);
             memcpy(espacioAuxiliar+offsetEspacioAux, memoria+ (unFrame*tamanioDePagina),tamanioDePagina);
+            pthread_mutex_unlock(&memory_mutex);
 
             nroPagAux++;
             offsetEspacioAux+=tamanioDePagina;
@@ -258,10 +274,14 @@ void editarAlgoEnMemoria(int processId,int inicio, int tamanio, void* loQuieroMe
 
     if (pagiInicio == pagiFin)
     {
+        pthread_mutex_lock(&utilizacionDePagina_mutex);
         frameBuscado = getFrameDeUn(processId,pagiInicio);
+        pthread_mutex_lock(&memory_mutex);
         memcpy(memoria + (frameBuscado*tamanioDePagina)+posinicio,loQuieroMeter,tamanio);
+        pthread_mutex_unlock(&memory_mutex);
         setPaginaAsModificado(processId,pagiInicio);
         mandarPaginaAgonza(processId ,frameBuscado, pagiInicio);
+        pthread_mutex_unlock(&utilizacionDePagina_mutex);
     }
     else
     {
@@ -274,24 +294,36 @@ void editarAlgoEnMemoria(int processId,int inicio, int tamanio, void* loQuieroMe
         {
             
             if(nropagaux == pagiInicio){
+                pthread_mutex_lock(&utilizacionDePagina_mutex);
                 frameBuscado = getFrameDeUn(processId,pagiInicio);
+                pthread_mutex_lock(&memory_mutex);
                 memcpy(memoria + (frameBuscado*tamanioDePagina)+posinicio,loQuieroMeter,tamanioPagInicial);
+                pthread_mutex_unlock(&memory_mutex);
                 setPaginaAsModificado(processId,pagiInicio);
                 mandarPaginaAgonza(processId ,frameBuscado, pagiInicio);
+                pthread_mutex_unlock(&utilizacionDePagina_mutex);
                 offset+=tamanioPagInicial;
             }else{
 
                 if(nropagaux == pagiFin){
+                    pthread_mutex_lock(&utilizacionDePagina_mutex);
                     frameBuscado = getFrameDeUn(processId,pagiFin);
+                    pthread_mutex_lock(&memory_mutex);
                     memcpy(memoria + (frameBuscado*tamanioDePagina),loQuieroMeter+offset,tamanioPagFinal);
+                    pthread_mutex_unlock(&memory_mutex);
                     setPaginaAsModificado(processId,pagiFin);
                     mandarPaginaAgonza(processId ,frameBuscado, pagiFin);
+                    pthread_mutex_unlock(&utilizacionDePagina_mutex);
                 }else
                 {
+                    pthread_mutex_lock(&utilizacionDePagina_mutex);
                     frameBuscado = getFrameDeUn(processId,nropagaux);
+                    pthread_mutex_lock(&memory_mutex);
                     memcpy(memoria + (frameBuscado*tamanioDePagina),loQuieroMeter+offset,tamanioDePagina);
+                    pthread_mutex_unlock(&memory_mutex);
                     setPaginaAsModificado(processId,nropagaux);
                     mandarPaginaAgonza(processId ,frameBuscado, nropagaux);
+                    pthread_mutex_unlock(&utilizacionDePagina_mutex);
                     offset+=tamanioDePagina;
                 }
             }
@@ -310,9 +342,13 @@ void read_from_memory(int pid, int init_dir, int size, void* read){
     int frame, dir_fisica;
 
     if (init_page == last_page){
+        pthread_mutex_lock(&utilizacionDePagina_mutex);
         frame = getFrameDeUn(pid, init_page);
         dir_fisica = (frame * tamanioDePagina) + init_pos;
+        pthread_mutex_lock(&memory_mutex);
         memcpy(read, memoria + dir_fisica, size);
+        pthread_mutex_unlock(&memory_mutex);
+        pthread_mutex_unlock(&utilizacionDePagina_mutex);
     } else {
         int page_aux = init_page;
         int size_init_page = tamanioDePagina - (init_dir - ((init_page - 1) * tamanioDePagina));
@@ -321,19 +357,29 @@ void read_from_memory(int pid, int init_dir, int size, void* read){
 
         while (page_aux <= last_page){
             if(page_aux == init_page) {
+                pthread_mutex_lock(&utilizacionDePagina_mutex);
                 frame = getFrameDeUn(pid, init_page);
                 dir_fisica = (frame * tamanioDePagina) + init_pos;
+                pthread_mutex_lock(&memory_mutex);
                 memcpy(read, memoria + dir_fisica, size_init_page);
+                pthread_mutex_unlock(&memory_mutex);
+                pthread_mutex_unlock(&utilizacionDePagina_mutex);
                 offset += size_init_page;
             } else {
+                pthread_mutex_lock(&utilizacionDePagina_mutex);
                 frame = getFrameDeUn(pid, page_aux);
                 dir_fisica = (frame * tamanioDePagina);
                 if(page_aux == last_page){
+                    pthread_mutex_lock(&memory_mutex);
                     memcpy(read + offset, memoria + dir_fisica, size_last_page);
+                    pthread_mutex_unlock(&memory_mutex);
                 } else {
+                    pthread_mutex_lock(&memory_mutex);
                     memcpy(read + offset, memoria + dir_fisica, tamanioDePagina);
+                    pthread_mutex_unlock(&memory_mutex);
                     offset += tamanioDePagina;
                 }
+                pthread_mutex_unlock(&utilizacionDePagina_mutex);
             }
             page_aux++;
         }
@@ -418,9 +464,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
 
     int dir_content = dir_logica + HEAP_METADATA_SIZE;
     log_info(logger, "Realizando Lectura en Memoria...");
-    pthread_mutex_lock(&memory_mutex);
     read_from_memory(pid, dir_content, size, read);
-    pthread_mutex_unlock(&memory_mutex);
     log_info(logger, "Lectura realizada con exito");
     // int algoint;
     // char* algo = string_new();
@@ -435,7 +479,7 @@ void* memread(uint32_t pid, int dir_logica, int size){
 }
 
 TablaDePaginasxProceso* get_pages_by(int processID){
-    pthread_mutex_lock(&list_pages_mutex);
+    pthread_mutex_lock(&list_tables_mutex);
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
     TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
@@ -443,7 +487,7 @@ TablaDePaginasxProceso* get_pages_by(int processID){
         temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
     }
     list_iterator_destroy(iterator);
-    pthread_mutex_unlock(&list_pages_mutex);
+    pthread_mutex_unlock(&list_tables_mutex);
     
     return temp; 
 }
@@ -461,9 +505,10 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
         // int dirPaginaSiguiente = 0;
         // int dirPaginaActual;6
         int espacioEncontrado=0;
+        pthread_mutex_lock(&list_pages_mutex);
         int temp_last_heap = temp->lastHeap;
-
-        pthread_mutex_lock(&memory_mutex);
+        pthread_mutex_unlock(&list_pages_mutex);
+        
         while(allocActual < temp_last_heap  && espacioEncontrado==0){
             int paginaActual = (allocActual/tamanioDePagina) +1; 
 
@@ -471,9 +516,11 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
 
             //void* espacioAuxiliar = malloc(2*tamanioDePagina);
            if(allocActual == 0){ 
+            pthread_mutex_lock(&memory_mutex);
             memcpy(&nextAllocAux, memoria + (frameActual*tamanioDePagina)+sizeof(uint32_t),sizeof(uint32_t));
 
             memcpy(&isfreeAux, memoria + (frameActual*tamanioDePagina)+2*sizeof(uint32_t),sizeof(uint8_t));
+            pthread_mutex_unlock(&memory_mutex);
            }
 
             if((nextAllocAux-HEAP_METADATA_SIZE)<espacioAReservar || isfreeAux == BUSY){
@@ -494,7 +541,9 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
                     while(nropagaux<=paginaFinAlloc){
                         frameActual = getFrameDeUn(processId, nropagaux);
                         
+                        pthread_mutex_lock(&memory_mutex);
                         memcpy(espacioAuxiliar+offsetpagaux, memoria + frameActual*tamanioDePagina,tamanioDePagina);
+                        pthread_mutex_unlock(&memory_mutex);
 
                         offsetpagaux =tamanioDePagina;
                         nropagaux++;
@@ -502,14 +551,15 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
 
                     offsetInicioAlloc= allocActual - ((paginaActual-1)*tamanioDePagina);
 
+                    pthread_mutex_lock(&memory_mutex);
                     memcpy(&nextAllocAux,espacioAuxiliar + offsetInicioAlloc + sizeof(uint32_t),sizeof(uint32_t));
 
                     memcpy(&isfreeAux,espacioAuxiliar + offsetInicioAlloc + 2*sizeof(uint32_t),sizeof(uint8_t));
+                    pthread_mutex_unlock(&memory_mutex);
 
-                    log_info(logger,"el nextalloc leido %d",nextAllocAux);
+                    //log_info(logger,"el nextalloc leido %d",nextAllocAux);
 
                     if(isfreeAux == FREE && (nextAllocAux - allocActual - HEAP_METADATA_SIZE) >= espacioAReservar){
-                    pthread_mutex_unlock(&memory_mutex);
                     return allocActual;
                     
                     }
@@ -517,13 +567,10 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
                     allocActual = nextAllocAux;
                     free(espacioAuxiliar);
                 }
-                
             }else{
-                pthread_mutex_unlock(&memory_mutex);
                 return allocActual;
             }
         }
-        pthread_mutex_unlock(&memory_mutex);
     }
         
     return -1;
@@ -562,11 +609,15 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             Pagina *nuevaPagina = malloc(sizeof(Pagina));
             ultimaPagina = getLastPageDe(processId); // que pasaría si no tenes paginas?
             if(ultimaPagina == NULL){
+                pthread_mutex_lock(&list_pages_mutex);
                 nuevaPagina->pagina = FIRST_PAGE;
+                pthread_mutex_unlock(&list_pages_mutex);
             } else {
+                pthread_mutex_lock(&list_pages_mutex);
                 int nroUltimaPagina = ultimaPagina->pagina ;
                 nroUltimaPagina++;
                 nuevaPagina->pagina= nroUltimaPagina;
+                pthread_mutex_unlock(&list_pages_mutex);
             }
             nuevaPagina->frame = getNewEmptyFrame(processId);
 
@@ -587,7 +638,9 @@ void agregarXPaginasPara(int processId, int espacioRestante){
 
             TablaDePaginasxProceso* temp = get_pages_by(processId);
 
+            pthread_mutex_lock(&list_pages_mutex);
             list_add(temp->paginas, nuevaPagina); // ACA puede haber segun helgrind RACE CONDITION -> Array de mutex o un mutex para lista de paginas distinto a la de la tabla.
+            pthread_mutex_unlock(&list_pages_mutex);
 
             cantidadDePaginasAAgregar--;
         }
@@ -600,10 +653,12 @@ void agregarXPaginasPara(int processId, int espacioRestante){
             t_list_iterator* iterator = list_iterator_create(temp->paginas);
             Pagina* paginaSiguienteALaUltima = (Pagina*) list_iterator_next(iterator);
 
+            pthread_mutex_lock(&list_pages_mutex);
             while (list_iterator_has_next(iterator) && (ultimaPagina->pagina +1 != paginaSiguienteALaUltima->pagina))
             {
                paginaSiguienteALaUltima = (Pagina*) list_iterator_next(iterator);
             }
+            pthread_mutex_unlock(&list_pages_mutex);
 
             if(getNewEmptyFrame(processId) == -1){
                 utilizarAlgritmoDeAsignacion(processId);
@@ -622,7 +677,9 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                     log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",nuevaPagina->frame,nuevaPagina->pagina,processId);
                     list_iterator_destroy(iterator);
 
+                    pthread_mutex_lock(&list_pages_mutex);
                     list_add(temp->paginas, nuevaPagina);
+                    pthread_mutex_unlock(&list_pages_mutex);
 
                     cantidadDePaginasAAgregar--;
                
@@ -644,6 +701,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                     cantidadDePaginasAAgregar--;*/
                 
             }else{
+                pthread_mutex_lock(&list_pages_mutex);
                 paginaSiguienteALaUltima->isfree = BUSY;
                 pthread_mutex_lock(&lru_mutex);
                 lRUACTUAL++;
@@ -652,6 +710,7 @@ void agregarXPaginasPara(int processId, int espacioRestante){
                 paginaSiguienteALaUltima->bitUso=1;
                 paginaSiguienteALaUltima->bitModificado = 0;
                 paginaSiguienteALaUltima->bitPresencia = 1;
+                pthread_mutex_unlock(&list_pages_mutex);
 
                 list_iterator_destroy(iterator);
             
@@ -681,17 +740,20 @@ int getNewEmptyFrame(int idProcess){
     else
     {
         if( !allFramesUsedForAsignacionFijaPara(idProcess)){
-            pthread_mutex_lock(&list_pages_mutex);
+            pthread_mutex_lock(&list_tables_mutex);
             t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
 
             TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
+            
 
             while (temp->id != idProcess) {
 
                 temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);  
 
             }
+            pthread_mutex_unlock(&list_tables_mutex);
 
+            pthread_mutex_unlock(&list_pages_mutex);
             t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
 
             while(list_iterator_has_next(iterator2)){
@@ -727,10 +789,11 @@ int getNewEmptyFrame(int idProcess){
 
 int estaOcupadoUn(int emptyFrame, int idProcess){
     int isfree = FREE;
-    pthread_mutex_lock(&list_pages_mutex);
     if(todasLasTablasDePaginas != NULL){
+        pthread_mutex_lock(&list_tables_mutex);
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
         while (list_iterator_has_next(iterator)) {
+            pthread_mutex_lock(&list_pages_mutex);
             TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
 
             t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
@@ -741,6 +804,7 @@ int estaOcupadoUn(int emptyFrame, int idProcess){
                     list_iterator_destroy(iterator);
                     list_iterator_destroy(iterator2);
                     pthread_mutex_unlock(&list_pages_mutex);
+                    pthread_mutex_unlock(&list_tables_mutex);
                     return tempPagina->isfree;
                     }
                     else{
@@ -749,16 +813,18 @@ int estaOcupadoUn(int emptyFrame, int idProcess){
                             list_iterator_destroy(iterator);
                             list_iterator_destroy(iterator2);
                             pthread_mutex_unlock(&list_pages_mutex);
+                            pthread_mutex_unlock(&list_tables_mutex);
                             return tempPagina->isfree;
                         }
                     }
                 }
             }
             list_iterator_destroy(iterator2);
+            pthread_mutex_unlock(&list_pages_mutex);
         }
     list_iterator_destroy(iterator);
+    pthread_mutex_unlock(&list_tables_mutex);
     }
-    pthread_mutex_unlock(&list_pages_mutex);
     return isfree;
 }
 
@@ -778,8 +844,10 @@ int getframeNoAsignadoEnMemoria(){
 
 int frameAsignado(int unFrame){
     if(todasLasTablasDePaginas != NULL){
+        pthread_mutex_lock(&list_tables_mutex);
         t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
         while (list_iterator_has_next(iterator)) {
+            pthread_mutex_lock(&list_pages_mutex);
             TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
 
             t_list_iterator * iterator2 = list_iterator_create(temp->paginas);
@@ -790,13 +858,16 @@ int frameAsignado(int unFrame){
                     list_iterator_destroy(iterator);
                     list_iterator_destroy(iterator2);
                     pthread_mutex_unlock(&list_pages_mutex);
+                    pthread_mutex_unlock(&list_tables_mutex);
                     
                     return 1;
                 }
             }
             list_iterator_destroy(iterator2);
+            pthread_mutex_unlock(&list_pages_mutex);
         }
     list_iterator_destroy(iterator);
+    pthread_mutex_unlock(&list_tables_mutex);
     }
     return 0;
 }
@@ -833,6 +904,7 @@ int cantidadDeFramesEnMemoriaPor(int processID){
 
     int contador=0;
 
+    pthread_mutex_lock(&list_pages_mutex);
     t_list_iterator * iterator = list_iterator_create(tempTabla->paginas);
     
     while(list_iterator_has_next(iterator)){
@@ -843,6 +915,7 @@ int cantidadDeFramesEnMemoriaPor(int processID){
         }
 
     }
+    pthread_mutex_unlock(&list_pages_mutex);
 
     return contador;
 }
@@ -880,6 +953,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         if(tempPagina->bitPresencia==0){
             utilizarAlgritmoDeAsignacion(processId);
             tempPagina->frame = getNewEmptyFrame(processId);
+             pthread_mutex_lock(&list_pages_mutex);
             tempPagina->bitModificado=0;
             log_info(logger,"Dsp del Algoritmo se ha asignado el frame: %d, nro de pag:%d y pid:%d",tempPagina->frame,tempPagina->pagina,processId);
             int pay_len = 2*sizeof(int);
@@ -890,16 +964,19 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
 
             memcpy(swamp_mem, response + sizeof(int), tamanioDePagina);
             
+            pthread_mutex_lock(&memory_mutex);
             memcpy(memoria + (tempPagina->frame*tamanioDePagina), swamp_mem, tamanioDePagina);
+            pthread_mutex_unlock(&memory_mutex);
             free(payload);
             free(response);
             free(swamp_mem);
             tempPagina->bitPresencia=1;
+            pthread_mutex_unlock(&list_pages_mutex);
             //pedirselo a gonza
         }
         pthread_mutex_lock(&list_pages_mutex);
         tempPagina->bitUso = 1;
-        pthread_mutex_unlock(&list_pages_mutex);
+        
 
         pthread_mutex_lock(&lru_mutex);
         lRUACTUAL++;
@@ -912,6 +989,7 @@ int getFrameDeUn(int processId, int mayorNroDePagina){
         if (max_entradas_tlb > 0){
             add_entrada_tlb(processId, tempPagina->pagina, tempPagina->frame);
         }
+        pthread_mutex_unlock(&list_pages_mutex);
         return tempPagina->frame;
     }
 
@@ -926,7 +1004,9 @@ int memfree(int idProcess, int direccionLogicaBuscada){
 
     TablaDePaginasxProceso *tablaDelProceso = get_pages_by(idProcess);
 
+    pthread_mutex_lock(&list_pages_mutex);
     int dirAllocFinal = tablaDelProceso->lastHeap;
+    pthread_mutex_unlock(&list_pages_mutex);
     int dirAllocActual=0;
     //int offsetNextAllocAnterior;
     uint8_t estadoAllocAnterior;
@@ -1162,7 +1242,9 @@ void deletePagina(int idProcess,int paginaActual){
 
 Pagina* get_page_by_dir_logica(TablaDePaginasxProceso* tabla, int dir_buscada){
     int paginaActual = 1;
+    pthread_mutex_lock(&list_pages_mutex);
     int dirAllocFinal = tabla->lastHeap;
+    pthread_mutex_unlock(&list_pages_mutex);
     int dirAllocActual = 0, pid = tabla->id;
     int frameBuscado;
 
@@ -1206,15 +1288,20 @@ void inicializarUnProceso(int idDelProceso){
     nuevoHeap->nextAlloc = NULL_ALLOC; //nuevoHeap.nextAlloc = NULL; Tiene que ser un puntero si queremos que sea NULL. Sino -1
     nuevoHeap->isfree = 1;
 
+    pthread_mutex_lock(&list_tables_mutex);
     TablaDePaginasxProceso* nuevaTablaDePaginas = malloc(sizeof(TablaDePaginasxProceso));
     nuevaTablaDePaginas->id = idDelProceso;
     nuevaTablaDePaginas->lastHeap = 0;
     nuevaTablaDePaginas->paginas = list_create();
-    pthread_mutex_lock(&list_pages_mutex);
-    list_add(todasLasTablasDePaginas, nuevaTablaDePaginas);
     
+    
+    list_add(todasLasTablasDePaginas, nuevaTablaDePaginas);
+    pthread_mutex_unlock(&list_tables_mutex);
+    
+    pthread_mutex_lock(&utilizacionDePagina_mutex);
     if(tipoDeAsignacionDinamica){
         int nuevoFrame = getframeNoAsignadoEnMemoria();
+        log_info(logger,"le doy el frame %d",nuevoFrame);
         int offset = nuevoFrame * tamanioDePagina;
         pthread_mutex_lock(&memory_mutex);
         memcpy(memoria + offset, &nuevoHeap->prevAlloc,sizeof(u_int32_t));
@@ -1237,7 +1324,9 @@ void inicializarUnProceso(int idDelProceso){
         nuevaPagina->bitModificado = 1;
         nuevaPagina->bitUso=1;
 
+        pthread_mutex_lock(&list_pages_mutex);
         list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
+        pthread_mutex_unlock(&list_pages_mutex);
     }else{
         int paginasCargadas = 0;
 
@@ -1269,7 +1358,9 @@ void inicializarUnProceso(int idDelProceso){
                 nuevaPagina->bitPresencia =1;
                 nuevaPagina->bitModificado = 0;
 
+                pthread_mutex_lock(&list_pages_mutex);
                 list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
+                pthread_mutex_unlock(&list_pages_mutex);
             } else {
                 int nuevoFrame = getframeNoAsignadoEnMemoria();
                 //int offset = nuevoFrame * tamanioDePagina;
@@ -1285,14 +1376,16 @@ void inicializarUnProceso(int idDelProceso){
                 nuevaPagina->bitPresencia = 1;
                 nuevaPagina->bitModificado = 0;
 
+                pthread_mutex_lock(&list_pages_mutex);
                 list_add(nuevaTablaDePaginas->paginas, nuevaPagina);
+                pthread_mutex_unlock(&list_pages_mutex);
             }
             paginasCargadas++;
         }  
     }
     log_info(logger, "Proceso %d inicializado con Exito", idDelProceso);
     free(nuevoHeap);
-    pthread_mutex_unlock(&list_pages_mutex);
+    pthread_mutex_unlock(&utilizacionDePagina_mutex);
 }
 
 int delete_process(int pid){
@@ -1339,20 +1432,19 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
 
     TablaDePaginasxProceso *tablaDelProceso = get_pages_by(idProcess);
 
+    pthread_mutex_lock(&list_pages_mutex);
     int dirAllocFinal = tablaDelProceso->lastHeap;
+    pthread_mutex_unlock(&list_pages_mutex);
     direccionLogicaBuscada+= HEAP_METADATA_SIZE;
 
-    pthread_mutex_lock(&memory_mutex);
         if (direccionLogicaBuscada < dirAllocFinal)
         {
            editarAlgoEnMemoria(idProcess,direccionLogicaBuscada,tamanio,loQueQuierasEscribir);
            
-            pthread_mutex_unlock(&memory_mutex);
             return 1;
         }
 
     
-    pthread_mutex_unlock(&memory_mutex);
     log_info(logger,"No se ha podido realizar la escritura");
     return MATE_WRITE_FAULT;
 }
@@ -1364,9 +1456,9 @@ void utilizarAlgritmoDeAsignacion(int processID){
     }
     else
     {
-        pthread_mutex_lock(&list_pages_mutex);
+        
         seleccionClockMejorado(processID);
-        pthread_mutex_unlock(&list_pages_mutex);
+        
 
     }
 }
@@ -1430,9 +1522,16 @@ void seleccionLRU(int processID){
 
     int pay_len = 3*sizeof(int)+tamanioDePagina;
     void* paginaAEnviar = malloc(tamanioDePagina);
+    for(int j=0; j<tamanioDePagina;j++){
+        char valor = '\0';
+       
+        memcpy(paginaAEnviar + j, &valor, 1);
+    }
+    pthread_mutex_lock(&memory_mutex);
     memcpy(paginaAEnviar,memoria + (frameVictima*tamanioDePagina),tamanioDePagina);
-    void* payload = _serialize(pay_len, "%d%d%d%v", processID, numeroDePagVictima,tamanioDePagina,paginaAEnviar); 
-    log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", numeroDePagVictima, processID);     
+    pthread_mutex_unlock(&memory_mutex);
+    void* payload = _serialize(pay_len, "%d%d%d%v", processVictima, numeroDePagVictima,tamanioDePagina,paginaAEnviar); 
+    log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", numeroDePagVictima, processVictima);     
     void* resp = send_message_swamp(MEMORY_SEND_SWAP_RECV, payload, pay_len);
     
     delete_entrada_tlb(processID, numeroDePagVictima, frameVictima);
@@ -1441,7 +1540,7 @@ void seleccionLRU(int processID){
 
     memcpy(&iresp, resp, sizeof(int));
     if(iresp == 0){
-        log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", processID);
+        log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", processVictima);
     }
     free(resp);
     free(payload);
@@ -1469,14 +1568,23 @@ void seleccionClockMejorado(int idProcess){
         }
 
         if(!tipoDeAsignacionDinamica &&  idProcess==getProcessIdby(punteroFrameClock)){
+            pthread_mutex_lock(&list_pages_mutex);
             Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+            pthread_mutex_unlock(&list_pages_mutex);
 
             if(paginaEncontrada->bitModificado == 0 && paginaEncontrada->bitUso==0){
                 frameNoEncontrado =0;
 
                 int pay_len = 3*sizeof(int)+tamanioDePagina;
                 void* paginaAEnviar = malloc(tamanioDePagina);
+                for(int j=0; j<tamanioDePagina;j++){
+                    char valor = '\0';
+       
+                    memcpy(paginaAEnviar + j, &valor, 1);
+                }
+                pthread_mutex_lock(&memory_mutex);
                 memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
+                pthread_mutex_unlock(&memory_mutex);
                 int pid = getProcessIdby(paginaEncontrada->frame);
                 void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
                 log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
@@ -1499,14 +1607,19 @@ void seleccionClockMejorado(int idProcess){
         }else{
             if (tipoDeAsignacionDinamica)
             {
+                pthread_mutex_lock(&list_pages_mutex);
                 Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+                pthread_mutex_unlock(&list_pages_mutex);
+
 
             if(paginaEncontrada->bitModificado == 0 && paginaEncontrada->bitUso==0){
                 frameNoEncontrado =0;
 
                 int pay_len = 3*sizeof(int)+tamanioDePagina;
                 void* paginaAEnviar = malloc(tamanioDePagina);
+                pthread_mutex_lock(&memory_mutex);
                 memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
+                pthread_mutex_unlock(&memory_mutex);
                 int pid = getProcessIdby(paginaEncontrada->frame);
                 void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
                 log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
@@ -1539,14 +1652,19 @@ void seleccionClockMejorado(int idProcess){
         }
 
         if(!tipoDeAsignacionDinamica &&  idProcess==getProcessIdby(punteroFrameClock)){
+                pthread_mutex_lock(&list_pages_mutex);            
             Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+                pthread_mutex_unlock(&list_pages_mutex);
+
 
             if(paginaEncontrada->bitUso==0){
                 frameNoEncontrado =0;
 
                 int pay_len = 3*sizeof(int)+tamanioDePagina;
                 void* paginaAEnviar = malloc(tamanioDePagina);
+                pthread_mutex_lock(&memory_mutex);
                 memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
+                pthread_mutex_unlock(&memory_mutex);
                 int pid = getProcessIdby(paginaEncontrada->frame);
                 void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
                 log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
@@ -1571,14 +1689,19 @@ void seleccionClockMejorado(int idProcess){
                 punteroFrameClock++;
             }else{
                 if (tipoDeAsignacionDinamica){
+                pthread_mutex_lock(&list_pages_mutex);                    
                     Pagina *paginaEncontrada = getMarcoDe(punteroFrameClock);
+                pthread_mutex_unlock(&list_pages_mutex);
+
 
                     if(paginaEncontrada->bitUso==0){
                         frameNoEncontrado =0;
 
                         int pay_len = 3*sizeof(int)+tamanioDePagina;
                         void* paginaAEnviar = malloc(tamanioDePagina);
+                        pthread_mutex_lock(&memory_mutex);
                         memcpy(paginaAEnviar,memoria + (paginaEncontrada->frame*tamanioDePagina),tamanioDePagina);
+                        pthread_mutex_unlock(&memory_mutex);
                         int pid = getProcessIdby(paginaEncontrada->frame);
                         void* payload = _serialize(pay_len, "%d%d%d%v", pid, paginaEncontrada->pagina,tamanioDePagina,paginaAEnviar);  
                         log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", paginaEncontrada->pagina, pid);      
@@ -1674,11 +1797,14 @@ uint32_t getProcessIdby(uint32_t nroDeFrame)
 }
 
 void liberarFrame(uint32_t nroDeFrame){
+    
+    pthread_mutex_lock(&list_tables_mutex);
     t_list_iterator* iterator = list_iterator_create(todasLasTablasDePaginas);
     
     
         
     while (list_iterator_has_next(iterator)) {
+        pthread_mutex_lock(&list_pages_mutex);
         TablaDePaginasxProceso* temp = (TablaDePaginasxProceso*) list_iterator_next(iterator);
         
         t_list_iterator* iterator2 = list_iterator_create(temp->paginas);
@@ -1701,24 +1827,29 @@ void liberarFrame(uint32_t nroDeFrame){
 
                 list_add(temp->paginas, paginaSiguienteALaUltima);
                 }*/
+                 //if(!tipoDeAsignacionDinamica){
+                for(int j=0; j<tamanioDePagina;j++){
+                    char valor = '\0';
+                    pthread_mutex_lock(&memory_mutex);
+                    memcpy(memoria + (nroDeFrame*tamanioDePagina) + j, &valor, 1);
+                    pthread_mutex_unlock(&memory_mutex);
+                }
+    //}    
+    //memset(memoria + (nroDeFrame*tamanioDePagina), '\0', tamanioDePagina);
             }
 
             
         }
         
         list_iterator_destroy(iterator2);
-        
+        pthread_mutex_unlock(&list_pages_mutex);
     }
-    //if(!tipoDeAsignacionDinamica){
-    for(int j=0; j<tamanioDePagina;j++){
-        char valor = '\0';
-        memcpy(memoria + (nroDeFrame*tamanioDePagina) + j, &valor, 1);
-    }
-    //}    
-    //memset(memoria + (nroDeFrame*tamanioDePagina), '\0', tamanioDePagina);
+   
 
     list_iterator_destroy(iterator);
+    pthread_mutex_unlock(&list_tables_mutex);
 }
+
 void memoryDump(){
     int frameFinal = tamanioDeMemoria / tamanioDePagina;
     int frameInicial =0 ;
@@ -1741,7 +1872,13 @@ void memoryDump(){
 void mandarPaginaAgonza(int processID ,uint32_t frameDeMemoria, uint32_t nroDePagina){
     int pay_len = 3*sizeof(int)+tamanioDePagina;
     void* paginaAEnviar = malloc(tamanioDePagina);
+    for(int j=0; j<tamanioDePagina;j++){
+        char valor = '\0';
+        memcpy(paginaAEnviar + j, &valor, 1);
+    }
+    pthread_mutex_lock(&memory_mutex);
     memcpy(paginaAEnviar,memoria + (frameDeMemoria*tamanioDePagina),tamanioDePagina);
+    pthread_mutex_unlock(&memory_mutex);
     int pid = processID;
     void* payload = _serialize(pay_len, "%d%d%d%v", pid, nroDePagina,tamanioDePagina,paginaAEnviar);  
     log_info(logger, "Enviando la Pagina %d del Proceso %d a Swamp", nroDePagina, pid);      

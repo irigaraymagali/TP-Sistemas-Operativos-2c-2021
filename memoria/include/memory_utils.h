@@ -44,7 +44,7 @@ typedef enum {
 
 pthread_mutex_t swamp_mutex, list_pages_mutex, lru_mutex, tlb_mutex, tlb_lru_mutex, entrada_fifo_mutex, max_hit_tlb_mutex, max_miss_tlb_mutex, memory_mutex;
 
-pthread_mutex_t m_list_mutex;
+pthread_mutex_t m_list_mutex, utilizacionDePagina_mutex,iteration_mutex,list_tables_mutex;//mutex_anashe,
 
 int max_tlb_hit, max_tlb_miss, max_entradas_tlb, retardo_hit_tlb, retardo_miss_tlb, entrada_fifo, tlb_lru_global;
 
