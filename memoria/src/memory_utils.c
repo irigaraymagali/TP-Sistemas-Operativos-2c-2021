@@ -59,9 +59,9 @@ void initPaginacion(){
 
 int memalloc(int processId, int espacioAReservar){
     log_info(logger,"arranco un memalloc----------------------------");
-    pthread_mutex_lock(&iteration_mutex);
+    pthread_mutex_lock(&utilizacionDePagina_mutex);
     int entra = entraEnElEspacioLibre(espacioAReservar, processId);
-    pthread_mutex_unlock(&iteration_mutex);
+    pthread_mutex_unlock(&utilizacionDePagina_mutex);
     uint32_t mayorNroDePagina = 0; // 0 porque indica que no tiene asignado ninguna pagina, las pags siempre arancan en 1
     int tempLastHeap = 0;
     int espacioFinalDisponible = 0;
@@ -116,14 +116,18 @@ int memalloc(int processId, int espacioAReservar){
             memcpy(espacioAuxiliar,&ubicacionNuevoLastHeap , sizeof(uint32_t));
             memcpy(espacioAuxiliar+sizeof(uint32_t),&nuevoHeap->isfree , sizeof(uint8_t));
 
+            pthread_mutex_lock(&utilizacionDePagina_mutex);
             editarAlgoEnMemoria(processId,tempLastHeap + sizeof(uint32_t),sizeof(uint32_t)+sizeof(uint8_t),espacioAuxiliar);
+            pthread_mutex_unlock(&utilizacionDePagina_mutex);
 
 
             memcpy(espacioAuxiliar2,&tempLastHeap , sizeof(uint32_t));
             memcpy(espacioAuxiliar2+sizeof(uint32_t),&nuevoHeap->nextAlloc , sizeof(uint32_t));
             memcpy(espacioAuxiliar2+2*sizeof(uint32_t),&nuevoHeap->isfree , sizeof(uint8_t));
 
+            pthread_mutex_lock(&utilizacionDePagina_mutex);
             editarAlgoEnMemoria(processId,ubicacionNuevoLastHeap ,HEAP_METADATA_SIZE,espacioAuxiliar2);
+            pthread_mutex_unlock(&utilizacionDePagina_mutex);
             
             free(espacioAuxiliar);
             free(espacioAuxiliar2);
@@ -139,7 +143,7 @@ int memalloc(int processId, int espacioAReservar){
             
            pthread_mutex_lock(&utilizacionDePagina_mutex);
            agregarXPaginasPara(processId, (espacioAReservar-espacioFinalDisponible));
-           pthread_mutex_unlock(&utilizacionDePagina_mutex);
+           
 
             int ubicacionNuevoLastHeap = tempLastHeap + espacioAReservar;
             // Pagina *ultimaPag = getLastPageDe(processId);
@@ -158,7 +162,9 @@ int memalloc(int processId, int espacioAReservar){
             memcpy(espacioAuxiliar2+2*sizeof(uint32_t),&nuevoHeap->isfree , sizeof(uint8_t));
 
             editarAlgoEnMemoria(processId,ubicacionNuevoLastHeap ,HEAP_METADATA_SIZE,espacioAuxiliar2);
-            
+            pthread_mutex_unlock(&utilizacionDePagina_mutex);
+
+
             free(espacioAuxiliar);
             free(espacioAuxiliar2);
             memoryDump();
@@ -274,14 +280,13 @@ void editarAlgoEnMemoria(int processId,int inicio, int tamanio, void* loQuieroMe
 
     if (pagiInicio == pagiFin)
     {
-        pthread_mutex_lock(&utilizacionDePagina_mutex);
+        
         frameBuscado = getFrameDeUn(processId,pagiInicio);
         pthread_mutex_lock(&memory_mutex);
         memcpy(memoria + (frameBuscado*tamanioDePagina)+posinicio,loQuieroMeter,tamanio);
         pthread_mutex_unlock(&memory_mutex);
         setPaginaAsModificado(processId,pagiInicio);
         mandarPaginaAgonza(processId ,frameBuscado, pagiInicio);
-        pthread_mutex_unlock(&utilizacionDePagina_mutex);
     }
     else
     {
@@ -294,36 +299,34 @@ void editarAlgoEnMemoria(int processId,int inicio, int tamanio, void* loQuieroMe
         {
             
             if(nropagaux == pagiInicio){
-                pthread_mutex_lock(&utilizacionDePagina_mutex);
                 frameBuscado = getFrameDeUn(processId,pagiInicio);
                 pthread_mutex_lock(&memory_mutex);
                 memcpy(memoria + (frameBuscado*tamanioDePagina)+posinicio,loQuieroMeter,tamanioPagInicial);
                 pthread_mutex_unlock(&memory_mutex);
                 setPaginaAsModificado(processId,pagiInicio);
                 mandarPaginaAgonza(processId ,frameBuscado, pagiInicio);
-                pthread_mutex_unlock(&utilizacionDePagina_mutex);
                 offset+=tamanioPagInicial;
             }else{
 
                 if(nropagaux == pagiFin){
-                    pthread_mutex_lock(&utilizacionDePagina_mutex);
+
                     frameBuscado = getFrameDeUn(processId,pagiFin);
                     pthread_mutex_lock(&memory_mutex);
                     memcpy(memoria + (frameBuscado*tamanioDePagina),loQuieroMeter+offset,tamanioPagFinal);
                     pthread_mutex_unlock(&memory_mutex);
                     setPaginaAsModificado(processId,pagiFin);
                     mandarPaginaAgonza(processId ,frameBuscado, pagiFin);
-                    pthread_mutex_unlock(&utilizacionDePagina_mutex);
+
                 }else
                 {
-                    pthread_mutex_lock(&utilizacionDePagina_mutex);
+                    
                     frameBuscado = getFrameDeUn(processId,nropagaux);
                     pthread_mutex_lock(&memory_mutex);
                     memcpy(memoria + (frameBuscado*tamanioDePagina),loQuieroMeter+offset,tamanioDePagina);
                     pthread_mutex_unlock(&memory_mutex);
                     setPaginaAsModificado(processId,nropagaux);
                     mandarPaginaAgonza(processId ,frameBuscado, nropagaux);
-                    pthread_mutex_unlock(&utilizacionDePagina_mutex);
+
                     offset+=tamanioDePagina;
                 }
             }
@@ -515,6 +518,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
             int frameActual = getFrameDeUn(processId, paginaActual);
 
             //void* espacioAuxiliar = malloc(2*tamanioDePagina);
+           
            if(allocActual == 0){ 
             pthread_mutex_lock(&memory_mutex);
             memcpy(&nextAllocAux, memoria + (frameActual*tamanioDePagina)+sizeof(uint32_t),sizeof(uint32_t));
@@ -1437,9 +1441,12 @@ int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscrib
     pthread_mutex_unlock(&list_pages_mutex);
     direccionLogicaBuscada+= HEAP_METADATA_SIZE;
 
+
         if (direccionLogicaBuscada < dirAllocFinal)
         {
+           pthread_mutex_lock(&utilizacionDePagina_mutex);
            editarAlgoEnMemoria(idProcess,direccionLogicaBuscada,tamanio,loQueQuierasEscribir);
+           pthread_mutex_unlock(&utilizacionDePagina_mutex);
            
             return 1;
         }
