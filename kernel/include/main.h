@@ -117,6 +117,9 @@ pthread_mutex_t sem_io_uso;
 
 pthread_mutex_t mutex_para_posibles_deadlock;
 
+pthread_mutex_t mutex_para_multiprogramacion; 
+pthread_mutex_t mutex_para_multiprocesamiento; 
+
 
 // log
 t_log *logger;

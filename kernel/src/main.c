@@ -92,6 +92,9 @@ void inicializar_colas(){
 
     pthread_mutex_init(&mutex_para_posibles_deadlock, NULL);
 
+    pthread_mutex_init(&mutex_para_multiprogramacion,NULL); 
+    pthread_mutex_init(&mutex_para_multiprocesamiento,NULL); 
+
 }
 
 void inicializar_semaforos(){ 
@@ -193,6 +196,10 @@ void free_memory(){
     pthread_mutex_destroy(&sem_cola_io);
     pthread_mutex_destroy(&sem_io_uso);
     pthread_mutex_destroy(&id_carpincho_mutex);
+
+    pthread_mutex_destroy(&mutex_para_posibles_deadlock);
+    pthread_mutex_destroy(&mutex_para_multiprogramacion);
+    pthread_mutex_destroy(&mutex_para_multiprocesamiento);
 
     // hacer => free a todo
     // martin => liberar memoria en todos lados
@@ -391,7 +398,10 @@ void mate_close(int id_carpincho, int fd){
         list_remove_by_condition(lista_carpinchos, es_el_carpincho); 
         list_remove_and_destroy_by_condition(lista_carpinchos, es_el_carpincho, liberar_carpincho);
 
+
+        pthread_mutex_lock(&mutex_para_multiprogramacion);
         sem_post(&sem_grado_multiprogramacion_libre);
+        pthread_mutex_unlock(&mutex_para_multiprogramacion);
 
         payload = _serialize(sizeof(int), "%d", CERRADO_POR_DEADLOCK);
 
@@ -420,7 +430,9 @@ void mate_close(int id_carpincho, int fd){
         list_remove_and_destroy_by_condition(suspended_blocked, es_el_carpincho, liberar_carpincho); 
         pthread_mutex_unlock(&sem_cola_suspended_blocked);
 
+        pthread_mutex_lock(&mutex_para_multiprogramacion);
         sem_post(&sem_grado_multiprogramacion_libre);
+        pthread_mutex_unlock(&mutex_para_multiprogramacion);
 
         payload = _serialize(sizeof(int), "%d", CERRADO_POR_DEADLOCK);
 
@@ -941,7 +953,7 @@ void mate_memread(int id_carpincho, mate_pointer origin, int size, int fd){ // m
             _send_message(fd, ID_KERNEL, MATE_MEMREAD, buffer->payload, sizeof(int), logger); 
         }else
         {
-            _send_message(fd, ID_KERNEL, MATE_MEMREAD, buffer->payload, sizeof(int), logger);
+            _send_message(fd, ID_KERNEL, MATE_MEMREAD, buffer->payload, size, logger);
         }
         
         
@@ -1012,11 +1024,13 @@ void entrantes_a_ready(){
    int valor; 
     int gradoMultiprogramacion;
         sem_getvalue(&sem_grado_multiprogramacion_libre, &gradoMultiprogramacion);
-        log_info(logger,"GRADO MULTIPROGRAMACIÓN LIBRE: %d", gradoMultiprogramacion);
+        //log_info(logger,"GRADO MULTIPROGRAMACIÓN LIBRE: %d", gradoMultiprogramacion);
 
     while(1){
         
+        pthread_mutex_lock(&mutex_para_multiprogramacion);
         sem_wait(&sem_grado_multiprogramacion_libre); 
+        pthread_mutex_unlock(&mutex_para_multiprogramacion);
         sem_wait(&hay_estructura_creada);
 
         if(!queue_is_empty(suspended_ready)) 
@@ -1067,13 +1081,14 @@ void ready_a_exec(){
     while(1){ 
         void *payload;
 
-        sem_wait(&cola_ready_con_elementos);   
+        sem_wait(&cola_ready_con_elementos); 
+        pthread_mutex_lock(&mutex_para_multiprocesamiento); 
+        sem_wait(&sem_grado_multiprocesamiento_libre); 
+        pthread_mutex_unlock(&mutex_para_multiprocesamiento); 
 
-        int valor2;
-        sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor2);
-        log_info(logger,"GRADO MULTIPROCESAMIENTO LIBRE: %d", valor2);
-
-        sem_wait(&sem_grado_multiprocesamiento_libre);
+       // int valor2;
+        //sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor2);
+       // log_error(logger,"GRADO MULTIPROCESAMIENTO LIBRE: %d", valor2);
 
         if(string_equals_ignore_case(config_get_string_value(config, "ALGORITMO_PLANIFICACION"), "SJF")){
             carpincho_a_mover = ready_a_exec_SJF(); 
@@ -1104,15 +1119,22 @@ void ready_a_exec(){
 
         carpincho_a_mover->tiempo_entrada_a_exec = calcular_milisegundos(); 
 
+        int proce;
+        sem_getvalue(&sem_grado_multiprocesamiento_libre, &proce);
+        log_info(logger,"GRADO MULTIPROCESAMIENTO LIBRE: %d", proce);
+
+        int prog;
+        sem_getvalue(&sem_grado_multiprogramacion_libre, &prog);
+        log_info(logger,"GRADO MULTIPROGRAMACION LIBRE: %d", prog);
+
+        if(prog == 0){ 
+            sem_post(&sem_procesamiento_lleno);
+        }
+
         payload = _serialize(sizeof(int), "%d", carpincho_a_mover->id);
         _send_message(carpincho_a_mover->fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
         
-        sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor2);
-        log_info(logger,"GRADO MULTIPROCESAMIENTO LIBRE: %d", valor2);
-
-        if(valor2 == 0){ 
-            sem_post(&sem_procesamiento_lleno);
-        }
+        
         free(payload);
     }
     
@@ -1146,7 +1168,7 @@ void exec_a_block(int id_carpincho){
     log_info(logger, "CARPINCHO %d - liberó el CPU: %d ", carpincho_a_bloquear->id, carpincho_a_bloquear->CPU_en_uso);
     
     sem_post(&sem_hay_bloqueados);
-    
+    //sem_post(&sem_grado_multiprocesamiento_libre);
    
    /*  if(valor_sem_bloquedos_deadlock < 1){
         sem_post(&hay_bloqueados_para_deadlock);
@@ -1160,9 +1182,10 @@ void exec_a_exit(int id_carpincho, int fd){
     
     void *payload;
     int valor;
+    /*
     sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor);
     log_info(logger,"GRADO MULTIPROCESAMIENTO LIBRE: %d", valor);
-
+*/
     log_info(logger,"CARPINCHO %d - ha llegado el momento de eliminarlo", id_carpincho);
 
     data_carpincho *carpincho_que_termino;
@@ -1195,13 +1218,16 @@ void exec_a_exit(int id_carpincho, int fd){
 	pthread_mutex_unlock(&sem_cola_exec);
 
     sem_post(&(liberar_CPU[cpu_carpincho_eliminado])); 
+    pthread_mutex_lock(&mutex_para_multiprogramacion);
     sem_post(&sem_grado_multiprogramacion_libre);
+    pthread_mutex_unlock(&mutex_para_multiprogramacion);
+    //sem_post(&sem_grado_multiprocesamiento_libre);
 
     log_info(logger, "CARPRINCHO %d - liberó el CPU %d", id_carpincho_eliminado,  cpu_carpincho_eliminado);
     log_info(logger, "CARPRINCHO %d - paso de EXEC a EXIT", id_carpincho_eliminado);
 
     sem_getvalue(&sem_grado_multiprocesamiento_libre, &valor);
-    log_info(logger,"GRADO MULTIPROCESAMIENTO LIBRE: %d", valor);
+    //log_info(logger,"GRADO MULTIPROCESAMIENTO LIBRE: %d", valor);
 
     void* payload2 = _serialize(sizeof(int), "%d", 0);
     _send_message(fd, ID_KERNEL, 2, payload, sizeof(int), logger);
@@ -1273,21 +1299,19 @@ void suspender(){
         
         log_info(logger,"SUSPENSIÓN - cantidad de carpinchos bloqueados: %d", long_blocked);
         log_info(logger,"SUSPENSIÓN - cantidad de carpinchos ready: %d", long_ready);
-        log_info(logger,"SUSPENSIÓN - cantidad de carpinchos entrantes (new y suspended_ready): %d", long_entrantes);
+        log_info(logger,"SUSPENSIÓN - cantidad de carpinchos entrantes: %d", long_entrantes);
 
 
         if(long_entrantes>0 && long_ready==0 && long_blocked>0){
-            log_info(logger, "SUSPENSIÓN - se cumplen las condiciones necesarias");
+            log_warning(logger, "SUSPENSIÓN - se cumplen las condiciones necesarias");
 
         pthread_mutex_lock(&sem_cola_blocked);
         pthread_mutex_lock(&sem_cola_suspended_blocked);
         carpincho_a_suspender = list_remove(blocked, long_blocked-1); //retorna y remueve el ultimo de bloqueados
-        log_info(logger, "SUSPENSIÓN - el carpincho con mayor id elegido para suspender fue: %d", carpincho_a_suspender->id);
+        log_info(logger, "SUSPENSIÓN - el carpincho a suspender es: %d", carpincho_a_suspender->id);
         list_add(suspended_blocked, (void *)carpincho_a_suspender);
         pthread_mutex_unlock(&sem_cola_blocked);
         pthread_mutex_unlock(&sem_cola_suspended_blocked);
-
-
 
         carpincho_a_suspender->estado = SUSPENDED_BLOCKED;
         log_info(logger, "SUSPENSIÓN - El carpincho %d pasó a SUSPENDED BLOCKED", carpincho_a_suspender->id);
@@ -1307,16 +1331,17 @@ void suspender(){
 
         close(socket_memoria);
 
-        sem_post(&sem_grado_multiprocesamiento_libre);
+        pthread_mutex_lock(&mutex_para_multiprogramacion);
         sem_post(&sem_grado_multiprogramacion_libre); 
+        pthread_mutex_unlock(&mutex_para_multiprogramacion);
+        
         free(payload); 
         } 
     else{
         log_info(logger, "SUSPENSIÓN - no se dieron las condiciones para suspender ... por ahora");  
     }
         
-    }
-     
+    }     
 }
 
 
@@ -1454,17 +1479,19 @@ void ejecuta(void *id_cpu){
         sem_wait(&liberar_CPU[*id]); // espera a que algun carpincho indique que quiere liberar el cpu
         queue_push(CPU_libres, id);
         
-        pthread_mutex_lock(&mutex_para_CPU); 
+        pthread_mutex_lock(&mutex_para_CPU); // no se su tuene que ir
 
         sem_post(&CPU_libre[*id]); 
 
+        pthread_mutex_lock(&mutex_para_multiprocesamiento); 
         sem_post(&sem_grado_multiprocesamiento_libre); //hay algun cpu libre
+        pthread_mutex_unlock(&mutex_para_multiprocesamiento); 
         
         int gradoMultiprocesamiento;
         sem_getvalue(&sem_grado_multiprocesamiento_libre, &gradoMultiprocesamiento);
         log_info(logger,"GRADO MULTIPROCESAMIENTO LIBRE: %d", gradoMultiprocesamiento);
         
-        pthread_mutex_unlock(&mutex_para_CPU); 
+        pthread_mutex_unlock(&mutex_para_CPU); // no se su tuene que ir
     }
 }
 

@@ -240,7 +240,7 @@ int mate_memfree(mate_instance *lib_ref, mate_pointer addr)
         close(socket_backend);
        
         memcpy(&resultado, buffer->payload, sizeof(int));
-        if (resultado > 0){
+        if (resultado >= 0){
             log_info(logger,"Se pudo hacer el MEMFREE pedido por el Carpincho %d", estructura_interna->id);       
         } else {
             log_error(logger,"No se pudo hacer el MEMFREE pedido por el Carpincho %d", estructura_interna->id);
@@ -285,20 +285,19 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
         close(socket_backend);
 
         memcpy(&resultado, buffer->payload, sizeof(int));
-
-        if (resultado == -6){
+        log_info(logger,"recibi %d", resultado);
+        if (resultado >= 0){
+            log_info(logger,"Se pudo hacer el MEMREAD pedido por el Carpincho %d", estructura_interna->id);       
+        }else if (resultado == -6){
             log_error(logger, "Memoria no pudo leer el contenido con exito");
-            
-            return resultado;  
+        }  else {
+            log_error(logger,"No se pudo hacer el MEMREAD pedido por el Carpincho %d", estructura_interna->id);
         }
-
-        memcpy(dest, buffer->payload, size);
-       
         free(buffer->payload);
         free(buffer->identifier);
         free(buffer);
         free(payload);
-        return 1;  
+        return resultado;  
     }   
 }
 
@@ -333,10 +332,10 @@ int mate_memwrite(mate_instance *lib_ref, void *origin, mate_pointer dest, int s
         } else {
             log_error(logger,"No se pudo hacer el MEMWRITE pedido por el Carpincho %d", estructura_interna->id);
         }
-         free(buffer->payload);
-         free(buffer->identifier);
-         free(buffer);
-        free(payload);
+        // free(buffer->payload);
+         //free(buffer->identifier);
+         //free(buffer);
+        //free(payload);
         return resultado;
         
     }   
