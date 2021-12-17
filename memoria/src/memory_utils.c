@@ -141,6 +141,7 @@ int memalloc(int processId, int espacioAReservar){
             return (tempLastHeap );
         } else {
            pthread_mutex_lock(&utilizacionDePagina_mutex);
+           hayQueDegenerar = 0;
            agregarXPaginasPara(processId, (espacioAReservar-espacioFinalDisponible));
            
 
@@ -163,6 +164,14 @@ int memalloc(int processId, int espacioAReservar){
             editarAlgoEnMemoria(processId,ubicacionNuevoLastHeap ,HEAP_METADATA_SIZE,espacioAuxiliar2);
             pthread_mutex_unlock(&utilizacionDePagina_mutex);
 
+            if(hayQueDegenerar){
+                int nroPagAux = mayorNroDePagina+1;
+                int pagFin = ((HEAP_METADATA_SIZE + ubicacionNuevoLastHeap)/tamanioDePagina)+1; 
+                while(nroPagAux <= pagFin){ 
+                    deletePagina(processId, nroPagAux); 
+                    log_error(logger,"degenerando pagina %d",nroPagAux); 
+                    nroPagAux++; }
+            }
 
             free(espacioAuxiliar);
             free(espacioAuxiliar2);
@@ -1224,9 +1233,17 @@ void deletePagina(int idProcess,int paginaActual){
     if (tlb != NULL){
         int deleted_page = tlb->pagina;
         pthread_mutex_lock(&list_pages_mutex);
-        Pagina* page = list_get(tablaDePags->paginas, tlb->pagina - 1);
+        Pagina* page = getPageDe(idProcess,paginaActual);
         delete_entrada_tlb(idProcess, paginaActual, page->frame);
-        list_remove(tablaDePags->paginas, tlb->pagina - 1);
+        t_list_iterator* iterator = list_iterator_create(tablaDePags->paginas);
+        
+        tempPagina = list_iterator_next(iterator);
+
+        while (tempPagina->pagina != paginaActual)
+        {
+        tempPagina = list_iterator_next(iterator);
+        }
+        list_iterator_remove(iterator);
         pthread_mutex_unlock(&list_pages_mutex);
         log_info(logger, "Deleteo la pag %d con Exito", deleted_page);
         return;
@@ -1558,6 +1575,7 @@ void seleccionLRU(int processID){
     memcpy(&iresp, resp, sizeof(int));
     if(iresp == 0){
         log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", processVictima);
+        hayQueDegenerar =1;
     }
     free(resp);
     free(payload);
@@ -1612,6 +1630,7 @@ void seleccionClockMejorado(int idProcess){
                 memcpy(&iresp, resp, sizeof(int));
                 if(iresp == 0){
                     log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+                    hayQueDegenerar=1;
                 }
                 free(resp);
                 free(payload);
@@ -1647,6 +1666,7 @@ void seleccionClockMejorado(int idProcess){
                 memcpy(&iresp, resp, sizeof(int));
                 if(iresp == 0){
                     log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+                    hayQueDegenerar=1;
                 }
                 free(resp);
                 free(payload);
@@ -1692,6 +1712,7 @@ void seleccionClockMejorado(int idProcess){
                 memcpy(&iresp, resp, sizeof(int));
                 if(iresp == 0){
                     log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+                    hayQueDegenerar=1;
                 }
                 free(resp);
                 free(payload);
@@ -1729,6 +1750,7 @@ void seleccionClockMejorado(int idProcess){
                         memcpy(&iresp, resp, sizeof(int));
                         if(iresp == 0){
                             log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", paginaEncontrada->pagina);
+                            hayQueDegenerar=1;
                         }
                         free(resp);
                         free(payload);
@@ -1907,6 +1929,7 @@ void mandarPaginaAgonza(int processID ,uint32_t frameDeMemoria, uint32_t nroDePa
     memcpy(&iresp, resp, sizeof(int));
     if(iresp == 0){
         log_error(logger, "Error al enviar la pagina %d a Swamp, no posee más espacio!", nroDePagina);
+        hayQueDegenerar=1;
     }
     free(resp);
     free(payload);

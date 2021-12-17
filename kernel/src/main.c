@@ -398,10 +398,11 @@ void mate_close(int id_carpincho, int fd){
 
         sem_post(&sem_grado_multiprogramacion_libre);
 
-        payload = _serialize(sizeof(int), "%d", CERRADO_POR_DEADLOCK);
+        void* payload2 = _serialize(sizeof(int), "%d", CERRADO_POR_DEADLOCK);
 
-        _send_message(fd, ID_KERNEL, MATE_CLOSE, payload, sizeof(int), logger);
+        _send_message(fd, ID_KERNEL, MATE_CLOSE, payload2, sizeof(int), logger);
         free(payload);
+        free(payload2);
         free(buffer->identifier);
         free(buffer->payload);
         free(buffer);
@@ -457,8 +458,12 @@ void liberar_carpincho(void *carpincho){
         if(aux->semaforo != NULL){
             free(aux->semaforo);
         }
-        free(aux->nombre_semaforo_por_el_que_se_bloqueo);
-        free(aux->dispositivo_io);
+        if(aux->nombre_semaforo_por_el_que_se_bloqueo != NULL){
+            free(aux->nombre_semaforo_por_el_que_se_bloqueo);
+        }
+        if(aux->dispositivo_io != NULL){
+            free(aux->dispositivo_io);
+        }
         free(aux);
     }
 }
@@ -512,8 +517,8 @@ void mate_sem_init(int id_carpincho, char * nombre_semaforo, int valor_semaforo,
         void *payload = _serialize(sizeof(int), "%d", 0);  
         log_info(logger, "CARPINCHO %d - pidió inicializar el semáforo %s", id_carpincho, nombre_semaforo);   
 
-        semaforo_nuevo->nombre = string_new();
-        string_append(&semaforo_nuevo->nombre, nombre_semaforo);
+        semaforo_nuevo->nombre = string_from_format("%s",nombre_semaforo);
+       // string_append(&semaforo_nuevo->nombre, nombre_semaforo);
         semaforo_nuevo->valor = valor_semaforo;
         semaforo_nuevo->en_espera = queue_create();
         semaforo_nuevo->id = id_semaforos;
@@ -547,7 +552,7 @@ void mate_sem_wait(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         if(semaforo_wait->valor < 0){
             log_info(logger, "CARPINCHO %d - hizo un WAIT del semaforo %s que tenía valor menor a 1, se bloqueará el carpincho", id_carpincho, (char *) nombre_semaforo);
             free(carpincho->nombre_semaforo_por_el_que_se_bloqueo);
-            carpincho->nombre_semaforo_por_el_que_se_bloqueo = string_from_format("%s", nombre_semaforo);
+            carpincho->nombre_semaforo_por_el_que_se_bloqueo = string_from_format("%s", (char *)nombre_semaforo);
             //free(carpincho->sem_por_el_que_se_bloqueo); //esta bien aca?
             carpincho->sem_por_el_que_se_bloqueo = semaforo_wait->id;
             queue_push(semaforo_wait->en_espera, carpincho);
@@ -742,7 +747,7 @@ void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
         queue_clean(semaforo_destroy->en_espera);
        
        //if(!queue_is_empty(semaforo_destroy->en_espera)){ 
-            list_remove_by_condition(semaforos_carpinchos,esIgualA);
+            list_remove_and_destroy_by_condition(semaforos_carpinchos,esIgualA,liberar_semaforo);
             payload = _serialize(sizeof(int), "%d", 0);
             _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
             log_info(logger, "CARPINCHO %d - destruyó el semáforo %s correctamente", id_carpincho, nombre_semaforo);
@@ -1248,7 +1253,7 @@ void exec_a_exit(int id_carpincho, int fd){
     pthread_mutex_lock(&sem_cola_exec); 
     list_remove_by_condition(exec, es_el_mismo);
     
-    list_remove_and_destroy_by_condition(exec, es_el_mismo, liberar_carpincho); 
+    list_remove_and_destroy_by_condition(lista_carpinchos, es_el_mismo, liberar_carpincho); 
 	pthread_mutex_unlock(&sem_cola_exec);
 
     sem_post(&(liberar_CPU[cpu_carpincho_eliminado]));
@@ -1262,7 +1267,7 @@ void exec_a_exit(int id_carpincho, int fd){
     //log_info(logger,"GRADO MULTIPROCESAMIENTO LIBRE: %d", valor);
 
     void* payload2 = _serialize(sizeof(int), "%d", 0);
-    _send_message(fd, ID_KERNEL, 2, payload, sizeof(int), logger);
+    _send_message(fd, ID_KERNEL, 2, payload2, sizeof(int), logger);
     
     free(payload);
     free(payload2);
