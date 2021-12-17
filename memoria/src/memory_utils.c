@@ -140,7 +140,6 @@ int memalloc(int processId, int espacioAReservar){
             free(nuevoHeap);
             return (tempLastHeap );
         } else {
-            
            pthread_mutex_lock(&utilizacionDePagina_mutex);
            agregarXPaginasPara(processId, (espacioAReservar-espacioFinalDisponible));
            
@@ -415,6 +414,7 @@ int suspend_process(int pid) {
     pthread_mutex_lock(&list_pages_mutex);
     t_list_iterator* iterator = list_iterator_create(table->paginas);
     while (list_iterator_has_next(iterator)){
+        pthread_mutex_lock(&utilizacionDePagina_mutex);
         Pagina* page = (Pagina*) list_iterator_next(iterator);
         int res;
         void* mem_aux = malloc(tamanioDePagina);
@@ -430,6 +430,7 @@ int suspend_process(int pid) {
         memcpy(&res, v_res, sizeof(int));
         if(res == 0){
             log_error(logger, "Swamp no pudo setear la pagina %d en disco", page->pagina);
+            pthread_mutex_unlock(&utilizacionDePagina_mutex);
             return -1;
         }
 
@@ -442,6 +443,7 @@ int suspend_process(int pid) {
         free(v_res);
         free(payload);
         log_info(logger, "Pagina %d suspendida con exito!", page->pagina);
+        pthread_mutex_unlock(&utilizacionDePagina_mutex);
     }
     
     list_iterator_destroy(iterator);
@@ -564,6 +566,7 @@ int entraEnElEspacioLibre(int espacioAReservar, int processId){
                     //log_info(logger,"el nextalloc leido %d",nextAllocAux);
 
                     if(isfreeAux == FREE && (nextAllocAux - allocActual - HEAP_METADATA_SIZE) >= espacioAReservar){
+                    free(espacioAuxiliar);
                     return allocActual;
                     
                     }
@@ -1015,7 +1018,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
     //int offsetNextAllocAnterior;
     uint8_t estadoAllocAnterior;
 
-    pthread_mutex_lock(&memory_mutex);
+    pthread_mutex_lock(&utilizacionDePagina_mutex);
     while((dirAllocActual <= direccionLogicaBuscada) && dirAllocFinal>=direccionLogicaBuscada){
         
         if (dirAllocActual == direccionLogicaBuscada)
@@ -1161,7 +1164,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
                     free(paginasAuxiliares);
                 }
             }
-            pthread_mutex_unlock(&memory_mutex);
+            pthread_mutex_unlock(&utilizacionDePagina_mutex);
             return 1;
         }
         else
@@ -1204,7 +1207,7 @@ int memfree(int idProcess, int direccionLogicaBuscada){
         }
         
     }
-    pthread_mutex_unlock(&memory_mutex);
+     pthread_mutex_unlock(&utilizacionDePagina_mutex);
     return MATE_FREE_FAULT;
 }
 
@@ -1397,7 +1400,9 @@ int delete_process(int pid){
         if (elem == NULL){
             return false;
         }
+        pthread_mutex_lock(&list_tables_mutex);
         TablaDePaginasxProceso* table = (TablaDePaginasxProceso*) elem;
+        pthread_mutex_unlock(&list_tables_mutex);
         return table->id == pid;
     }
 
@@ -1412,11 +1417,13 @@ int delete_process(int pid){
     send_message_swamp(FINISH_PROCESS, payload, sizeof(int));
    
     free(payload);
+    pthread_mutex_lock(&utilizacionDePagina_mutex);
     pthread_mutex_lock(&list_pages_mutex);
     log_info(logger, "Eliminando la tabla de paginas correspondiente al Proceso %d", pid);
     remove_paginas(table);
     list_remove_by_condition(todasLasTablasDePaginas, exist_table);
     pthread_mutex_unlock(&list_pages_mutex);
+    pthread_mutex_unlock(&utilizacionDePagina_mutex);
     return 1;
 }
 
@@ -1429,6 +1436,7 @@ void remove_paginas(void* elem){
             list_destroy_and_destroy_elements(tabla->paginas, free);
         }
     }
+    //free(tabla);
 }
 
 int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir, int tamanio){
@@ -1758,6 +1766,8 @@ Pagina *getMarcoDe(uint32_t nroDeFrame){
         {
             paginatemp = list_iterator_next(iterator2);
             if(paginatemp->frame == nroDeFrame){
+                list_iterator_destroy(iterator);
+                list_iterator_destroy(iterator2);
                 return paginatemp;
             }
 
