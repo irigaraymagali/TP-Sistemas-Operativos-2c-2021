@@ -70,7 +70,7 @@ typedef struct data_carpincho // la data que le importa tener al backend, hacer 
     //para deadlock:
     char *nombre_semaforo_por_el_que_se_bloqueo; //nombre del semaforo por el que se bloqueo --> sacarlo cuando se desbloquee
     int sem_por_el_que_se_bloqueo; //id del semaforo por el que se bloqueo --> sacarlo cuando se desbloquee
-    t_list *semaforos_retenidos; //nombre de los semaforos a los que paso su wait --> lista de semaforos
+    //t_list *semaforos_retenidos; //nombre de los semaforos a los que paso su wait --> lista de semaforos
     int sem_retenido; //id del sem que tiene retenido
     // falta --> si le hace el post sacarlo
     int tiene_su_espera; //id del carpincho que tiene retenido al semaforo que el esta esperando
@@ -100,7 +100,13 @@ t_list* lista_dispositivos_io;
 //t_list* semaforos_retenidos; 
 t_list* lista_posibles;
 t_list* lista_conectados;
-t_list* ciclo_deadlock;
+t_list* el_ciclo;
+//t_list* ciclo_deadlock;
+
+t_list* ptr_dispositivos_io;
+t_list* ptr_duraciones_io;
+
+
 
 // Mutex para modificar las colas:
 pthread_mutex_t sem_cola_new;
@@ -114,22 +120,13 @@ pthread_mutex_t sem_CPU_libres;
 pthread_mutex_t mutex_para_CPU;
 pthread_mutex_t sem_cola_io;
 pthread_mutex_t sem_io_uso;
-
 pthread_mutex_t mutex_para_posibles_deadlock;
-
-pthread_mutex_t mutex_para_multiprogramacion; 
-pthread_mutex_t mutex_para_multiprocesamiento; 
 
 
 // log
 t_log *logger;
 
 t_config* config;
-
-t_list* ptr_dispositivos_io;
-t_list* ptr_duraciones_io;
-
-t_list* el_ciclo;
 
 // id carpincho
 int id_carpincho_global;
@@ -205,8 +202,8 @@ int calcular_milisegundos();
 void asignar_hilo_CPU(data_carpincho *carpincho);
 void ejecuta(void *id_cpu);
 
-void detectar_deadlock();
-void solucionar_deadlock(t_list* ciclo_deadlock);
+//void detectar_deadlock();
+//void solucionar_deadlock(t_list* ciclo_deadlock);
 void liberar_carpincho(void *carpincho);
 
 int formando_ciclo();
