@@ -1731,7 +1731,7 @@ void detectate_deadlock(){
 
     int tiempo_deadlock = config_get_int_value(config, "TIEMPO_DEADLOCK");
 
-    sleep(10); //entrega
+    //sleep(10); //entrega
 
     while(1){
         
