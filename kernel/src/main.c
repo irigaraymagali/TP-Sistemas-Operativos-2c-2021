@@ -36,8 +36,6 @@ int main(int argc, char ** argv){
 
     signal(SIGINT, free_memory);
 
-    
-
     pthread_t planficador_largo_plazo;
     pthread_create(&planficador_largo_plazo, NULL, (void*) entrantes_a_ready, NULL);
     pthread_t planficador_corto_plazo;
@@ -45,12 +43,9 @@ int main(int argc, char ** argv){
     pthread_t planficador_mediano_plazo;
     pthread_create(&planficador_mediano_plazo, NULL, (void*) suspender, NULL); 
     pthread_t deteccion_deadlock;
-    //pthread_create(&deteccion_deadlock, NULL, (void*) detectar_deadlock, NULL);
     pthread_create(&deteccion_deadlock, NULL, (void*) detectate_deadlock, NULL);
 
-
     _start_server(puerto_escucha, handler, logger);
-
 
     pthread_join ( planficador_largo_plazo , NULL ) ;
     pthread_join ( planficador_corto_plazo , NULL ) ;
@@ -58,8 +53,6 @@ int main(int argc, char ** argv){
     pthread_join ( deteccion_deadlock , NULL ) ;    
 
 }
-
-
 
 ///////////////////////////////////////////// INICIALIZACIONES ////////////////////////////////
 
@@ -88,18 +81,16 @@ void inicializar_colas(){
 
     lista_posibles = list_create();
     lista_conectados = list_create();
-    //ciclo_deadlock = list_create();
 
     pthread_mutex_init(&mutex_para_CPU, NULL);
     pthread_mutex_init(&sem_io_uso, NULL);
     pthread_mutex_init(&sem_cola_io, NULL);
 
     pthread_mutex_init(&mutex_para_posibles_deadlock, NULL);
- 
+
 }
 
 void inicializar_semaforos(){ 
-
     int grado_multiprogramacion = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
     int grado_multiprocesamiento = config_get_int_value(config, "GRADO_MULTIPROCESAMIENTO");
 
@@ -114,9 +105,7 @@ void inicializar_semaforos(){
     sem_init(&sem_programacion_lleno,1,0);
     sem_init(&sem_procesamiento_lleno,1,0);
     sem_init(&sem_hay_bloqueados,1,0);
-    //sem_init(&hay_bloqueados_para_deadlock,1,0);
     sem_init(&segui_chequeando_deadlock,1,0);
-
 }
 
 

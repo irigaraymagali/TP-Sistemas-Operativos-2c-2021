@@ -285,7 +285,6 @@ int mate_memread(mate_instance *lib_ref, mate_pointer origin, void *dest, int si
         close(socket_backend);
 
         memcpy(&resultado, buffer->payload, sizeof(int));
-        log_info(logger,"recibi %d", resultado);
         if (resultado >= 0){
             log_info(logger,"Se pudo hacer el MEMREAD pedido por el Carpincho %d", estructura_interna->id);       
         }else if (resultado == -6){
