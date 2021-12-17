@@ -103,6 +103,7 @@ int lRUACTUAL;
 int punteroFrameClock;
 int tamanioDeMemoria;
 int cantidadDePaginasPorProceso;
+int hayQueDegenerar;
 
 void initPaginacion();
 int memalloc(int processId, int espacioAReservar);
