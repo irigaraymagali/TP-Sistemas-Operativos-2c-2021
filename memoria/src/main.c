@@ -356,7 +356,7 @@ void free_memory(){
     pthread_mutex_destroy(&tlb_lru_mutex);
 
     free_tlb();
-    list_destroy_and_destroy_elements(todasLasTablasDePaginas, remove_paginas);
+    list_destroy_and_destroy_elements(todasLasTablasDePaginas, free_tabla_paginas);
 
     close(swamp_fd);
     

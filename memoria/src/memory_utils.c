@@ -1358,6 +1358,13 @@ void remove_paginas(void* elem){
     //free(tabla);
 }
 
+void free_tabla_paginas(void* elem){
+    if (elem != NULL){
+        remove_paginas(elem);
+        free((TablaDePaginasxProceso *) elem);
+    }
+}
+
 int memwrite(int idProcess, int direccionLogicaBuscada, void* loQueQuierasEscribir, int tamanio){
     log_info(logger,"arranco un memwrite----------------------------");
 

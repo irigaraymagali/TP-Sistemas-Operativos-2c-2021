@@ -148,6 +148,7 @@ TLB* fetch_entrada_tlb(uint32_t pid, uint32_t page);
 void free_tlb();
 int delete_process(int pid);
 void remove_paginas(void* elem);
+void free_tabla_paginas(void* elem);
 void set_pid_metric_if_missing(uint32_t pid); 
 void sum_metric(uint32_t pid, int isHit);
 int allFramesUsedForAsignacionFijaPara(int processID);
