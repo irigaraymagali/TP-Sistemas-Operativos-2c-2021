@@ -459,11 +459,13 @@ void* memread(uint32_t pid, int dir_logica, int size){
     TablaDePaginasxProceso* pages = get_pages_by(pid);
     if (pages->id != pid){
         log_error(logger, "El proceso ingresado es incorrecto");
+        free(read);
         return err_msg;
     }
 
     if (dir_logica >= pages->lastHeap){
         log_error(logger, "La Longitud de lectura recibida es invalida.");
+        free(read);
         return err_msg;
     }
 
