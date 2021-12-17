@@ -639,7 +639,7 @@ void mate_sem_post(int id_carpincho, mate_sem_name nombre_semaforo, int fd){
         else
         {
             payload = _serialize(sizeof(int), "%d", -1);
-            log_error(logger, "CARPINCHO %d - intentó hacer post de un semaforo no inicializado");
+            log_error(logger, "CARPINCHO %d - intentó hacer post de un semaforo no inicializado", id_carpincho);
             _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
         }
         free(payload);
@@ -710,7 +710,7 @@ void mate_sem_destroy(int id_carpincho, mate_sem_name nombre_semaforo, int fd) {
     } 
     else
     {
-        log_error(logger, "CARPINCHO %d - intentó borrar un semaforo no inicializado");
+        log_error(logger, "CARPINCHO %d - intentó borrar un semaforo no inicializado", id_carpincho);
         payload = _serialize(sizeof(int), "%d", -1);
         _send_message(fd, ID_KERNEL, 1, payload, sizeof(int), logger); 
     }
