@@ -775,9 +775,7 @@ void mate_call_io(int id_carpincho, mate_io_resource nombre_io, int fd){
     carpincho->fd = fd;
 
     exec_a_block(id_carpincho);
-
-    log_info(logger,"CARPINCHO %d - pasó de EXEC a BLOCK", id_carpincho);
-
+	
     bool es_igual_a_dispositivo(void* dispositivo_recibido) {
         dispositivo_io* dispositivo;
         dispositivo = (dispositivo_io *) dispositivo_recibido; 
