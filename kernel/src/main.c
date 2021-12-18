@@ -1642,7 +1642,9 @@ void detectate_deadlock(){
             if(hay_ciclo()){
                 solucionatelo(el_ciclo);
             }
-        }
+        } else {
+		sem_post(&segui_chequeando_deadlock);	
+	}
         list_clean(lista_posibles);  
         list_clean(lista_conectados);
         list_clean(el_ciclo); 
