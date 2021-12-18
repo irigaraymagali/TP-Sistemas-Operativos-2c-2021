@@ -1585,11 +1585,11 @@ void agregando_a_lista_posible_deadlock(){
         if(cumple_estado && cumple_retencion && cumple_bloqueo){
             list_add(lista_posibles, carpi_que_espera);
             buscar_quien_tiene_su_espera(carpi_que_espera);     
-        }
+        }else{
+             sem_post(&segui_chequeando_deadlock);
+	}
     }
-
     list_destroy(lista_carpinchos_filtrada);
-
 }
  
 void buscar_quien_tiene_su_espera(data_carpincho* carpi_que_espera){
