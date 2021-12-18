@@ -1574,7 +1574,13 @@ void agregando_a_lista_posible_deadlock(){
       t_list* lista_carpinchos_filtrada;
 
       lista_carpinchos_filtrada = list_filter(lista_carpinchos,no_es_nulo);
-            
+      if(list_size(lista_carpinchos_filtrada) < 2){
+	log_info(logger, "DEADLOCK - No hay suficientes carpinchos para que ocurra DEADLOCK");
+      	sem_post(&segui_chequeando_deadlock);
+	list_destroy(lista_carpinchos_filtrada);
+	return;
+      }
+	
     for(int i= 0; i< list_size(lista_carpinchos_filtrada); i++){ 
         data_carpincho *carpi_que_espera = list_get(lista_carpinchos_filtrada,i);
 
@@ -1642,9 +1648,8 @@ void detectate_deadlock(){
             if(hay_ciclo()){
                 solucionatelo(el_ciclo);
             }
-        } else {
-		sem_post(&segui_chequeando_deadlock);	
-	}
+        }
+	    
         list_clean(lista_posibles);  
         list_clean(lista_conectados);
         list_clean(el_ciclo); 
