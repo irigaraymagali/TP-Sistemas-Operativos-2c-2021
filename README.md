@@ -1,5 +1,7 @@
 # Trabajo Práctico cuatrimestral asignatura Sistemas Operativos.
 
+Consiste en el desarrollo de una solución que permita la simulación de un sistema distribuido, donde se tendrán que planificar procesos externos, que ejecuten peticiones al sistema de recursos. El sistema deberá, mediante esta interacción, habilitar recursos de memoria (bajo un esquema de paginación pura), recursos de entrada-salida y semáforos.
+
 ## [Consigna del Trabajo Práctico](https://docs.google.com/document/d/1BDpr5lfzOAqmOOgcAVg6rUqvMPUfCpMSz1u1J_Vjtac/edit)
 
 # Compilación de Modulo 💿
