@@ -1,5 +1,6 @@
-# README: tp-2021-2c-3era-es-la-vencida
+# Trabajo Práctico cuatrimestral asignatura Sistemas Operativos.
 
+## [Consigna del Trabajo Práctico](https://docs.google.com/document/d/1BDpr5lfzOAqmOOgcAVg6rUqvMPUfCpMSz1u1J_Vjtac/edit)
 
 # Compilación de Modulo 💿
 
@@ -33,7 +34,4 @@ Para utilizar las mismas deberá ingresar a `terminal -> run task` y seleccionar
 Para realizar el debug de la aplicación se deberá ingresar a la sección de *Debug* de **VsCode** y en la misma aparecerá su modulo a debuggear.
 
 > Si necesita ayuda con el Debug o no sabe como debuggear desde VsCode. Recomiendo que visite [VsCode Debug](https://code.visualstudio.com/docs/editor/debugging)
-
-# Protocolo de comunicación :shipit:
-
-:warning: **PROXIMAMENTE...** :warning:   
+  
